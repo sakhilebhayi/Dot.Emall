@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -42,5 +43,17 @@ class Product extends Model
     public function averageRating(): float
     {
         return round((float) $this->reviews()->avg('rating'), 1);
+    }
+
+    /**
+     * Products visible in the buyer-facing marketplace (platform-loop pass):
+     * the product itself must be active AND its parent store must be
+     * active — a product left active under a deactivated store should not
+     * be independently browsable/purchasable.
+     */
+    public function scopeBrowsable(Builder $query): Builder
+    {
+        return $query->where('is_active', true)
+            ->whereHas('store', fn (Builder $q) => $q->where('is_active', true));
     }
 }

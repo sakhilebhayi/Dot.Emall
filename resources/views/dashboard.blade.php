@@ -10,10 +10,19 @@
             Overview of your stores, products and orders
         </p>
     </div>
-    <a href="#" style="display:inline-flex;align-items:center;gap:0.45rem;padding:0.6rem 1.25rem;border-radius:9999px;background:linear-gradient(135deg,#f59e0b,#d97706);font-family:'Syne',sans-serif;font-size:0.78rem;font-weight:700;color:#1a1a1a;text-decoration:none;box-shadow:0 6px 18px rgba(245,158,11,0.3);">
-        <span class="material-symbols-rounded" style="font-size:16px;">add_circle</span>
-        Add Product
-    </a>
+    <div style="display:flex;gap:0.6rem;">
+        <a href="{{ route('orders.index') }}" style="display:inline-flex;align-items:center;gap:0.45rem;padding:0.6rem 1.25rem;border-radius:9999px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.08);font-family:'Syne',sans-serif;font-size:0.78rem;font-weight:700;color:#f4f4f5;text-decoration:none;">
+            <span class="material-symbols-rounded" style="font-size:16px;">receipt_long</span>
+            My Orders
+            @if($myOrdersCount > 0)
+                <span style="background:rgba(245,158,11,0.18);color:#f59e0b;border-radius:9999px;padding:0.05rem 0.45rem;font-size:0.68rem;">{{ $myOrdersCount }}</span>
+            @endif
+        </a>
+        <a href="{{ route('products.index') }}" style="display:inline-flex;align-items:center;gap:0.45rem;padding:0.6rem 1.25rem;border-radius:9999px;background:linear-gradient(135deg,#f59e0b,#d97706);font-family:'Syne',sans-serif;font-size:0.78rem;font-weight:700;color:#1a1a1a;text-decoration:none;box-shadow:0 6px 18px rgba(245,158,11,0.3);">
+            <span class="material-symbols-rounded" style="font-size:16px;">storefront</span>
+            Browse Marketplace
+        </a>
+    </div>
 </div>
 
 <div style="padding:1.75rem 2.5rem 3rem;">
@@ -77,6 +86,37 @@
             <div style="margin-top:0.4rem;font-size:0.7rem;color:#71717a;">Active in marketplace</div>
         </div>
 
+    </div>
+
+    {{-- ─── Secondary metrics row ───────────────────────────────────────── --}}
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:2rem;">
+        <div class="dot-card" style="padding:1.1rem 1.4rem;display:flex;align-items:center;gap:0.9rem;">
+            <div style="width:38px;height:38px;border-radius:9px;background:rgba(236,72,153,0.15);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <span class="material-symbols-rounded" style="font-size:19px;color:#ec4899;">reviews</span>
+            </div>
+            <div>
+                <div class="metric-val" style="font-size:1.15rem;color:#f4f4f5;">{{ number_format($totalReviews) }}</div>
+                <div style="font-size:0.68rem;color:#71717a;">Reviews across your products</div>
+            </div>
+        </div>
+        <div class="dot-card" style="padding:1.1rem 1.4rem;display:flex;align-items:center;gap:0.9rem;">
+            <div style="width:38px;height:38px;border-radius:9px;background:rgba(250,204,21,0.15);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <span class="material-symbols-rounded" style="font-size:19px;color:#facc15;">star</span>
+            </div>
+            <div>
+                <div class="metric-val" style="font-size:1.15rem;color:#f4f4f5;">{{ $avgRating > 0 ? number_format($avgRating, 1) : '—' }}</div>
+                <div style="font-size:0.68rem;color:#71717a;">Average product rating</div>
+            </div>
+        </div>
+        <div class="dot-card" style="padding:1.1rem 1.4rem;display:flex;align-items:center;gap:0.9rem;{{ $lowStockCount > 0 ? 'border-color:rgba(239,68,68,0.3);' : '' }}">
+            <div style="width:38px;height:38px;border-radius:9px;background:rgba(239,68,68,0.15);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <span class="material-symbols-rounded" style="font-size:19px;color:#ef4444;">warning</span>
+            </div>
+            <div>
+                <div class="metric-val" style="font-size:1.15rem;color:#f4f4f5;">{{ number_format($lowStockCount) }}</div>
+                <div style="font-size:0.68rem;color:#71717a;">Products low on stock (&lt; 5)</div>
+            </div>
+        </div>
     </div>
 
     {{-- ─── Stores section ───────────────────────────────────────────────── --}}

@@ -1,10 +1,10 @@
 <div align="center">
 
-<img src="docs/logo.svg" alt="Dot.Emall" width="320" />
+<img src="public/images/logo.png" alt="Dot.Emall" width="200" />
 
 <br /><br />
 
-**Open a store, list products, manage orders, and grow your business online.**
+**Open a store, list products, and sell to every buyer in the Dot Ecosystem.**
 
 <br />
 
@@ -12,7 +12,7 @@
 
 <br /><br />
 
-**Part of the [InfoDot Ecosystem](https://github.com/sakhileb/InfoDot)** &nbsp;·&nbsp; `emall.infodot.app`
+**Part of the [Dot Ecosystem](https://github.com/sakhileb/InfoDot)** &nbsp;·&nbsp; `emall.infodot.app`
 
 </div>
 
@@ -20,25 +20,54 @@
 
 ## What is Dot.Emall?
 
-Dot.Emall is the marketplace platform in the InfoDot ecosystem. Multiple vendors operate their own storefronts under a single marketplace roof — each managing their product catalogue, inventory, and fulfilment independently while customers shop across all stores.
+Dot.Emall is the marketplace platform in the Dot ecosystem: a multi-vendor storefront application
+where sellers open a store, list products, and fulfil orders, while buyers browse and buy across
+every store in the marketplace.
 
-## Core Features
+**Status:** built and running as a Laravel application. See [`wiki.md`](wiki.md) for the full,
+kept-honest breakdown of what's actually implemented vs. still roadmap.
 
-- Multi-vendor storefronts — each vendor manages their own shop
-- Product catalogue with variants, SKUs, and stock tracking
-- Order management — placed, confirmed, shipped, delivered
-- Integrated payment processing via Stripe
-- Vendor payout dashboard with commission tracking
-- Customer reviews and star ratings per product
-- Promotional codes and timed discounts
-- Ecosystem SSO from InfoDot hub
+## Core Features (implemented today)
+
+- Real marketplace schema: stores, products, product images, orders, order items, reviews, and
+  a cart
+- Multi-vendor storefronts — each store belongs to an owning `User`
+- Buyer-facing product marketplace: search and category filter (`/products`), product detail page
+  with gallery, price, stock, and reviews (`/products/{product}`)
+- Full cart -> checkout flow (`/cart`, `POST /cart`, `POST /cart/checkout`) — creates a real
+  `Order` + `OrderItem` rows, decrements stock inside a transaction, and rejects checkout outright
+  if any line item is out of stock
+- Buyer order history (`/orders`, `/orders/{order}`), strictly scoped to the signed-in user via
+  `OrderPolicy` — one customer can never view another customer's order
+- Product reviews: buyers can post one review per product (`POST /products/{product}/reviews`)
+  and delete their own; `ReviewPolicy` prevents deleting someone else's review
+- Seller operations dashboard — total products, orders, revenue (delivered orders), pending
+  orders, reviews received, average rating, and a low-stock alert widget across the seller's own
+  stores
+- In-app notification bell (Laravel's `database` notification channel); store owners get a live
+  notification the moment a buyer places an order or leaves a review
+- Category taxonomy validation: the product browse/filter endpoint rejects any `category` value
+  that isn't a real `store_categories` row, instead of accepting an arbitrary id silently
+- Dark / light mode toggle (Tailwind class-based strategy, persisted per browser)
+- Ecosystem SSO from the Dot hub
+
+> **Not yet built:** Stripe payment processing, a vendor payout/commission dashboard, promotional
+> codes and timed discounts, structured domain-event dispatch or a Knowledge Pack publisher to
+> Dot.Brain, and seller-side product/store management screens (there is still no UI for a seller
+> to create or edit a store or product — only the dashboard's read-only view of what already
+> exists in the database). These were all present as aspirations in earlier drafts of this
+> README but are not in the codebase; see `wiki.md` §7 for the full roadmap.
 
 ## Domain Models
 
-- **Store** — vendor storefront with branding
-- **Product** — listing with variants and stock
-- **Order** — customer purchase record
-- **OrderItem** — line item per product
+- **Store** — vendor storefront; belongs to a `User` owner, has many `Product`
+- **StoreCategory** — self-referential category tree
+- **Product** — belongs to a `Store` and optional `StoreCategory`; has many `ProductImage`, `Review`
+- **ProductImage** — ordered gallery per product
+- **Order** — belongs to a buyer `User`; has many `OrderItem`
+- **OrderItem** — line item linking an `Order` to a `Product`
+- **Review** — one review per (product, user)
+- **CartItem** — one row per (user, product); the pre-checkout cart
 
 ## Tech Stack
 
@@ -47,13 +76,11 @@ Dot.Emall is the marketplace platform in the InfoDot ecosystem. Multiple vendors
 | Framework | Laravel 12 |
 | Language | PHP 8.4 |
 | Frontend | Livewire 3 · Alpine.js 3 · Tailwind CSS |
-| Database | PostgreSQL 16 (shared across ecosystem) |
-| Realtime | Laravel Reverb |
-| Auth | Laravel Sanctum (InfoDot SSO) |
-| AI | Anthropic Claude (`claude-sonnet-4-6`) |
-| Storage | AWS S3 / Local (Flysystem) |
-| Search | Laravel Scout · Meilisearch |
-| Queue | Redis · Laravel Horizon |
+| Database | PostgreSQL 16 (shared `infodot` database across the ecosystem) |
+| Realtime | Laravel Reverb (configured; not used by any commerce flow yet) |
+| Auth | Laravel Jetstream + Sanctum, team-based accounts (Dot ecosystem SSO) |
+| AI | Anthropic Claude (`ANTHROPIC_API_KEY`, `claude-sonnet-4-6`) — config only, not called by any marketplace logic yet |
+| Queue | Database-backed queue |
 
 ## Quick Start
 
@@ -68,11 +95,24 @@ php artisan migrate
 php artisan serve
 ```
 
-> **Ecosystem SSO:** Set `DB_*` env vars to the shared InfoDot PostgreSQL instance and `APP_URL=https://emall.infodot.app`. Users authenticated through InfoDot gain access automatically via Sanctum handoff tokens.
+> **Ecosystem SSO:** Set `DB_*` env vars to the shared Dot ecosystem PostgreSQL instance and
+> `APP_URL=https://emall.infodot.app`. Users authenticated elsewhere in the ecosystem gain access
+> automatically via the Sanctum handoff at `/auth/ecosystem`.
+
+### Running Tests
+
+```bash
+php artisan test
+```
+
+Feature tests use an in-memory SQLite connection (see `phpunit.xml`) and Laravel's
+`RefreshDatabase` trait — no shared Postgres instance required to run them.
 
 ## Ecosystem
 
-**Dot.Emall** is one of **21 platforms** in the InfoDot ecosystem, connected via shared PostgreSQL and Sanctum SSO. Visit [InfoDot](https://github.com/sakhileb/InfoDot) to explore the full platform map.
+**Dot.Emall** is one of the platforms in the Dot ecosystem, connected via shared PostgreSQL and
+Sanctum SSO. Visit [Dot.Brain](https://github.com/sakhilebhayi/Dot.Brain) for the ecosystem-wide
+knowledge repo, and [`wiki.md`](wiki.md) for this platform's own source of truth.
 
 ## License
 

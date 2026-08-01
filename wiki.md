@@ -1,6 +1,6 @@
 ---
 title: Dot.Emall — Platform Wiki
-version: 0.2.0
+version: 0.3.0
 status: active
 owners: [Emall Platform Lead]
 platform-id: dot-emall
@@ -104,3 +104,4 @@ Two things worth flagging for anyone closing that gap: the codebase has no Knowl
 | Version | Date | Author | Change |
 |---|---|---|---|
 | 0.2.0 | 2026-08-01 | Emall Platform Lead | Initial wiki: derived from the actual Laravel codebase (schema, models, dashboard, ecosystem SSO controller), cross-referenced against Dot.Brain's platforms/dot-emall.md for ecosystem framing |
+| 0.3.0 | 2026-08-01 | Emall Platform Lead | Platform-loop pass: built the buyer-facing product marketplace and the cart -> checkout flow that turns `CartItem` rows into real `Order`/`OrderItem` rows (previously nothing in the codebase ever created an `Order` at all — the "Order placed" row in §5 was purely conceptual until now). Added `ProductImage` model (the relation existed, the class didn't — a live bug). Added `OrderPolicy` and `ReviewPolicy` so the new `/orders` and review routes are scoped to their owners instead of shipping unguarded. Added an in-app notification bell (`database` channel) firing on new order / new review. Added a bounded fix for the category-taxonomy gap: the product browse endpoint now validates any `category` filter against real `store_categories` rows (`exists:store_categories,id`) rather than accepting an arbitrary id — this does not touch the deeper "validate against the ecosystem's semantic taxonomy at publish time" gap from §6, since there is still no product-creation route in this codebase to validate at. Wired the real logo/favicons across nav/auth/browser tab and added a dark/light toggle. Domain event dispatch, the Knowledge Pack publisher, Stripe/payouts, and seller-side store/product management screens remain roadmap — see §7, unchanged in scope by this pass. |

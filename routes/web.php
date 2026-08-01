@@ -1,6 +1,10 @@
 <?php
 
 use App\Http\Controllers\Auth\EcosystemAuthController;
+use App\Http\Controllers\CartController;
+use App\Http\Controllers\OrderController;
+use App\Http\Controllers\ProductController;
+use App\Http\Controllers\ReviewController;
 use Illuminate\Support\Facades\Route;
 
 
@@ -47,9 +51,35 @@ Route::middleware([
             ->limit(8)
             ->get();
 
+        // Additional widgets (platform-loop pass): reviews and low-stock
+        // signal across the seller's own products, plus the buyer-side
+        // "my orders" count so the dashboard reflects both roles a user
+        // can occupy in this marketplace.
+        $totalReviews  = \App\Models\Review::whereIn('product_id', $productIds)->count();
+        $avgRating     = round((float) \App\Models\Review::whereIn('product_id', $productIds)->avg('rating'), 1);
+        $lowStockCount = \App\Models\Product::whereIn('id', $productIds)
+            ->where('is_active', true)
+            ->where('stock', '<', 5)
+            ->count();
+        $myOrdersCount = \App\Models\Order::where('user_id', $userId)->count();
+
         return view('dashboard', compact(
             'stores', 'totalProducts', 'totalOrders',
-            'totalRevenue', 'pendingOrders', 'recentOrders'
+            'totalRevenue', 'pendingOrders', 'recentOrders',
+            'totalReviews', 'avgRating', 'lowStockCount', 'myOrdersCount'
         ));
     })->name('dashboard');
+
+    Route::get('/products', [ProductController::class, 'index'])->name('products.index');
+    Route::get('/products/{product}', [ProductController::class, 'show'])->name('products.show');
+    Route::post('/products/{product}/reviews', [ReviewController::class, 'store'])->name('reviews.store');
+    Route::delete('/reviews/{review}', [ReviewController::class, 'destroy'])->name('reviews.destroy');
+
+    Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
+    Route::post('/cart', [CartController::class, 'store'])->name('cart.store');
+    Route::delete('/cart/{cartItem}', [CartController::class, 'destroy'])->name('cart.destroy');
+    Route::post('/cart/checkout', [CartController::class, 'checkout'])->name('cart.checkout');
+
+    Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
+    Route::get('/orders/{order}', [OrderController::class, 'show'])->name('orders.show');
 });
