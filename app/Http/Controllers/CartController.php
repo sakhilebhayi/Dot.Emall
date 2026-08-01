@@ -68,10 +68,16 @@ class CartController extends Controller
     }
 
     /**
-     * Places an order from the current user's cart. Stock is checked and
-     * decremented per line item inside a transaction; the whole checkout
-     * is rejected if any line item no longer has enough stock, rather
-     * than partially fulfilling the order.
+     * Places an order from the current user's cart.
+     *
+     * Stock is locked, re-checked, and decremented atomically inside the
+     * transaction (lockForUpdate() + a WHERE-guarded decrement) rather than
+     * checked once beforehand — a pre-check outside the transaction is a
+     * TOCTOU race: two concurrent checkouts on the last unit could both
+     * pass the pre-check and both decrement, driving stock negative. Under
+     * SQLite (this app's dev/test driver) lockForUpdate() is a no-op, so
+     * the WHERE-guarded decrement is the layer that actually matters
+     * everywhere; the lock is real protection under Postgres/MySQL.
      */
     public function checkout(Request $request): RedirectResponse
     {
@@ -81,57 +87,90 @@ class CartController extends Controller
 
         $shippingAddress = $validated['shipping_address'];
 
-        $items = CartItem::where('user_id', auth()->id())
-            ->with('product.store.owner')
-            ->get();
+        $cartItemIds = CartItem::where('user_id', auth()->id())->pluck('id');
 
-        if ($items->isEmpty()) {
+        if ($cartItemIds->isEmpty()) {
             return redirect()->route('cart.index')->with('error', 'Your cart is empty.');
         }
 
-        foreach ($items as $item) {
-            if (! $item->product->is_active || $item->quantity > $item->product->stock) {
-                return redirect()->route('cart.index')
-                    ->with('error', "\"{$item->product->name}\" no longer has enough stock ({$item->product->stock} left).");
-            }
-        }
+        try {
+            $order = DB::transaction(function () use ($cartItemIds, $shippingAddress) {
+                // Re-fetch cart items + lock their products inside the transaction,
+                // ordered by product_id to avoid lock-ordering deadlocks between
+                // concurrent checkouts that share products.
+                $items = CartItem::whereIn('id', $cartItemIds)
+                    ->with(['product.store.owner' => fn ($q) => $q])
+                    ->get();
 
-        $order = DB::transaction(function () use ($items, $shippingAddress) {
-            $subtotal = $items->sum(fn (CartItem $item) => $item->quantity * $item->product->price);
+                $productIds = $items->pluck('product_id')->sort()->values();
+                $lockedProducts = Product::whereIn('id', $productIds)
+                    ->lockForUpdate()
+                    ->get()
+                    ->keyBy('id');
 
-            $order = Order::create([
-                'user_id'          => auth()->id(),
-                'status'           => 'pending',
-                'subtotal'         => $subtotal,
-                'total'            => $subtotal,
-                'shipping_address' => $shippingAddress,
-            ]);
+                foreach ($items as $item) {
+                    $product = $lockedProducts->get($item->product_id);
 
-            $storesToNotify = [];
+                    if (! $product || ! $product->is_active || $item->quantity > $product->stock) {
+                        $available = $product->stock ?? 0;
+                        throw new \RuntimeException(
+                            "\"{$item->product->name}\" no longer has enough stock ({$available} left)."
+                        );
+                    }
+                }
 
-            foreach ($items as $item) {
-                $lineTotal = $item->quantity * $item->product->price;
+                $subtotal = $items->sum(fn (CartItem $item) => $item->quantity * $lockedProducts[$item->product_id]->price);
 
-                OrderItem::create([
-                    'order_id'   => $order->id,
-                    'product_id' => $item->product_id,
-                    'quantity'   => $item->quantity,
-                    'unit_price' => $item->product->price,
-                    'total'      => $lineTotal,
+                $order = Order::create([
+                    'user_id'          => auth()->id(),
+                    'status'           => 'pending',
+                    'subtotal'         => $subtotal,
+                    'total'            => $subtotal,
+                    'shipping_address' => $shippingAddress,
                 ]);
 
-                $item->product->decrement('stock', $item->quantity);
-                $storesToNotify[$item->product->store_id] = $item->product->store;
+                $storesToNotify = [];
 
-                $item->delete();
-            }
+                foreach ($items as $item) {
+                    $product = $lockedProducts[$item->product_id];
+                    $lineTotal = $item->quantity * $product->price;
 
-            foreach ($storesToNotify as $store) {
-                $store->owner?->notify(new NewOrderNotification($order, $store));
-            }
+                    OrderItem::create([
+                        'order_id'   => $order->id,
+                        'product_id' => $item->product_id,
+                        'quantity'   => $item->quantity,
+                        'unit_price' => $product->price,
+                        'total'      => $lineTotal,
+                    ]);
 
-            return $order;
-        });
+                    // WHERE-guarded decrement: still checks stock >= quantity at
+                    // write time, so even without a real row lock (SQLite) this
+                    // can never drive stock negative — it just affects 0 rows and
+                    // we catch that below.
+                    $updated = Product::where('id', $product->id)
+                        ->where('stock', '>=', $item->quantity)
+                        ->decrement('stock', $item->quantity);
+
+                    if ($updated === 0) {
+                        throw new \RuntimeException(
+                            "\"{$item->product->name}\" no longer has enough stock."
+                        );
+                    }
+
+                    $storesToNotify[$item->product->store_id] = $item->product->store;
+                }
+
+                CartItem::whereIn('id', $cartItemIds)->delete();
+
+                foreach ($storesToNotify as $store) {
+                    $store->owner?->notify(new NewOrderNotification($order, $store));
+                }
+
+                return $order;
+            });
+        } catch (\RuntimeException $e) {
+            return redirect()->route('cart.index')->with('error', $e->getMessage());
+        }
 
         return redirect()->route('orders.show', $order)->with('status', 'Order placed successfully.');
     }
