@@ -1,6 +1,6 @@
 ---
 title: Dot.Emall — Platform Wiki
-version: 0.3.0
+version: 0.3.1
 status: active
 owners: [Emall Platform Lead]
 platform-id: dot-emall
@@ -62,17 +62,17 @@ Order status today is a free-form string on `orders.status` (default `pending`);
 
 ## 5. Events Emitted
 
-The application does not yet publish structured domain events or Knowledge Packs to Dot.Brain — this is application state changes only, observed from the schema and controllers as they exist today:
+The application does not yet publish Knowledge Packs to Dot.Brain, and most state changes are still silent model writes with no event dispatch behind them. One exception now exists: order placement dispatches a real Laravel event.
 
 | Event (conceptual) | Trigger | Current implementation |
 |---|---|---|
 | Store created/updated | Seller opens or edits a storefront | `Store` model writes; no event dispatch yet |
 | Product published/updated | Seller adds or edits a listing | `Product` model writes; no event dispatch yet |
-| Order placed | Buyer checks out | `Order` + `OrderItem` rows created; no event dispatch yet |
-| Order status changed | Fulfilment progresses (pending → delivered, etc.) | `orders.status` column update; no event dispatch yet |
+| Order placed | Buyer checks out | `App\Events\OrderPlaced` is dispatched from `CartController::checkout()` once the order transaction commits, carrying the created `Order`. No listener is registered yet — this is the real trigger, not a consumer, and it's the first domain event this codebase actually fires. |
+| Order status changed | Fulfilment progresses (pending → delivered, etc.) | `orders.status` column update; no route or controller changes it after creation today, so there is no trigger point to dispatch from yet |
 | Review submitted | Buyer rates a product | `Review` model writes; no event dispatch yet |
 
-Formal event dispatch (`commerce.listing.published`, `commerce.order.placed`, etc., matching the naming Dot.Brain expects — see §6) is on the roadmap, not yet implemented.
+Formal Knowledge-Pack-facing event names (`commerce.listing.published`, `commerce.order.placed`, etc., matching the naming Dot.Brain expects — see §6) and a listener that turns `OrderPlaced` into a published pack are still on the roadmap. `OrderPlaced` is a plain internal Laravel event, not yet mapped to the ecosystem's dotted event-name convention.
 
 ## 6. Connecting to Dot.Brain
 
@@ -84,7 +84,8 @@ Two things worth flagging for anyone closing that gap: the codebase has no Knowl
 
 ## 7. Roadmap
 
-- [ ] Dispatch real domain events (`commerce.listing.published`, `commerce.order.placed`, `commerce.listing.unsold_expiry`, etc.) instead of silent model writes
+- [x] Dispatch a real domain event for order placement — `App\Events\OrderPlaced`, fired from `CartController::checkout()` (no listener/Knowledge-Pack mapping yet)
+- [ ] Dispatch the remaining domain events (`commerce.listing.published`, `commerce.listing.unsold_expiry`, review submitted, order status changed, etc.) instead of silent model writes — blocked on the seller product-CRUD and order-status-update controllers that don't exist yet, since there's no real trigger point to dispatch from
 - [ ] Build the Knowledge Pack publisher and `platform.dkp.json` manifest (signing key, publishes/subscribes lists, tenancy config)
 - [ ] Validate `StoreCategory` terms against the ecosystem's semantic taxonomy at publish time
 - [ ] Wire Stripe payment processing and a vendor payout/commission dashboard (both referenced in README aspirations, neither present in the current schema/models)
@@ -105,3 +106,4 @@ Two things worth flagging for anyone closing that gap: the codebase has no Knowl
 |---|---|---|---|
 | 0.2.0 | 2026-08-01 | Emall Platform Lead | Initial wiki: derived from the actual Laravel codebase (schema, models, dashboard, ecosystem SSO controller), cross-referenced against Dot.Brain's platforms/dot-emall.md for ecosystem framing |
 | 0.3.0 | 2026-08-01 | Emall Platform Lead | Platform-loop pass: built the buyer-facing product marketplace and the cart -> checkout flow that turns `CartItem` rows into real `Order`/`OrderItem` rows (previously nothing in the codebase ever created an `Order` at all — the "Order placed" row in §5 was purely conceptual until now). Added `ProductImage` model (the relation existed, the class didn't — a live bug). Added `OrderPolicy` and `ReviewPolicy` so the new `/orders` and review routes are scoped to their owners instead of shipping unguarded. Added an in-app notification bell (`database` channel) firing on new order / new review. Added a bounded fix for the category-taxonomy gap: the product browse endpoint now validates any `category` filter against real `store_categories` rows (`exists:store_categories,id`) rather than accepting an arbitrary id — this does not touch the deeper "validate against the ecosystem's semantic taxonomy at publish time" gap from §6, since there is still no product-creation route in this codebase to validate at. Wired the real logo/favicons across nav/auth/browser tab and added a dark/light toggle. Domain event dispatch, the Knowledge Pack publisher, Stripe/payouts, and seller-side store/product management screens remain roadmap — see §7, unchanged in scope by this pass. |
+| 0.3.1 | 2026-08-01 | Emall Platform Lead | Incremental pass: dispatched Dot.Emall's first real domain event, `App\Events\OrderPlaced` (`app/Events/OrderPlaced.php`), fired from `CartController::checkout()` after the order transaction commits. Scoped deliberately narrow — the other roadmap events (listing published, order status changed, review submitted) still have no real controller trigger to dispatch from (no seller product-CRUD, no order-status-update route exist yet), so adding events for them now would mean firing something with no genuine cause, which this platform's engineering loop treats as fabrication. No listener is registered yet; this is the trigger a future Knowledge Pack publisher will subscribe to. Added `test_checkout_dispatches_order_placed_for_the_created_order` and `test_checkout_does_not_dispatch_order_placed_when_stock_is_insufficient` to `tests/Feature/Marketplace/CartCheckoutTest.php` (written, not executed — no local PHP/Composer/Postgres). §5 and §7 updated to match. |

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\OrderPlaced;
 use App\Models\CartItem;
 use App\Models\Order;
 use App\Models\OrderItem;
@@ -24,6 +25,11 @@ use Illuminate\View\View;
  * CartItemPolicy — same inline-ownership pattern used elsewhere in this
  * platform loop (e.g. Dot.Auction's WatchlistButton) for a single-owner
  * resource with no shared/team access model.
+ *
+ * checkout() also dispatches App\Events\OrderPlaced once the order
+ * transaction has committed — Dot.Emall's first real domain event
+ * dispatch (a follow-up incremental pass; see App\Events\OrderPlaced's
+ * docblock for why it's scoped to just this trigger).
  */
 class CartController extends Controller
 {
@@ -171,6 +177,12 @@ class CartController extends Controller
         } catch (\RuntimeException $e) {
             return redirect()->route('cart.index')->with('error', $e->getMessage());
         }
+
+        // Dispatched after the transaction has committed, not from inside
+        // the closure — firing it mid-transaction would mean any later
+        // failure in that same transaction still left listeners believing
+        // an order existed.
+        event(new OrderPlaced($order));
 
         return redirect()->route('orders.show', $order)->with('status', 'Order placed successfully.');
     }

@@ -2,12 +2,14 @@
 
 namespace Tests\Feature\Marketplace;
 
+use App\Events\OrderPlaced;
 use App\Models\CartItem;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\Store;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Event;
 use Tests\TestCase;
 
 /**
@@ -110,6 +112,40 @@ class CartCheckoutTest extends TestCase
 
         // Seller gets a database notification about the new order.
         $this->assertEquals(1, $seller->fresh()->unreadNotifications()->count());
+    }
+
+    public function test_checkout_dispatches_order_placed_for_the_created_order(): void
+    {
+        Event::fake([OrderPlaced::class]);
+
+        $buyer   = User::factory()->withPersonalTeam()->create();
+        $product = $this->makeProduct($this->makeStore(), ['stock' => 5, 'price' => 10]);
+
+        CartItem::create(['user_id' => $buyer->id, 'product_id' => $product->id, 'quantity' => 1]);
+
+        $this->actingAs($buyer)->post(route('cart.checkout'), [
+            'shipping_address' => '123 Main St',
+        ]);
+
+        $order = Order::where('user_id', $buyer->id)->first();
+
+        Event::assertDispatched(OrderPlaced::class, fn (OrderPlaced $event) => $event->order->is($order));
+    }
+
+    public function test_checkout_does_not_dispatch_order_placed_when_stock_is_insufficient(): void
+    {
+        Event::fake([OrderPlaced::class]);
+
+        $buyer   = User::factory()->withPersonalTeam()->create();
+        $product = $this->makeProduct($this->makeStore(), ['stock' => 1]);
+
+        CartItem::create(['user_id' => $buyer->id, 'product_id' => $product->id, 'quantity' => 5]);
+
+        $this->actingAs($buyer)->post(route('cart.checkout'), [
+            'shipping_address' => '123 Main St',
+        ]);
+
+        Event::assertNotDispatched(OrderPlaced::class);
     }
 
     public function test_checkout_is_rejected_when_stock_is_insufficient(): void
