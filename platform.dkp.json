@@ -1,0 +1,23 @@
+{
+  "platform": "dot-emall",
+  "display_name": "Dot.Emall",
+  "dkp_version": "1.0.0",
+  "endpoints": {
+    "publish_topic": "dkp.dot-emall.publish",
+    "response_topic": "dkp.dot-emall.response",
+    "pr_repository": "sakhilebhayi/Dot.Emall"
+  },
+  "keys": [
+    {
+      "key_id": "dot-emall-dkp-signing-v1",
+      "algorithm": "ed25519",
+      "public_key": "XW9lZV5Dbx31avqc2rl1ixTE1WfhScQDaxDez+u+tYI=",
+      "valid_from": "2026-08-02T00:00:00Z"
+    }
+  ],
+  "advisory_subscriptions": ["security", "reliability", "business"],
+  "rate_limit_per_minute": 100,
+  "contacts": [
+    { "role": "Platform Lead", "handle": "sakhilebhayi" }
+  ]
+}

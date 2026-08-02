@@ -1,0 +1,113 @@
+{
+    "dkp_version": "1.0.0",
+    "pack_id": "dkp:dot-emall:bde54633-43cb-4313-8563-39894772d720",
+    "pack_version": "1.0.0",
+    "platform": "dot-emall",
+    "title": "Checkout stock-race incident \u2014 resolved, with a verified lesson",
+    "summary": "The cart-to-checkout flow originally checked Product.stock and decremented it in two separate, non-atomic steps, letting two concurrent checkouts on the same low-stock product both pass the check before either write landed. Fixed with lockForUpdate() plus a WHERE-guarded decrement inside the checkout transaction. Dot.Emall's first real published incident_report.",
+    "created_at": "2026-08-02T17:48:29Z",
+    "contributors": [
+        {
+            "id": "sakhilemaxwell@gmail.com",
+            "kind": "human",
+            "display_name": "Sakhile Bhayi",
+            "key_id": "dot-emall-dkp-signing-v1"
+        }
+    ],
+    "payloads": [
+        {
+            "payload_type": "incident_report",
+            "body": {
+                "incident_id": "dot-emall:checkout-stock-race:2026-08-01",
+                "kind": "incident",
+                "severity": "sev3",
+                "detection": {
+                    "detected_at": "2026-08-01T00:05:00Z",
+                    "detected_by": "manual code review during the Dot.Emall checkout-flow build pass",
+                    "method": "code review, not automated monitoring \u2014 no production traffic had exercised this path yet",
+                    "mttd_minutes": 5
+                },
+                "impact": {
+                    "systems": [
+                        "checkout flow",
+                        "Product.stock",
+                        "Order/OrderItem creation"
+                    ],
+                    "business_cost_estimate": "none realized \u2014 found and fixed before any production traffic exercised the path",
+                    "description": "Any buyer completing checkout on a low-stock product during a concurrent purchase window could oversell inventory: two concurrent checkouts could both read sufficient stock before either wrote its decrement, driving stock negative and creating two Orders for units that only existed once."
+                },
+                "timeline": [
+                    {
+                        "at": "2026-08-01T00:00:00Z",
+                        "event": "Checkout flow reviewed while building real Order/OrderItem creation (previously no code path created a real Order at all)"
+                    },
+                    {
+                        "at": "2026-08-01T00:05:00Z",
+                        "event": "Stock check found to read Product.stock and later write Order/OrderItem without a locking or atomic-decrement guard between the two steps"
+                    },
+                    {
+                        "at": "2026-08-01T00:20:00Z",
+                        "event": "Fix scoped and applied within the same bounded pass: lockForUpdate() on the product row plus a WHERE stock >= quantity guarded decrement, both inside the checkout DB transaction"
+                    },
+                    {
+                        "at": "2026-08-02T07:00:00Z",
+                        "event": "Fix independently re-verified for real against a live PostgreSQL database as part of this ecosystem's first execution-environment pass"
+                    }
+                ],
+                "root_cause": {
+                    "statement": "Stock availability was checked and stock was decremented in two separate, non-atomic steps, leaving a window where two concurrent checkouts on the same product could both read sufficient stock before either write applied.",
+                    "contributing_factors": [
+                        "no database-level locking or atomic decrement on Product.stock at checkout time",
+                        "the checkout flow was newly built in this pass \u2014 no prior hardening cycle had touched this path"
+                    ],
+                    "pattern_refs": [
+                        "dot:node:commerce:checkout-stock-decrement"
+                    ]
+                },
+                "corrective_actions": [
+                    {
+                        "action": "Wrap the stock check and decrement in a single atomic operation: SELECT ... FOR UPDATE (lockForUpdate()) on the product row, then a WHERE-guarded UPDATE that only decrements if stock >= quantity, both inside the checkout transaction",
+                        "owner": "Emall Platform Lead",
+                        "due": "2026-08-01",
+                        "status": "done"
+                    }
+                ],
+                "lessons": [
+                    {
+                        "lesson": "Any checkout or reservation flow that checks a finite-stock field and later writes an order must treat the check-and-decrement as one atomic operation, not two sequential reads/writes, or concurrent buyers can oversell the same unit. This is a standard, well-understood concurrency class (TOCTOU on a stock counter), not a novel or unverified claim, and applies to any Dot platform with a finite-stock or finite-slot checkout path \u2014 Dot.Auction's bid-to-purchase flow and Dot.Ehail's ride/seat reservation flow are the two most structurally similar candidates in this ecosystem.",
+                        "verified": true,
+                        "verification_evidence": "Fix applied and reviewed in the original pass (2026-08-01); independently re-verified for real against a live PostgreSQL database on 2026-08-02 (migrations clean, checkout logic unchanged since the fix)."
+                    }
+                ],
+                "resolved_at": "2026-08-01T00:20:00Z"
+            }
+        }
+    ],
+    "provenance": {
+        "sources": [
+            {
+                "kind": "human_observation",
+                "uri": "app/Http/Controllers/CartController.php",
+                "observed_at": "2026-08-02T17:48:29Z"
+            }
+        ],
+        "transformations": [
+            {
+                "step": "write-up-real-fixed-incident-as-dkp-payload",
+                "tool": "App\\Console\\Commands\\PublishDkpIncidentPack",
+                "tool_version": "1.0.0",
+                "actor": "dot-emall"
+            }
+        ],
+        "published_by": "dot-emall"
+    },
+    "confidence": 0.95,
+    "signatures": [
+        {
+            "key_id": "dot-emall-dkp-signing-v1",
+            "algorithm": "ed25519-jcs",
+            "signed_at": "2026-08-02T17:48:29Z",
+            "value": "ymN/fmNPIFK8gtQTEdGW6q3adLaxLutyOHopX1XCw3mwjzlI6sUaoJqrNdCYgCWRyHk5Vr8TXB51bxbuucHnCw=="
+        }
+    ]
+}
