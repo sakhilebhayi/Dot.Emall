@@ -16,18 +16,26 @@ use Illuminate\View\View;
 /**
  * Cart + checkout (platform-loop pass). Order and OrderItem were fully
  * modeled and CartItem existed with a unique(user_id, product_id)
- * constraint, but nothing in the codebase ever created an Order — there
+ * constraint, but nothing in the codebase ever created an Order -- there
  * was no checkout flow at all. This is the single biggest gap the wiki
  * flagged implicitly: "Order placed" was listed as a "conceptual" event
- * with no trigger anywhere (wiki.md §5). This controller is that trigger.
+ * with no trigger anywhere (wiki.md Sec5). This controller is that trigger.
  *
- * Every query here is scoped to auth()->id() rather than a separate
- * CartItemPolicy — same inline-ownership pattern used elsewhere in this
- * platform loop (e.g. Dot.Auction's WatchlistButton) for a single-owner
- * resource with no shared/team access model.
+ * CartItem now applies App\Models\Concerns\HasUserScope (platform-loop
+ * pass, 2026-08-04), so every query against it is already scoped to
+ * auth()->id() by the model's global scope -- the explicit
+ * where('user_id', auth()->id()) filters that used to appear in index()
+ * and checkout() below are redundant reads and have been removed.
+ * destroy()'s implicit route-model binding is scoped the same way, so a
+ * cart item belonging to another user now 404s before this method body
+ * ever runs, and the old abort_unless(...) 403 guard is gone -- see
+ * tests/Feature/Marketplace/CartCheckoutTest.php.
+ *
+ * mass-assignment still sets user_id explicitly at create time (store(),
+ * checkout()'s Order::create()) -- the scope only governs reads.
  *
  * checkout() also dispatches App\Events\OrderPlaced once the order
- * transaction has committed — Dot.Emall's first real domain event
+ * transaction has committed -- Dot.Emall's first real domain event
  * dispatch (a follow-up incremental pass; see App\Events\OrderPlaced's
  * docblock for why it's scoped to just this trigger).
  */
@@ -35,9 +43,7 @@ class CartController extends Controller
 {
     public function index(): View
     {
-        $items = CartItem::where('user_id', auth()->id())
-            ->with(['product.store', 'product.images'])
-            ->get();
+        $items = CartItem::with(['product.store', 'product.images'])->get();
 
         $subtotal = $items->sum(fn (CartItem $item) => $item->quantity * $item->product->price);
 
@@ -66,8 +72,6 @@ class CartController extends Controller
 
     public function destroy(CartItem $cartItem): RedirectResponse
     {
-        abort_unless($cartItem->user_id === auth()->id(), 403);
-
         $cartItem->delete();
 
         return redirect()->route('cart.index')->with('status', 'Item removed from cart.');
@@ -78,7 +82,7 @@ class CartController extends Controller
      *
      * Stock is locked, re-checked, and decremented atomically inside the
      * transaction (lockForUpdate() + a WHERE-guarded decrement) rather than
-     * checked once beforehand — a pre-check outside the transaction is a
+     * checked once beforehand -- a pre-check outside the transaction is a
      * TOCTOU race: two concurrent checkouts on the last unit could both
      * pass the pre-check and both decrement, driving stock negative. Under
      * SQLite (this app's dev/test driver) lockForUpdate() is a no-op, so
@@ -93,7 +97,7 @@ class CartController extends Controller
 
         $shippingAddress = $validated['shipping_address'];
 
-        $cartItemIds = CartItem::where('user_id', auth()->id())->pluck('id');
+        $cartItemIds = CartItem::pluck('id');
 
         if ($cartItemIds->isEmpty()) {
             return redirect()->route('cart.index')->with('error', 'Your cart is empty.');
@@ -151,7 +155,7 @@ class CartController extends Controller
 
                     // WHERE-guarded decrement: still checks stock >= quantity at
                     // write time, so even without a real row lock (SQLite) this
-                    // can never drive stock negative — it just affects 0 rows and
+                    // can never drive stock negative -- it just affects 0 rows and
                     // we catch that below.
                     $updated = Product::where('id', $product->id)
                         ->where('stock', '>=', $item->quantity)
@@ -179,7 +183,7 @@ class CartController extends Controller
         }
 
         // Dispatched after the transaction has committed, not from inside
-        // the closure — firing it mid-transaction would mean any later
+        // the closure -- firing it mid-transaction would mean any later
         // failure in that same transaction still left listeners believing
         // an order existed.
         event(new OrderPlaced($order));

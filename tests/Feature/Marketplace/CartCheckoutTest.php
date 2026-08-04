@@ -74,6 +74,14 @@ class CartCheckoutTest extends TestCase
         $this->assertDatabaseHas('cart_items', ['user_id' => $buyer->id, 'product_id' => $product->id, 'quantity' => 3]);
     }
 
+    /**
+     * CartItem now applies HasUserScope (platform-loop pass, 2026-08-04):
+     * implicit route-model binding on {cartItem} queries through that
+     * scope, so another user's cart item is invisible before the
+     * controller body ever runs -- this now 404s rather than 403ing,
+     * the same fail-closed-at-the-query-layer shift documented on
+     * Dot.Finance's HasUserScope and FinanceAuthorizationTest.
+     */
     public function test_a_user_cannot_remove_another_users_cart_item(): void
     {
         $owner       = User::factory()->withPersonalTeam()->create();
@@ -83,7 +91,7 @@ class CartCheckoutTest extends TestCase
 
         $this->actingAs($intruder)
             ->delete(route('cart.destroy', $cartItem))
-            ->assertForbidden();
+            ->assertNotFound();
 
         $this->assertDatabaseHas('cart_items', ['id' => $cartItem->id]);
     }
