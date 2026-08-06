@@ -135,16 +135,20 @@
 
         <!-- Hero -->
         <section class="relative pt-32 pb-16 sm:pb-24 px-5 sm:px-8 overflow-hidden">
-            <div class="max-w-[1400px] mx-auto">
+            <!-- Photo: cardboard boxes and packaging supplies in a warehouse, by Guilherme Mendes (@guilhermemendes), unsplash.com/photos/cardboard-boxes-and-packaging-supplies-in-a-warehouse-RVP3wAw9gJY -->
+            <div class="absolute inset-0 bg-cover bg-center" style="background-image: url('https://images.unsplash.com/photo-1685483749753-0dab7e144794?q=80&w=2400&auto=format&fit=crop');"></div>
+            <div class="absolute inset-0" style="background: linear-gradient(100deg, rgba(28,32,54,0.92) 0%, rgba(28,32,54,0.80) 32%, rgba(28,32,54,0.45) 55%, rgba(28,32,54,0.18) 75%, rgba(28,32,54,0.02) 92%);"></div>
+            <div class="absolute inset-0" style="background: linear-gradient(180deg, rgba(28,32,54,0) 0%, rgba(28,32,54,0.10) 55%, rgba(28,32,54,0.35) 80%, #f5f4ef 100%);"></div>
+            <div class="relative z-10 max-w-[1400px] mx-auto">
                 <div class="grid lg:grid-cols-[1.05fr_0.95fr] gap-14 lg:gap-10 items-center">
                     <div class="reveal" data-reveal>
                         <p class="font-mono text-xs tracking-[0.18em] uppercase text-[var(--gold)] mb-6">
                             Multi-vendor marketplace
                         </p>
-                        <h1 class="font-display font-semibold text-4xl sm:text-5xl lg:text-6xl leading-[1.05] tracking-tight text-[var(--ink)] mb-6">
+                        <h1 class="font-display font-semibold text-4xl sm:text-5xl lg:text-6xl leading-[1.05] tracking-tight text-[var(--paper)] mb-6">
                             Open a store.<br>Shop every store.
                         </h1>
-                        <p class="text-lg text-[var(--ink-soft)] leading-relaxed max-w-xl mb-10">
+                        <p class="text-lg text-[var(--paper)] leading-relaxed max-w-xl mb-10">
                             Dot.Emall is the marketplace platform in the Dot Ecosystem: sellers open a store, list products, and fulfil orders, while buyers shop across every store on the platform from one cart and one account.
                         </p>
 
@@ -153,7 +157,7 @@
                                 <a href="{{ route('register') }}" class="press px-7 py-3.5 bg-[var(--ink)] hover:bg-[var(--indigo)] text-white font-display font-semibold rounded-full transition-colors">
                                     Open a store
                                 </a>
-                                <a href="#buyers" class="press flex items-center gap-2 px-7 py-3.5 text-[var(--ink)] font-medium rounded-full border border-[var(--line)] hover:border-[var(--indigo-soft)] transition-colors">
+                                <a href="#buyers" class="press flex items-center gap-2 px-7 py-3.5 text-[var(--paper)] font-medium rounded-full border border-[rgba(245,244,239,0.35)] hover:border-[var(--indigo-soft)] transition-colors">
                                     Browse the marketplace
                                 </a>
                             </div>
@@ -288,11 +292,14 @@
 
         <!-- CTA -->
         <section class="relative py-28 sm:py-36 px-5 sm:px-8 overflow-hidden">
+            <!-- Photo: warehouse shelves full of boxes, by Brayden Prato (@pratophoto), unsplash.com/photos/a-warehouse-filled-with-lots-of-shelves-filled-with-boxes-If5vloAJSBQ -->
+            <div class="absolute inset-0 bg-cover bg-center" style="background-image: url('https://images.unsplash.com/photo-1769355104335-acef3aa4c9b6?q=80&w=2400&auto=format&fit=crop');"></div>
+            <div class="absolute inset-0" style="background: linear-gradient(180deg, #f5f4ef 0%, rgba(28,32,54,0.80) 20%, rgba(28,32,54,0.85) 50%, rgba(28,32,54,0.80) 80%, #f5f4ef 100%);"></div>
             <div class="relative z-10 max-w-2xl mx-auto text-center reveal" data-reveal>
-                <h2 class="font-display font-semibold text-3xl sm:text-4xl text-[var(--ink)] leading-tight mb-5">
+                <h2 class="font-display font-semibold text-3xl sm:text-4xl text-[var(--paper)] leading-tight mb-5">
                     Your store, or your next order — either way, start here
                 </h2>
-                <p class="text-[var(--ink-soft)] leading-relaxed mb-10 max-w-lg mx-auto">
+                <p class="text-[var(--paper)] leading-relaxed mb-10 max-w-lg mx-auto">
                     Sign in with your Dot Ecosystem account or create one to open a store or start shopping.
                 </p>
 
@@ -301,7 +308,7 @@
                         <a href="{{ route('register') }}" class="press px-8 py-3.5 bg-[var(--ink)] hover:bg-[var(--indigo)] text-white font-display font-semibold rounded-full transition-colors">
                             Create account
                         </a>
-                        <a href="{{ route('login') }}" class="press px-8 py-3.5 text-[var(--ink)] font-medium rounded-full border border-[var(--line)] hover:border-[var(--indigo-soft)] transition-colors">
+                        <a href="{{ route('login') }}" class="press px-8 py-3.5 text-[var(--paper)] font-medium rounded-full border border-[rgba(245,244,239,0.35)] hover:border-[var(--indigo-soft)] transition-colors">
                             Sign in
                         </a>
                     </div>
