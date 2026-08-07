@@ -8,7 +8,6 @@ use App\Notifications\NewReviewNotification;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Validation\Rule;
 
 /**
  * Product reviews (platform-loop pass). The Review model, migration, and
@@ -23,7 +22,7 @@ class ReviewController extends Controller
 
         $validated = $request->validate([
             'rating' => ['required', 'integer', 'min:1', 'max:5'],
-            'body'   => ['nullable', 'string', 'max:2000'],
+            'body' => ['nullable', 'string', 'max:2000'],
         ]);
 
         // The DB unique constraint on (product_id, user_id) is the source
@@ -39,9 +38,9 @@ class ReviewController extends Controller
 
         $review = Review::create([
             'product_id' => $product->id,
-            'user_id'    => auth()->id(),
-            'rating'     => $validated['rating'],
-            'body'       => $validated['body'] ?? null,
+            'user_id' => auth()->id(),
+            'rating' => $validated['rating'],
+            'body' => $validated['body'] ?? null,
         ]);
 
         $product->loadMissing('store.owner');

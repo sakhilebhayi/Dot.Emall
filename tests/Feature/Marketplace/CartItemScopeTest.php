@@ -28,29 +28,29 @@ class CartItemScopeTest extends TestCase
 
     public function test_scope_alone_blocks_cross_user_access_even_without_a_policy_check(): void
     {
-        $owner    = User::factory()->withPersonalTeam()->create();
+        $owner = User::factory()->withPersonalTeam()->create();
         $attacker = User::factory()->withPersonalTeam()->create();
 
         $store = Store::create([
-            'owner_id'  => User::factory()->create()->id,
-            'name'      => 'Test Store',
-            'slug'      => 'test-store-' . uniqid(),
+            'owner_id' => User::factory()->create()->id,
+            'name' => 'Test Store',
+            'slug' => 'test-store-'.uniqid(),
             'is_active' => true,
         ]);
 
         $product = Product::create([
-            'store_id'  => $store->id,
-            'name'      => 'Widget',
-            'slug'      => 'widget-' . uniqid(),
-            'price'     => 25,
-            'stock'     => 10,
+            'store_id' => $store->id,
+            'name' => 'Widget',
+            'slug' => 'widget-'.uniqid(),
+            'price' => 25,
+            'stock' => 10,
             'is_active' => true,
         ]);
 
         $cartItem = CartItem::create([
-            'user_id'    => $owner->id,
+            'user_id' => $owner->id,
             'product_id' => $product->id,
-            'quantity'   => 1,
+            'quantity' => 1,
         ]);
 
         $this->actingAs($attacker);

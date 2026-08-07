@@ -54,14 +54,14 @@ class CartController extends Controller
     {
         $validated = $request->validate([
             'product_id' => ['required', 'integer', 'exists:products,id'],
-            'quantity'   => ['nullable', 'integer', 'min:1', 'max:99'],
+            'quantity' => ['nullable', 'integer', 'min:1', 'max:99'],
         ]);
 
         $product = Product::browsable()->findOrFail($validated['product_id']);
         $quantity = $validated['quantity'] ?? 1;
 
         $item = CartItem::firstOrNew([
-            'user_id'    => auth()->id(),
+            'user_id' => auth()->id(),
             'product_id' => $product->id,
         ]);
         $item->quantity = min(99, ($item->exists ? $item->quantity : 0) + $quantity);
@@ -132,10 +132,10 @@ class CartController extends Controller
                 $subtotal = $items->sum(fn (CartItem $item) => $item->quantity * $lockedProducts[$item->product_id]->price);
 
                 $order = Order::create([
-                    'user_id'          => auth()->id(),
-                    'status'           => 'pending',
-                    'subtotal'         => $subtotal,
-                    'total'            => $subtotal,
+                    'user_id' => auth()->id(),
+                    'status' => 'pending',
+                    'subtotal' => $subtotal,
+                    'total' => $subtotal,
                     'shipping_address' => $shippingAddress,
                 ]);
 
@@ -146,11 +146,11 @@ class CartController extends Controller
                     $lineTotal = $item->quantity * $product->price;
 
                     OrderItem::create([
-                        'order_id'   => $order->id,
+                        'order_id' => $order->id,
                         'product_id' => $item->product_id,
-                        'quantity'   => $item->quantity,
+                        'quantity' => $item->quantity,
                         'unit_price' => $product->price,
-                        'total'      => $lineTotal,
+                        'total' => $lineTotal,
                     ]);
 
                     // WHERE-guarded decrement: still checks stock >= quantity at

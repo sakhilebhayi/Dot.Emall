@@ -16,27 +16,27 @@ class ReviewTest extends TestCase
     private function makeProduct(?User $sellerOwner = null): Product
     {
         $seller = $sellerOwner ?? User::factory()->create();
-        $store  = Store::create([
-            'owner_id'  => $seller->id,
-            'name'      => 'Test Store',
-            'slug'      => 'test-store-' . uniqid(),
+        $store = Store::create([
+            'owner_id' => $seller->id,
+            'name' => 'Test Store',
+            'slug' => 'test-store-'.uniqid(),
             'is_active' => true,
         ]);
 
         return Product::create([
-            'store_id'  => $store->id,
-            'name'      => 'Widget',
-            'slug'      => 'widget-' . uniqid(),
-            'price'     => 10,
-            'stock'     => 5,
+            'store_id' => $store->id,
+            'name' => 'Widget',
+            'slug' => 'widget-'.uniqid(),
+            'price' => 10,
+            'stock' => 5,
             'is_active' => true,
         ]);
     }
 
     public function test_authenticated_user_can_review_a_product(): void
     {
-        $seller  = User::factory()->create();
-        $buyer   = User::factory()->withPersonalTeam()->create();
+        $seller = User::factory()->create();
+        $buyer = User::factory()->withPersonalTeam()->create();
         $product = $this->makeProduct($seller);
 
         $this->actingAs($buyer)
@@ -45,8 +45,8 @@ class ReviewTest extends TestCase
 
         $this->assertDatabaseHas('reviews', [
             'product_id' => $product->id,
-            'user_id'    => $buyer->id,
-            'rating'     => 5,
+            'user_id' => $buyer->id,
+            'rating' => 5,
         ]);
 
         // Store owner receives an in-app notification about the new review.
@@ -55,7 +55,7 @@ class ReviewTest extends TestCase
 
     public function test_a_user_cannot_review_the_same_product_twice(): void
     {
-        $buyer   = User::factory()->withPersonalTeam()->create();
+        $buyer = User::factory()->withPersonalTeam()->create();
         $product = $this->makeProduct();
 
         Review::create(['product_id' => $product->id, 'user_id' => $buyer->id, 'rating' => 4]);
@@ -69,7 +69,7 @@ class ReviewTest extends TestCase
 
     public function test_rating_must_be_between_one_and_five(): void
     {
-        $buyer   = User::factory()->withPersonalTeam()->create();
+        $buyer = User::factory()->withPersonalTeam()->create();
         $product = $this->makeProduct();
 
         $this->actingAs($buyer)
@@ -79,10 +79,10 @@ class ReviewTest extends TestCase
 
     public function test_only_the_review_author_can_delete_it(): void
     {
-        $author   = User::factory()->withPersonalTeam()->create();
+        $author = User::factory()->withPersonalTeam()->create();
         $intruder = User::factory()->withPersonalTeam()->create();
-        $product  = $this->makeProduct();
-        $review   = Review::create(['product_id' => $product->id, 'user_id' => $author->id, 'rating' => 3]);
+        $product = $this->makeProduct();
+        $review = Review::create(['product_id' => $product->id, 'user_id' => $author->id, 'rating' => 3]);
 
         $this->actingAs($intruder)
             ->delete(route('reviews.destroy', $review))

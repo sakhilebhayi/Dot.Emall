@@ -15,9 +15,9 @@ class Product extends Model
     ];
 
     protected $casts = [
-        'price'         => 'decimal:2',
+        'price' => 'decimal:2',
         'compare_price' => 'decimal:2',
-        'is_active'     => 'boolean',
+        'is_active' => 'boolean',
     ];
 
     public function store(): BelongsTo

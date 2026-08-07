@@ -11,7 +11,8 @@ use Illuminate\Support\Facades\Schema;
  * posted) have somewhere to land. See App\Notifications\NewOrderNotification
  * and App\Notifications\NewReviewNotification.
  */
-return new class extends Migration {
+return new class extends Migration
+{
     public function up(): void
     {
         Schema::create('notifications', function (Blueprint $table) {

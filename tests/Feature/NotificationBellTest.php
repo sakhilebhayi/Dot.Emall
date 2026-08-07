@@ -28,17 +28,17 @@ class NotificationBellTest extends TestCase
     public function test_unread_count_reflects_database_notifications(): void
     {
         $seller = User::factory()->withPersonalTeam()->create();
-        $store  = Store::create([
-            'owner_id'  => $seller->id,
-            'name'      => 'Notify Store',
-            'slug'      => 'notify-store',
+        $store = Store::create([
+            'owner_id' => $seller->id,
+            'name' => 'Notify Store',
+            'slug' => 'notify-store',
             'is_active' => true,
         ]);
         $order = Order::create([
-            'user_id'  => User::factory()->create()->id,
-            'status'   => 'pending',
+            'user_id' => User::factory()->create()->id,
+            'status' => 'pending',
             'subtotal' => 20,
-            'total'    => 20,
+            'total' => 20,
         ]);
 
         $seller->notify(new NewOrderNotification($order, $store));
@@ -58,17 +58,17 @@ class NotificationBellTest extends TestCase
     public function test_mark_all_as_read_clears_unread_count(): void
     {
         $seller = User::factory()->withPersonalTeam()->create();
-        $store  = Store::create([
-            'owner_id'  => $seller->id,
-            'name'      => 'Notify Store Two',
-            'slug'      => 'notify-store-two',
+        $store = Store::create([
+            'owner_id' => $seller->id,
+            'name' => 'Notify Store Two',
+            'slug' => 'notify-store-two',
             'is_active' => true,
         ]);
         $order = Order::create([
-            'user_id'  => User::factory()->create()->id,
-            'status'   => 'pending',
+            'user_id' => User::factory()->create()->id,
+            'status' => 'pending',
             'subtotal' => 20,
-            'total'    => 20,
+            'total' => 20,
         ]);
 
         $seller->notify(new NewOrderNotification($order, $store));

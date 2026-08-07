@@ -12,9 +12,7 @@ use Illuminate\Notifications\Notification;
  */
 class NewReviewNotification extends Notification
 {
-    public function __construct(public Review $review)
-    {
-    }
+    public function __construct(public Review $review) {}
 
     /**
      * @return array<int, string>
@@ -32,12 +30,12 @@ class NewReviewNotification extends Notification
         $product = $this->review->product;
 
         return [
-            'type'       => 'new_review',
-            'title'      => 'New review posted',
-            'message'    => "{$this->review->user->name} left a {$this->review->rating}-star review on \"{$product->name}\".",
+            'type' => 'new_review',
+            'title' => 'New review posted',
+            'message' => "{$this->review->user->name} left a {$this->review->rating}-star review on \"{$product->name}\".",
             'product_id' => $product->id,
-            'review_id'  => $this->review->id,
-            'url'        => route('products.show', $product),
+            'review_id' => $this->review->id,
+            'url' => route('products.show', $product),
         ];
     }
 }

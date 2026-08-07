@@ -34,18 +34,18 @@ class DashboardTest extends TestCase
     public function test_dashboard_shows_review_and_low_stock_widgets_for_the_sellers_own_products(): void
     {
         $seller = User::factory()->withPersonalTeam()->create();
-        $store  = Store::create([
-            'owner_id'  => $seller->id,
-            'name'      => 'My Store',
-            'slug'      => 'my-store',
+        $store = Store::create([
+            'owner_id' => $seller->id,
+            'name' => 'My Store',
+            'slug' => 'my-store',
             'is_active' => true,
         ]);
         $product = Product::create([
-            'store_id'  => $store->id,
-            'name'      => 'Low Stock Widget',
-            'slug'      => 'low-stock-widget',
-            'price'     => 15,
-            'stock'     => 2,
+            'store_id' => $store->id,
+            'name' => 'Low Stock Widget',
+            'slug' => 'low-stock-widget',
+            'price' => 15,
+            'stock' => 2,
             'is_active' => true,
         ]);
         $reviewer = User::factory()->create();
@@ -61,33 +61,33 @@ class DashboardTest extends TestCase
     public function test_dashboard_lists_the_sellers_recent_orders(): void
     {
         $seller = User::factory()->withPersonalTeam()->create();
-        $buyer  = User::factory()->create();
-        $store  = Store::create([
-            'owner_id'  => $seller->id,
-            'name'      => 'My Store',
-            'slug'      => 'my-store-2',
+        $buyer = User::factory()->create();
+        $store = Store::create([
+            'owner_id' => $seller->id,
+            'name' => 'My Store',
+            'slug' => 'my-store-2',
             'is_active' => true,
         ]);
         $product = Product::create([
-            'store_id'  => $store->id,
-            'name'      => 'Sold Widget',
-            'slug'      => 'sold-widget',
-            'price'     => 30,
-            'stock'     => 10,
+            'store_id' => $store->id,
+            'name' => 'Sold Widget',
+            'slug' => 'sold-widget',
+            'price' => 30,
+            'stock' => 10,
             'is_active' => true,
         ]);
         $order = Order::create([
-            'user_id'  => $buyer->id,
-            'status'   => 'delivered',
+            'user_id' => $buyer->id,
+            'status' => 'delivered',
             'subtotal' => 30,
-            'total'    => 30,
+            'total' => 30,
         ]);
         OrderItem::create([
-            'order_id'   => $order->id,
+            'order_id' => $order->id,
             'product_id' => $product->id,
-            'quantity'   => 1,
+            'quantity' => 1,
             'unit_price' => 30,
-            'total'      => 30,
+            'total' => 30,
         ]);
 
         $response = $this->actingAs($seller)->get('/dashboard');

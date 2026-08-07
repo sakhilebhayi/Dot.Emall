@@ -5,10 +5,14 @@ use App\Http\Controllers\CartController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ReviewController;
+use App\Models\Order;
+use App\Models\OrderItem;
+use App\Models\Product;
+use App\Models\Review;
+use App\Models\Store;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
 use Laravel\Jetstream\Jetstream;
-
 
 Route::get('/auth/ecosystem', [EcosystemAuthController::class, 'handle'])->name('ecosystem.auth');
 Route::get('/', function () {
@@ -33,30 +37,30 @@ Route::middleware([
         $userId = auth()->id();
 
         // Stores owned by the current user
-        $stores = \App\Models\Store::where('owner_id', $userId)
+        $stores = Store::where('owner_id', $userId)
             ->withCount('products')
             ->get();
 
         $storeIds = $stores->pluck('id');
 
         // Products belonging to those stores
-        $productIds = \App\Models\Product::whereIn('store_id', $storeIds)->pluck('id');
+        $productIds = Product::whereIn('store_id', $storeIds)->pluck('id');
 
         // Orders that contain at least one of this seller's products
-        $orderIds = \App\Models\OrderItem::whereIn('product_id', $productIds)
+        $orderIds = OrderItem::whereIn('product_id', $productIds)
             ->pluck('order_id')
             ->unique()
             ->values();
 
-        $totalProducts  = $productIds->count();
-        $totalOrders    = $orderIds->count();
-        $totalRevenue   = \App\Models\Order::whereIn('id', $orderIds)
+        $totalProducts = $productIds->count();
+        $totalOrders = $orderIds->count();
+        $totalRevenue = Order::whereIn('id', $orderIds)
             ->where('status', 'delivered')
             ->sum('total');
-        $pendingOrders  = \App\Models\Order::whereIn('id', $orderIds)
+        $pendingOrders = Order::whereIn('id', $orderIds)
             ->where('status', 'pending')
             ->count();
-        $recentOrders   = \App\Models\Order::whereIn('id', $orderIds)
+        $recentOrders = Order::whereIn('id', $orderIds)
             ->with(['user', 'items.product.store'])
             ->latest()
             ->limit(8)
@@ -66,13 +70,13 @@ Route::middleware([
         // signal across the seller's own products, plus the buyer-side
         // "my orders" count so the dashboard reflects both roles a user
         // can occupy in this marketplace.
-        $totalReviews  = \App\Models\Review::whereIn('product_id', $productIds)->count();
-        $avgRating     = round((float) \App\Models\Review::whereIn('product_id', $productIds)->avg('rating'), 1);
-        $lowStockCount = \App\Models\Product::whereIn('id', $productIds)
+        $totalReviews = Review::whereIn('product_id', $productIds)->count();
+        $avgRating = round((float) Review::whereIn('product_id', $productIds)->avg('rating'), 1);
+        $lowStockCount = Product::whereIn('id', $productIds)
             ->where('is_active', true)
             ->where('stock', '<', 5)
             ->count();
-        $myOrdersCount = \App\Models\Order::where('user_id', $userId)->count();
+        $myOrdersCount = Order::where('user_id', $userId)->count();
 
         return view('dashboard', compact(
             'stores', 'totalProducts', 'totalOrders',

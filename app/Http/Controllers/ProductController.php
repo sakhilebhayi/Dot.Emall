@@ -26,14 +26,14 @@ class ProductController extends Controller
     public function index(Request $request): View
     {
         $validated = $request->validate([
-            'q'        => ['nullable', 'string', 'max:100'],
+            'q' => ['nullable', 'string', 'max:100'],
             // Category taxonomy validation (wiki.md §6/§7 gap): a category
             // filter must reference a real StoreCategory row rather than
             // accepting an arbitrary value.
             'category' => ['nullable', 'integer', 'exists:store_categories,id'],
         ]);
 
-        $search   = trim((string) ($validated['q'] ?? ''));
+        $search = trim((string) ($validated['q'] ?? ''));
         $category = $validated['category'] ?? null;
 
         $products = Product::query()
@@ -50,10 +50,10 @@ class ProductController extends Controller
         $categories = StoreCategory::withCount('products')->orderBy('name')->get();
 
         return view('products.index', [
-            'products'   => $products,
+            'products' => $products,
             'categories' => $categories,
-            'search'     => $search,
-            'category'   => $category,
+            'search' => $search,
+            'category' => $category,
         ]);
     }
 
@@ -75,7 +75,7 @@ class ProductController extends Controller
             && $product->reviews()->where('user_id', auth()->id())->exists();
 
         return view('products.show', [
-            'product'     => $product,
+            'product' => $product,
             'hasReviewed' => $hasReviewed,
         ]);
     }

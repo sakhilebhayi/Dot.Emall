@@ -20,10 +20,10 @@ class OrderAuthorizationTest extends TestCase
     private function makeOrder(User $user, array $overrides = []): Order
     {
         return Order::create(array_merge([
-            'user_id'  => $user->id,
-            'status'   => 'pending',
+            'user_id' => $user->id,
+            'status' => 'pending',
             'subtotal' => 50,
-            'total'    => 50,
+            'total' => 50,
         ], $overrides));
     }
 
@@ -34,7 +34,7 @@ class OrderAuthorizationTest extends TestCase
 
     public function test_a_user_can_view_their_own_order(): void
     {
-        $user  = User::factory()->withPersonalTeam()->create();
+        $user = User::factory()->withPersonalTeam()->create();
         $order = $this->makeOrder($user);
 
         $this->actingAs($user)
@@ -45,9 +45,9 @@ class OrderAuthorizationTest extends TestCase
 
     public function test_a_user_cannot_view_another_users_order(): void
     {
-        $owner    = User::factory()->withPersonalTeam()->create();
+        $owner = User::factory()->withPersonalTeam()->create();
         $intruder = User::factory()->withPersonalTeam()->create();
-        $order    = $this->makeOrder($owner);
+        $order = $this->makeOrder($owner);
 
         $this->actingAs($intruder)
             ->get(route('orders.show', $order))
@@ -56,8 +56,8 @@ class OrderAuthorizationTest extends TestCase
 
     public function test_the_orders_index_only_lists_the_current_users_own_orders(): void
     {
-        $user       = User::factory()->withPersonalTeam()->create();
-        $otherUser  = User::factory()->withPersonalTeam()->create();
+        $user = User::factory()->withPersonalTeam()->create();
+        $otherUser = User::factory()->withPersonalTeam()->create();
 
         $this->makeOrder($user, ['subtotal' => 11, 'total' => 11]);
         $this->makeOrder($otherUser, ['subtotal' => 999, 'total' => 999]);

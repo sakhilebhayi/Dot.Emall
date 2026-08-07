@@ -27,9 +27,9 @@ class CartCheckoutTest extends TestCase
         $owner ??= User::factory()->create();
 
         return Store::create([
-            'owner_id'  => $owner->id,
-            'name'      => 'Test Store',
-            'slug'      => 'test-store-' . uniqid(),
+            'owner_id' => $owner->id,
+            'name' => 'Test Store',
+            'slug' => 'test-store-'.uniqid(),
             'is_active' => true,
         ]);
     }
@@ -37,18 +37,18 @@ class CartCheckoutTest extends TestCase
     private function makeProduct(Store $store, array $overrides = []): Product
     {
         return Product::create(array_merge([
-            'store_id'  => $store->id,
-            'name'      => 'Widget',
-            'slug'      => 'widget-' . uniqid(),
-            'price'     => 25,
-            'stock'     => 10,
+            'store_id' => $store->id,
+            'name' => 'Widget',
+            'slug' => 'widget-'.uniqid(),
+            'price' => 25,
+            'stock' => 10,
             'is_active' => true,
         ], $overrides));
     }
 
     public function test_authenticated_user_can_add_a_product_to_their_cart(): void
     {
-        $buyer   = User::factory()->withPersonalTeam()->create();
+        $buyer = User::factory()->withPersonalTeam()->create();
         $product = $this->makeProduct($this->makeStore());
 
         $this->actingAs($buyer)
@@ -56,15 +56,15 @@ class CartCheckoutTest extends TestCase
             ->assertRedirect(route('cart.index'));
 
         $this->assertDatabaseHas('cart_items', [
-            'user_id'    => $buyer->id,
+            'user_id' => $buyer->id,
             'product_id' => $product->id,
-            'quantity'   => 2,
+            'quantity' => 2,
         ]);
     }
 
     public function test_adding_the_same_product_twice_increments_quantity_instead_of_duplicating(): void
     {
-        $buyer   = User::factory()->withPersonalTeam()->create();
+        $buyer = User::factory()->withPersonalTeam()->create();
         $product = $this->makeProduct($this->makeStore());
 
         $this->actingAs($buyer)->post(route('cart.store'), ['product_id' => $product->id, 'quantity' => 1]);
@@ -84,10 +84,10 @@ class CartCheckoutTest extends TestCase
      */
     public function test_a_user_cannot_remove_another_users_cart_item(): void
     {
-        $owner       = User::factory()->withPersonalTeam()->create();
-        $intruder    = User::factory()->withPersonalTeam()->create();
-        $product     = $this->makeProduct($this->makeStore());
-        $cartItem    = CartItem::create(['user_id' => $owner->id, 'product_id' => $product->id, 'quantity' => 1]);
+        $owner = User::factory()->withPersonalTeam()->create();
+        $intruder = User::factory()->withPersonalTeam()->create();
+        $product = $this->makeProduct($this->makeStore());
+        $cartItem = CartItem::create(['user_id' => $owner->id, 'product_id' => $product->id, 'quantity' => 1]);
 
         $this->actingAs($intruder)
             ->delete(route('cart.destroy', $cartItem))
@@ -98,9 +98,9 @@ class CartCheckoutTest extends TestCase
 
     public function test_checkout_creates_an_order_decrements_stock_and_clears_the_cart(): void
     {
-        $seller  = User::factory()->create();
-        $store   = $this->makeStore($seller);
-        $buyer   = User::factory()->withPersonalTeam()->create();
+        $seller = User::factory()->create();
+        $store = $this->makeStore($seller);
+        $buyer = User::factory()->withPersonalTeam()->create();
         $product = $this->makeProduct($store, ['stock' => 5, 'price' => 40]);
 
         CartItem::create(['user_id' => $buyer->id, 'product_id' => $product->id, 'quantity' => 3]);
@@ -126,7 +126,7 @@ class CartCheckoutTest extends TestCase
     {
         Event::fake([OrderPlaced::class]);
 
-        $buyer   = User::factory()->withPersonalTeam()->create();
+        $buyer = User::factory()->withPersonalTeam()->create();
         $product = $this->makeProduct($this->makeStore(), ['stock' => 5, 'price' => 10]);
 
         CartItem::create(['user_id' => $buyer->id, 'product_id' => $product->id, 'quantity' => 1]);
@@ -144,7 +144,7 @@ class CartCheckoutTest extends TestCase
     {
         Event::fake([OrderPlaced::class]);
 
-        $buyer   = User::factory()->withPersonalTeam()->create();
+        $buyer = User::factory()->withPersonalTeam()->create();
         $product = $this->makeProduct($this->makeStore(), ['stock' => 1]);
 
         CartItem::create(['user_id' => $buyer->id, 'product_id' => $product->id, 'quantity' => 5]);
@@ -158,7 +158,7 @@ class CartCheckoutTest extends TestCase
 
     public function test_checkout_is_rejected_when_stock_is_insufficient(): void
     {
-        $buyer   = User::factory()->withPersonalTeam()->create();
+        $buyer = User::factory()->withPersonalTeam()->create();
         $product = $this->makeProduct($this->makeStore(), ['stock' => 1]);
 
         CartItem::create(['user_id' => $buyer->id, 'product_id' => $product->id, 'quantity' => 5]);
@@ -174,7 +174,7 @@ class CartCheckoutTest extends TestCase
 
     public function test_checkout_requires_a_shipping_address(): void
     {
-        $buyer   = User::factory()->withPersonalTeam()->create();
+        $buyer = User::factory()->withPersonalTeam()->create();
         $product = $this->makeProduct($this->makeStore());
         CartItem::create(['user_id' => $buyer->id, 'product_id' => $product->id, 'quantity' => 1]);
 

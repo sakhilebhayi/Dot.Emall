@@ -10,7 +10,7 @@ class CartItem extends Model
 {
     use HasUserScope;
 
-    protected $fillable = ["user_id", "product_id", "quantity"];
+    protected $fillable = ['user_id', 'product_id', 'quantity'];
 
     public function user(): BelongsTo
     {
