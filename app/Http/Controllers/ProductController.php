@@ -67,7 +67,10 @@ class ProductController extends Controller
     {
         $isOwner = auth()->id() === $product->store->owner_id;
 
-        abort_unless($isOwner || ($product->is_active && $product->store->is_active), 404);
+        abort_unless(
+            $isOwner || ($product->is_active && $product->status === 'approved' && $product->store->is_active),
+            404
+        );
 
         $product->load(['store', 'category', 'images', 'reviews.user']);
 
