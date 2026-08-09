@@ -34,6 +34,7 @@ class ProductBrowseTest extends TestCase
             'price' => 19.99,
             'stock' => 10,
             'is_active' => true,
+            'status' => 'approved',
         ], $overrides));
     }
 

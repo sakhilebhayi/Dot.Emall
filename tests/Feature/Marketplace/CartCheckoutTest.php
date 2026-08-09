@@ -43,6 +43,7 @@ class CartCheckoutTest extends TestCase
             'price' => 25,
             'stock' => 10,
             'is_active' => true,
+            'status' => 'approved',
         ], $overrides));
     }
 
