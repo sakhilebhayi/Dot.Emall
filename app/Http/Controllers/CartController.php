@@ -121,7 +121,7 @@ class CartController extends Controller
                 foreach ($items as $item) {
                     $product = $lockedProducts->get($item->product_id);
 
-                    if (! $product || ! $product->is_active || $item->quantity > $product->stock) {
+                    if (! $product || ! $product->is_active || $product->status !== 'approved' || $item->quantity > $product->stock) {
                         $available = $product->stock ?? 0;
                         throw new \RuntimeException(
                             "\"{$item->product->name}\" no longer has enough stock ({$available} left)."

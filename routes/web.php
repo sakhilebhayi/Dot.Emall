@@ -4,6 +4,7 @@ use App\Http\Controllers\Auth\EcosystemAuthController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\ProductController;
+use App\Http\Controllers\ProductModerationController;
 use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\SellerProductController;
 use App\Http\Controllers\StoreController;
@@ -105,4 +106,10 @@ Route::middleware([
 
     Route::get('/sell/products/create', [SellerProductController::class, 'create'])->name('seller.products.create');
     Route::post('/sell/products', [SellerProductController::class, 'store'])->name('seller.products.store');
+
+    Route::middleware('operator')->prefix('operator')->name('operator.')->group(function () {
+        Route::get('/products', [ProductModerationController::class, 'index'])->name('products.index');
+        Route::post('/products/{product}/approve', [ProductModerationController::class, 'approve'])->name('products.approve');
+        Route::post('/products/{product}/reject', [ProductModerationController::class, 'reject'])->name('products.reject');
+    });
 });
