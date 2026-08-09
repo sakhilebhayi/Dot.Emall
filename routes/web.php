@@ -5,6 +5,7 @@ use App\Http\Controllers\CartController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ReviewController;
+use App\Http\Controllers\StoreController;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
@@ -97,4 +98,7 @@ Route::middleware([
 
     Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
     Route::get('/orders/{order}', [OrderController::class, 'show'])->name('orders.show');
+
+    Route::get('/sell', [StoreController::class, 'create'])->name('seller.store.create');
+    Route::post('/sell', [StoreController::class, 'store'])->name('seller.store.store');
 });
