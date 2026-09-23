@@ -72,6 +72,8 @@
         @csrf
         <label style="display:block;font-size:0.75rem;font-weight:600;color:#a1a1aa;margin-bottom:0.4rem;">Shipping address</label>
         <input type="text" name="shipping_address" required placeholder="Street, city, postal code" class="dot-input" style="margin-bottom:1rem;">
+        <label style="display:block;font-size:0.75rem;font-weight:600;color:#a1a1aa;margin-bottom:0.4rem;">Promo code (optional)</label>
+        <input type="text" name="promo_code" placeholder="e.g. SUMMER10" class="dot-input" style="margin-bottom:1rem;text-transform:uppercase;">
         <button type="submit" class="dot-btn dot-btn-primary" style="width:100%;justify-content:center;">
             <span class="material-symbols-rounded" style="font-size:16px;">lock</span>
             Place Order

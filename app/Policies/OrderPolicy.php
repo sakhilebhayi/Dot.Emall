@@ -27,10 +27,20 @@ class OrderPolicy
     }
 
     /**
-     * A buyer may only view their own order.
+     * A buyer may view their own order; a seller may also view an order
+     * that contains at least one item from a store they own, so they can
+     * see the full order context (not just their own isolated item) when
+     * managing fulfillment. See OrderItemPolicy for the finer-grained
+     * "can update this specific item's status" check.
      */
     public function view(User $user, Order $order): bool
     {
-        return $user->id === $order->user_id;
+        if ($user->id === $order->user_id) {
+            return true;
+        }
+
+        return $order->items()
+            ->whereHas('product.store', fn ($q) => $q->where('owner_id', $user->id))
+            ->exists();
     }
 }

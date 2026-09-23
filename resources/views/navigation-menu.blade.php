@@ -10,11 +10,34 @@
                     </a>
                 </div>
 
+                {{-- The seller flow (StoreController/SellerProductController/
+                     SellerOrderController) had no nav entry anywhere in the
+                     app before this -- reachable only by typing /sell or
+                     /sell/orders directly. $ownedStore is looked up once
+                     here and reused below for both the desktop and mobile
+                     nav blocks. --}}
+                @php $ownedStore = auth()->check() ? \App\Models\Store::where('owner_id', auth()->id())->first() : null; @endphp
+
                 <!-- Navigation Links -->
                 <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
                     <x-nav-link href="{{ route('dashboard') }}" :active="request()->routeIs('dashboard')">
                         {{ __('Dashboard') }}
                     </x-nav-link>
+                    @if($ownedStore)
+                    <x-nav-link href="{{ route('seller.products.index') }}" :active="request()->routeIs('seller.products.*')">
+                        {{ __('My Listings') }}
+                    </x-nav-link>
+                    <x-nav-link href="{{ route('seller.orders.index') }}" :active="request()->routeIs('seller.orders.*')">
+                        {{ __('Orders to Fulfill') }}
+                    </x-nav-link>
+                    <x-nav-link href="{{ route('seller.promo-codes.index') }}" :active="request()->routeIs('seller.promo-codes.*')">
+                        {{ __('Promo Codes') }}
+                    </x-nav-link>
+                    @else
+                    <x-nav-link href="{{ route('seller.store.create') }}" :active="request()->routeIs('seller.store.*')">
+                        {{ __('Become a Seller') }}
+                    </x-nav-link>
+                    @endif
                 </div>
             </div>
 
@@ -142,6 +165,21 @@
             <x-responsive-nav-link href="{{ route('dashboard') }}" :active="request()->routeIs('dashboard')">
                 {{ __('Dashboard') }}
             </x-responsive-nav-link>
+            @if($ownedStore)
+            <x-responsive-nav-link href="{{ route('seller.products.index') }}" :active="request()->routeIs('seller.products.*')">
+                {{ __('My Listings') }}
+            </x-responsive-nav-link>
+            <x-responsive-nav-link href="{{ route('seller.orders.index') }}" :active="request()->routeIs('seller.orders.*')">
+                {{ __('Orders to Fulfill') }}
+            </x-responsive-nav-link>
+            <x-responsive-nav-link href="{{ route('seller.promo-codes.index') }}" :active="request()->routeIs('seller.promo-codes.*')">
+                {{ __('Promo Codes') }}
+            </x-responsive-nav-link>
+            @else
+            <x-responsive-nav-link href="{{ route('seller.store.create') }}" :active="request()->routeIs('seller.store.*')">
+                {{ __('Become a Seller') }}
+            </x-responsive-nav-link>
+            @endif
         </div>
 
         <!-- Responsive Settings Options -->

@@ -7,10 +7,12 @@ use App\Models\CartItem;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
+use App\Models\PromoCode;
 use App\Notifications\NewOrderNotification;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
 
 /**
@@ -93,9 +95,11 @@ class CartController extends Controller
     {
         $validated = $request->validate([
             'shipping_address' => ['required', 'string', 'max:255'],
+            'promo_code' => ['nullable', 'string', 'max:40'],
         ]);
 
         $shippingAddress = $validated['shipping_address'];
+        $promoCodeInput = $validated['promo_code'] ?? null;
 
         $cartItemIds = CartItem::pluck('id');
 
@@ -104,7 +108,7 @@ class CartController extends Controller
         }
 
         try {
-            $order = DB::transaction(function () use ($cartItemIds, $shippingAddress) {
+            $order = DB::transaction(function () use ($cartItemIds, $shippingAddress, $promoCodeInput) {
                 // Re-fetch cart items + lock their products inside the transaction,
                 // ordered by product_id to avoid lock-ordering deadlocks between
                 // concurrent checkouts that share products.
@@ -131,11 +135,46 @@ class CartController extends Controller
 
                 $subtotal = $items->sum(fn (CartItem $item) => $item->quantity * $lockedProducts[$item->product_id]->price);
 
+                // Promo codes are store-scoped (see PromoCode's own doc
+                // comment): a code only discounts the portion of this
+                // order belonging to its own store, never the whole cart
+                // -- a mixed-seller checkout with one seller's code
+                // shouldn't silently discount another seller's items.
+                // Locked here too (same reasoning as the product lock
+                // above) so two concurrent checkouts racing the same
+                // limited-use code can't both slip past max_uses.
+                $discountAmount = 0;
+                $appliedCode = null;
+
+                if ($promoCodeInput !== null && $promoCodeInput !== '') {
+                    $promoCode = PromoCode::where('code', Str::upper($promoCodeInput))
+                        ->lockForUpdate()
+                        ->first();
+
+                    if (! $promoCode || ! $promoCode->isRedeemable()) {
+                        throw new \RuntimeException('That promo code is not valid.');
+                    }
+
+                    $eligibleSubtotal = $items
+                        ->filter(fn (CartItem $item) => $lockedProducts[$item->product_id]->store_id === $promoCode->store_id)
+                        ->sum(fn (CartItem $item) => $item->quantity * $lockedProducts[$item->product_id]->price);
+
+                    if ($eligibleSubtotal <= 0) {
+                        throw new \RuntimeException('That promo code doesn\'t apply to anything in your cart.');
+                    }
+
+                    $discountAmount = $promoCode->discountFor((float) $eligibleSubtotal);
+                    $appliedCode = $promoCode->code;
+                    $promoCode->increment('used_count');
+                }
+
                 $order = Order::create([
                     'user_id' => auth()->id(),
                     'status' => 'pending',
                     'subtotal' => $subtotal,
-                    'total' => $subtotal,
+                    'promo_code' => $appliedCode,
+                    'discount_amount' => $discountAmount,
+                    'total' => $subtotal - $discountAmount,
                     'shipping_address' => $shippingAddress,
                 ]);
 

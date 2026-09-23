@@ -2,6 +2,7 @@
 
 namespace App\Policies;
 
+use App\Models\Product;
 use App\Models\Store;
 use App\Models\User;
 
@@ -13,5 +14,13 @@ class ProductPolicy
     public function create(User $user, Store $store): bool
     {
         return $user->id === $store->owner_id;
+    }
+
+    /**
+     * Only the owning store's owner may edit or (de)activate a listing.
+     */
+    public function update(User $user, Product $product): bool
+    {
+        return $user->id === $product->store->owner_id;
     }
 }

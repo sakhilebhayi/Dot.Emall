@@ -21,4 +21,9 @@ class Store extends Model
     {
         return $this->hasMany(Product::class);
     }
+
+    public function promoCodes(): HasMany
+    {
+        return $this->hasMany(PromoCode::class);
+    }
 }

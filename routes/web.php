@@ -5,7 +5,9 @@ use App\Http\Controllers\CartController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProductModerationController;
+use App\Http\Controllers\PromoCodeController;
 use App\Http\Controllers\ReviewController;
+use App\Http\Controllers\SellerOrderController;
 use App\Http\Controllers\SellerProductController;
 use App\Http\Controllers\StoreController;
 use App\Models\Order;
@@ -104,8 +106,21 @@ Route::middleware([
     Route::get('/sell', [StoreController::class, 'create'])->name('seller.store.create');
     Route::post('/sell', [StoreController::class, 'store'])->name('seller.store.store');
 
+    // "create" must stay registered before "{product}"-shaped routes below,
+    // otherwise it's swallowed by {product}'s implicit route-model binding.
+    Route::get('/sell/products', [SellerProductController::class, 'index'])->name('seller.products.index');
     Route::get('/sell/products/create', [SellerProductController::class, 'create'])->name('seller.products.create');
     Route::post('/sell/products', [SellerProductController::class, 'store'])->name('seller.products.store');
+    Route::get('/sell/products/{product}/edit', [SellerProductController::class, 'edit'])->name('seller.products.edit');
+    Route::patch('/sell/products/{product}', [SellerProductController::class, 'update'])->name('seller.products.update');
+    Route::patch('/sell/products/{product}/toggle-active', [SellerProductController::class, 'toggleActive'])->name('seller.products.toggle-active');
+
+    Route::get('/sell/orders', [SellerOrderController::class, 'index'])->name('seller.orders.index');
+    Route::patch('/sell/order-items/{orderItem}/status', [SellerOrderController::class, 'updateItemStatus'])->name('seller.order-items.update-status');
+
+    Route::get('/sell/promo-codes', [PromoCodeController::class, 'index'])->name('seller.promo-codes.index');
+    Route::post('/sell/promo-codes', [PromoCodeController::class, 'store'])->name('seller.promo-codes.store');
+    Route::delete('/sell/promo-codes/{promoCode}', [PromoCodeController::class, 'destroy'])->name('seller.promo-codes.destroy');
 
     Route::middleware('operator')->prefix('operator')->name('operator.')->group(function () {
         Route::get('/products', [ProductModerationController::class, 'index'])->name('products.index');
