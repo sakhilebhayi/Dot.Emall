@@ -13,6 +13,17 @@ use Illuminate\View\View;
 
 class SellerProductController extends Controller
 {
+    public function index(): View
+    {
+        $store = Store::where('owner_id', auth()->id())->first();
+
+        $products = $store
+            ? Product::where('store_id', $store->id)->latest()->get()
+            : collect();
+
+        return view('products.seller-index', compact('store', 'products'));
+    }
+
     public function create(): View|RedirectResponse
     {
         $store = Store::where('owner_id', auth()->id())->first();
@@ -61,5 +72,57 @@ class SellerProductController extends Controller
 
         return redirect()->route('products.show', $product)
             ->with('status', 'Listing submitted. It will appear in the marketplace once approved.');
+    }
+
+    public function edit(Product $product): View
+    {
+        Gate::authorize('update', $product);
+
+        $categories = StoreCategory::orderBy('name')->get();
+
+        return view('products.edit', compact('product', 'categories'));
+    }
+
+    /**
+     * Editing does not reset an approved listing back to pending_approval
+     * -- re-review on every price/stock tweak would make routine restocking
+     * unusable, and moderation here only ever gated the original listing
+     * (ProductModerationController), not every subsequent edit.
+     */
+    public function update(Product $product, Request $request): RedirectResponse
+    {
+        Gate::authorize('update', $product);
+
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'description' => 'nullable|string|max:2000',
+            'price' => 'required|numeric|min:0',
+            'compare_price' => 'nullable|numeric|min:0',
+            'stock' => 'required|integer|min:0',
+            'sku' => ['nullable', 'string', 'unique:products,sku,'.$product->id],
+            'category_id' => 'nullable|exists:store_categories,id',
+        ]);
+
+        $product->update([
+            'name' => $validated['name'],
+            'description' => $validated['description'] ?? null,
+            'price' => $validated['price'],
+            'compare_price' => $validated['compare_price'] ?? null,
+            'stock' => $validated['stock'],
+            'sku' => $validated['sku'] ?? null,
+            'category_id' => $validated['category_id'] ?? null,
+        ]);
+
+        return redirect()->route('seller.products.index')->with('status', 'Listing updated.');
+    }
+
+    public function toggleActive(Product $product): RedirectResponse
+    {
+        Gate::authorize('update', $product);
+
+        $product->update(['is_active' => ! $product->is_active]);
+
+        return redirect()->route('seller.products.index')
+            ->with('status', $product->is_active ? 'Listing reactivated.' : 'Listing deactivated.');
     }
 }
