@@ -55,7 +55,7 @@ class OrderPlacedListenerTest extends TestCase
         $data = $a->notifications()->first()->data;
 
         $this->assertSame($order->id, $data['order_id']);
-        $this->assertStringContainsString('1 item worth $180.00', $data['message']);
+        $this->assertStringContainsString('1 item worth R180.00', $data['message']);
         $this->assertStringNotContainsString('7,977', $data['message']);
         $this->assertStringNotContainsString('7,777', $data['message']);
         $this->assertSame(route('orders.show', $order), $data['url']);

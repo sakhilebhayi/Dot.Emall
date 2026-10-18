@@ -58,7 +58,7 @@
                         <td style="padding:0.9rem 1.25rem;">
                             @if($awaitingPayment)<x-status-pill status="awaiting payment" size="sm" />@else<x-status-pill :status="$sliceStatus" size="sm" />@endif
                         </td>
-                        <td style="padding:0.9rem 1.25rem;text-align:right;font-family:'Syne',sans-serif;font-size:0.82rem;font-weight:700;color:#f4f4f5;">${{ number_format($net / 100, 2) }}</td>
+                        <td style="padding:0.9rem 1.25rem;text-align:right;font-family:'Syne',sans-serif;font-size:0.82rem;font-weight:700;color:#f4f4f5;">{{ $order->money($net) }}</td>
                         <td style="padding:0.9rem 1.25rem;text-align:right;">
                             <a href="{{ route('orders.show', $order) }}" style="font-size:0.7rem;font-weight:600;color:#f59e0b;text-decoration:none;">Manage →</a>
                         </td>

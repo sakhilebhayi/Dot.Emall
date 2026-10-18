@@ -55,7 +55,7 @@
         <div>
             <div style="font-family:'DM Mono',monospace;font-size:0.9rem;font-weight:700;color:#f4f4f5;">{{ $promoCode->code }}</div>
             <div style="font-size:0.75rem;color:#71717a;">
-                {{ $promoCode->discount_type === 'percent' ? number_format($promoCode->discount_value, 0).'% off' : '$'.number_format($promoCode->discount_value, 2).' off' }}
+                {{ $promoCode->discount_type === 'percent' ? number_format($promoCode->discount_value, 0).'% off' : \App\Support\Shop::amount($promoCode->discount_value).' off' }}
                 · {{ $promoCode->used_count }}{{ $promoCode->max_uses ? '/'.$promoCode->max_uses : '' }} used
                 @if($promoCode->expires_at) · expires {{ $promoCode->expires_at->format('d M Y') }} @endif
                 @unless($promoCode->isRedeemable()) · <span style="color:#f87171;">inactive</span> @endunless

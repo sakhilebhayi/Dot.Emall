@@ -16,6 +16,7 @@ use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
 
@@ -87,10 +88,23 @@ class PaymentService
             return $this->settleFreeOrder($order);
         }
 
-        // Throws before anything is created when the key is missing or refused.
+        // Throws before anything is created when the key is missing or refused
+        // (including PAYSTACK_CURRENCY disagreeing with SHOP_CURRENCY).
         $this->config->secretKey();
 
-        $currency = $this->config->currency();
+        // The money was priced in the ORDER's currency. If the gateway now
+        // charges in another (SHOP_CURRENCY was changed after this order was
+        // placed) the amount would be charged in the wrong money: refuse it.
+        $currency = $order->currencyCode();
+
+        if ($currency !== $this->config->currency()) {
+            Log::warning('Payment refused: the order currency differs from the gateway currency', [
+                'order_id' => $order->id, 'order_currency' => $currency, 'gateway_currency' => $this->config->currency(),
+            ]);
+
+            throw PaymentGatewayException::currencyMismatch($currency, $this->config->currency());
+        }
+
         $ttl = now()->subMinutes($this->config->attemptTtlMinutes());
 
         $this->verifyOpenAttempts($order);
@@ -197,7 +211,7 @@ class PaymentService
                 'provider' => 'none',
                 'reference' => 'EMALL-'.$locked->id.'-nocharge',
                 'amount_cents' => 0,
-                'currency' => $this->config->currency(),
+                'currency' => $locked->currencyCode(),
                 'status' => PaymentAttemptStatus::Success,
                 'paid_at' => now(),
                 'raw_summary' => ['note' => 'Nothing to charge: the order total is zero.'],

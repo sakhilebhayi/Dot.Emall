@@ -14,7 +14,7 @@
     @forelse ($pending as $product)
         <div style="background:#141416;border:1px solid rgba(255,255,255,0.06);border-radius:1rem;padding:1.25rem;margin-bottom:1rem;">
             <p style="font-size:0.95rem;font-weight:600;color:#f4f4f5;margin:0 0 0.25rem;">{{ $product->name }}</p>
-            <p style="font-size:0.78rem;color:#71717a;margin:0 0 0.75rem;">${{ number_format($product->price, 2) }} · {{ $product->store->name }} (owner: {{ $product->store->owner?->name }})</p>
+            <p style="font-size:0.78rem;color:#71717a;margin:0 0 0.75rem;">{{ \App\Support\Shop::amount($product->price) }} · {{ $product->store->name }} (owner: {{ $product->store->owner?->name }})</p>
 
             <div style="display:flex;gap:0.5rem;align-items:flex-start;">
                 <form method="POST" action="{{ route('operator.products.approve', $product) }}">

@@ -9,6 +9,7 @@ use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\Review;
 use App\Models\User;
+use App\Support\Shop;
 
 /**
  * The seller dashboard's numbers. This used to be ~50 lines inline in
@@ -26,6 +27,11 @@ use App\Models\User;
  * archiving or deleting a listing never moves history between sellers or
  * out of the numbers.
  *
+ * Revenue is reported PER CURRENCY (revenueByCurrency), each line counting in
+ * the currency of the order it belongs to (orders.currency). Nothing is ever
+ * converted or added across currencies; the storefront's current currency
+ * is always listed (zero if the seller has sold nothing in it).
+ *
  * "Revenue" is EARNED, not paid out. Paystack collects the buyer's money
  * into the platform's own account; seller payouts do not exist yet, so a
  * figure here never means a seller has been paid. Only lines of orders a
@@ -39,7 +45,7 @@ class SellerDashboard
     public const LOW_STOCK_BELOW = 5;
 
     /**
-     * @return array<string, mixed>
+     * @return array<string, mixed> revenueByCurrency is [ISO code => cents], sorted by code
      */
     public function summary(User $seller): array
     {
@@ -54,10 +60,18 @@ class SellerDashboard
         $live = fn () => $lines()->where('status', '!=', OrderStatus::Cancelled->value);
         $fulfillable = fn () => $lines()->whereHas('order', fn ($q) => $q->fulfillable());
 
-        $revenueCents = $fulfillable()
+        $revenueByCurrency = [Shop::currency() => 0];
+
+        $fulfillable()
             ->where('status', OrderStatus::Delivered->value)
-            ->get(['total', 'discount_amount'])
-            ->sum(fn (OrderItem $line) => $line->netCents());
+            ->with('order:id,currency')
+            ->get(['id', 'order_id', 'total', 'discount_amount'])
+            ->each(function (OrderItem $line) use (&$revenueByCurrency) {
+                $currency = $line->order->currencyCode();
+                $revenueByCurrency[$currency] = ($revenueByCurrency[$currency] ?? 0) + $line->netCents();
+            });
+
+        ksort($revenueByCurrency);
 
         $recentOrderIds = $live()
             ->selectRaw('order_id, MAX(id) as last_line')
@@ -99,7 +113,7 @@ class SellerDashboard
                 ->whereHas('order', fn ($q) => $q->where('requires_payment', true)
                     ->whereNotIn('payment_status', [PaymentStatus::Paid->value, PaymentStatus::PartiallyRefunded->value, PaymentStatus::Refunded->value]))
                 ->distinct()->count('order_id'),
-            'revenueCents' => $revenueCents,
+            'revenueByCurrency' => $revenueByCurrency,
             'recentOrders' => $recent,
             'totalReviews' => Review::query()->whereIn('product_id', $productIds)->count(),
             'avgRating' => round((float) Review::query()->whereIn('product_id', $productIds)->avg('rating'), 1),

@@ -40,7 +40,7 @@ class NewOrderNotification extends Notification
         return [
             'type' => 'new_order',
             'title' => 'New order received',
-            'message' => "\"{$this->store->name}\" received a new order ({$this->order->reference()}): {$count} ".($count === 1 ? 'item' : 'items').' worth $'.number_format($netCents / 100, 2).($this->order->requires_payment
+            'message' => "\"{$this->store->name}\" received a new order ({$this->order->reference()}): {$count} ".($count === 1 ? 'item' : 'items').' worth '.$this->order->money($netCents).($this->order->requires_payment
                 ? ' (the buyer has paid; payout to sellers is not available yet).'
                 : ' (unpaid).'),
             'order_id' => $this->order->id,

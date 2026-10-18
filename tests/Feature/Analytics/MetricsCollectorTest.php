@@ -14,6 +14,7 @@ use App\Services\Analytics\MetricsCollector;
 use App\Services\SellerDashboard;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Log;
 use Tests\Concerns\BuildsMarketplace;
 use Tests\TestCase;
 
@@ -44,7 +45,8 @@ class MetricsCollectorTest extends TestCase
         parent::setUp();
         Carbon::setTestNow('2026-11-05 00:15:00');
         $this->takenAt = Carbon::parse('2026-11-05 00:00:00', 'UTC');
-        config(['analytics.currency' => 'ZAR']);
+        // The currency comes from the storefront (SHOP_CURRENCY, ZAR by default); ANALYTICS_CURRENCY is only an override.
+        config(['analytics.currency' => null, 'shop.currency' => 'ZAR']);
     }
 
     protected function tearDown(): void
@@ -216,33 +218,130 @@ class MetricsCollectorTest extends TestCase
         $metrics = $this->collect($seller);
 
         $this->assertSame($summary['totalOrders'], $metrics['orders_7d']);
-        $this->assertSame($summary['revenueCents'], $metrics['revenue_7d_cents']);
+        $this->assertSame($summary['revenueByCurrency']['ZAR'], $metrics['revenue_7d_cents']);
         $this->assertSame($summary['lowStockCount'], $metrics['low_stock_products']);
         $this->assertSame(3, $metrics['orders_7d']);
         $this->assertGreaterThan(0, $metrics['revenue_7d_cents']);
     }
 
-    public function test_money_is_left_out_entirely_when_no_currency_is_declared(): void
+    public function test_money_is_published_in_the_storefront_currency_with_no_analytics_setting_at_all(): void
     {
         $seller = $this->company(self::COMPANY_A);
         $this->order([[$this->makeListing($seller, ['price' => 100]), 1]], '2026-11-02 10:00:00', [OrderStatus::Delivered]);
 
-        foreach ([null, '', '  ', 'RAND', 'R', '$', 'ZA1', 'zr'] as $bad) {
-            config(['analytics.currency' => $bad]);
+        foreach ([null, '', '  '] as $blank) {
+            config(['analytics.currency' => $blank]);
             $metrics = $this->collect($seller);
 
-            $this->assertArrayNotHasKey('revenue_7d_cents', $metrics, var_export($bad, true));
-            $this->assertArrayNotHasKey('currency', $metrics);
-            $this->assertSame(['orders_7d', 'low_stock_products'], array_keys($metrics));
-            $this->assertSame(1, $metrics['orders_7d']);
+            $this->assertSame(10000, $metrics['revenue_7d_cents'], var_export($blank, true));
+            $this->assertSame('ZAR', $metrics['currency']);
+            $this->assertSame(self::CONTRACT, array_keys($metrics));
         }
     }
 
-    public function test_a_lowercase_declared_currency_is_sent_as_an_upper_case_iso_code(): void
+    public function test_an_empty_company_reports_zero_in_the_current_storefront_currency(): void
     {
+        config(['shop.currency' => 'EUR']);
+
+        $this->assertSame(['orders_7d' => 0, 'revenue_7d_cents' => 0, 'low_stock_products' => 0, 'currency' => 'EUR'], $this->collect($this->company(self::COMPANY_A)));
+    }
+
+    public function test_history_in_one_currency_is_published_in_that_currency_after_the_storefront_changes(): void
+    {
+        $seller = $this->company(self::COMPANY_A);
+        $this->order([[$this->makeListing($seller, ['price' => 100]), 1]], '2026-11-02 10:00:00', [OrderStatus::Delivered]);
+        config(['shop.currency' => 'EUR']);
+
+        $metrics = $this->collect($seller);
+
+        $this->assertSame(10000, $metrics['revenue_7d_cents']);
+        $this->assertSame('ZAR', $metrics['currency'], 'the order, not today\'s setting, says what the money is');
+    }
+
+    public function test_a_company_whose_delivered_lines_span_currencies_publishes_no_money_and_logs_a_warning(): void
+    {
+        $seller = $this->company(self::COMPANY_A);
+        $listing = $this->makeListing($seller, ['price' => 100, 'stock' => 50]);
+        $this->order([[$listing, 1]], '2026-11-02 10:00:00', [OrderStatus::Delivered]);
+        config(['shop.currency' => 'EUR']);
+        $this->order([[$listing, 1]], '2026-11-03 10:00:00', [OrderStatus::Delivered]);
+
+        Log::spy();
+        $metrics = $this->collect($seller);
+
+        $this->assertSame(['orders_7d' => 2, 'low_stock_products' => 0], $metrics);
+        Log::shouldHaveReceived('warning')->once()->withArgs(fn ($message, $context = []) => str_contains($message, 'several currencies')
+            && ($context['currencies'] ?? null) === ['EUR', 'ZAR']);
+    }
+
+    public function test_another_currency_only_matters_to_the_company_that_has_it(): void
+    {
+        $a = $this->company(self::COMPANY_A);
+        $b = $this->company(self::COMPANY_B);
+        $listingA = $this->makeListing($a, ['price' => 100, 'stock' => 50]);
+        $listingB = $this->makeListing($b, ['price' => 200, 'stock' => 50]);
+        $this->order([[$listingA, 1]], '2026-11-02 10:00:00', [OrderStatus::Delivered]);
+        $this->order([[$listingB, 1]], '2026-11-02 11:00:00', [OrderStatus::Delivered]);
+        config(['shop.currency' => 'EUR']);
+        $this->order([[$listingA, 1]], '2026-11-03 10:00:00', [OrderStatus::Delivered]);
+
+        $this->assertArrayNotHasKey('revenue_7d_cents', $this->collect($a));
+        $this->assertSame(['orders_7d' => 1, 'revenue_7d_cents' => 20000, 'low_stock_products' => 0, 'currency' => 'ZAR'], $this->collect($b));
+    }
+
+    public function test_currencies_of_undelivered_or_out_of_window_lines_do_not_count_as_mixed(): void
+    {
+        $seller = $this->company(self::COMPANY_A);
+        $listing = $this->makeListing($seller, ['price' => 100, 'stock' => 50]);
+        $this->order([[$listing, 1]], '2026-11-02 10:00:00', [OrderStatus::Delivered]);
+        config(['shop.currency' => 'EUR']);
+        $this->order([[$listing, 1]], '2026-11-03 10:00:00', [OrderStatus::Shipped]);          // not delivered
+        $this->order([[$listing, 1]], '2026-10-01 10:00:00', [OrderStatus::Delivered]);        // outside the window
+
+        $metrics = $this->collect($seller);
+
+        $this->assertSame(10000, $metrics['revenue_7d_cents']);
+        $this->assertSame('ZAR', $metrics['currency']);
+    }
+
+    public function test_an_analytics_override_that_agrees_with_the_orders_is_published(): void
+    {
+        $seller = $this->company(self::COMPANY_A);
+        $this->order([[$this->makeListing($seller, ['price' => 100]), 1]], '2026-11-02 10:00:00', [OrderStatus::Delivered]);
         config(['analytics.currency' => ' zar ']);
 
-        $this->assertSame('ZAR', $this->collect($this->company(self::COMPANY_A))['currency']);
+        $this->assertSame('ZAR', $this->collect($seller)['currency']);
+    }
+
+    public function test_an_analytics_override_never_relabels_money_in_another_currency(): void
+    {
+        $seller = $this->company(self::COMPANY_A);
+        $this->order([[$this->makeListing($seller, ['price' => 100]), 1]], '2026-11-02 10:00:00', [OrderStatus::Delivered]);
+        config(['analytics.currency' => 'USD']);
+
+        Log::spy();
+        $metrics = $this->collect($seller);
+
+        $this->assertSame(['orders_7d', 'low_stock_products'], array_keys($metrics));
+        Log::shouldHaveReceived('warning')->once();
+    }
+
+    public function test_an_invalid_analytics_override_leaves_money_out_with_a_warning(): void
+    {
+        $seller = $this->company(self::COMPANY_A);
+        $this->order([[$this->makeListing($seller, ['price' => 100]), 1]], '2026-11-02 10:00:00', [OrderStatus::Delivered]);
+
+        Log::spy();
+
+        foreach (['RAND', 'R', '$', 'ZA1', 'zr'] as $bad) {
+            config(['analytics.currency' => $bad]);
+            $metrics = $this->collect($seller);
+
+            $this->assertSame(['orders_7d', 'low_stock_products'], array_keys($metrics), $bad);
+            $this->assertSame(1, $metrics['orders_7d']);
+        }
+
+        Log::shouldHaveReceived('warning')->times(5);
     }
 
     public function test_only_contract_keys_are_ever_produced_in_the_contract_order(): void

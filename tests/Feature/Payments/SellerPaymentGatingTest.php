@@ -146,7 +146,7 @@ class SellerPaymentGatingTest extends TestCase
 
         $summary = app(SellerDashboard::class)->summary($this->seller);
 
-        $this->assertSame(2000 + 700, $summary['revenueCents'], 'the unpaid 90.00 is not revenue');
+        $this->assertSame(2000 + 700, $summary['revenueByCurrency']['ZAR'], 'the unpaid 90.00 is not revenue');
 
         OrderItem::query()->update(['status' => OrderStatus::Pending->value]);
         $summary = app(SellerDashboard::class)->summary($this->seller);

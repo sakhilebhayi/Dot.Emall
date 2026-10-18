@@ -65,7 +65,7 @@ class OrderAuthorizationTest extends TestCase
         $response = $this->actingAs($user)->get(route('orders.index'));
 
         $response->assertOk();
-        $response->assertSee('$11.00');
-        $response->assertDontSee('$999.00');
+        $response->assertSee('R11.00');
+        $response->assertDontSee('R999.00');
     }
 }

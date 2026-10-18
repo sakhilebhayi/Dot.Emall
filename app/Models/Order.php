@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\OrderStatus;
 use App\Enums\PaymentStatus;
 use App\Support\Money;
+use App\Support\Shop;
 use Database\Factories\OrderFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -22,6 +23,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * it as before. An order that requires payment is not fulfillable by sellers
  * until payment_status says Paystack confirmed the money.
  *
+ * `currency` is the ISO code the order was placed in; every amount on the
+ * order (and its lines) is in it, whatever the storefront uses today.
+ *
  * The money columns always describe the order *as it stands now*: cancelled
  * lines are excluded from subtotal / discount_amount / total (see
  * App\Services\OrderPricing).
@@ -32,7 +36,7 @@ class Order extends Model
     use HasFactory;
 
     protected $fillable = [
-        'user_id', 'status', 'subtotal', 'promo_code', 'promo_code_id', 'promo_store_id',
+        'user_id', 'status', 'currency', 'subtotal', 'promo_code', 'promo_code_id', 'promo_store_id',
         'promo_discount_type', 'promo_discount_value', 'promo_released_at',
         'discount_amount', 'total', 'shipping_name', 'shipping_address', 'shipping_phone',
         'idempotency_key', 'requires_payment', 'payment_status', 'paid_at',
@@ -50,9 +54,43 @@ class Order extends Model
         'paid_at' => 'datetime',
     ];
 
+    /**
+     * Every order is stamped with the storefront currency in force when it
+     * is created, however it is created, and keeps it for life.
+     */
+    protected static function booted(): void
+    {
+        static::creating(function (Order $order) {
+            if (! Shop::isCode($order->currency)) {
+                $order->currency = Shop::currency();
+            }
+        });
+    }
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * An amount in this order's own currency, never the storefront's today.
+     */
+    public function money(int $cents): string
+    {
+        return Shop::money($cents, $this->currencyCode());
+    }
+
+    /**
+     * Same, for a stored decimal (an order or line total).
+     */
+    public function amount(string|int|float|null $decimal): string
+    {
+        return Shop::amount($decimal, $this->currencyCode());
+    }
+
+    public function currencyCode(): string
+    {
+        return Shop::isCode($this->currency) ? $this->currency : Shop::currency();
     }
 
     public function items(): HasMany

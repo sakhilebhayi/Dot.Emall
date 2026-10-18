@@ -13,7 +13,7 @@
     $paystack = app(\App\Services\Paystack\PaystackConfig::class);
     $awaitingPayment = $view['awaitingPayment'];
     $settled = $order->requires_payment && $order->payment_status->isSettled();
-    $money = fn (int $cents) => $paystack->currency().' '.number_format($cents / 100, 2);
+    $money = fn (int $cents) => $order->money($cents);
     $totalLabel = ! $order->requires_payment ? 'Total (unpaid)' : ($settled ? 'Total (paid)' : 'Total (due)');
 @endphp
 <x-app-layout>
@@ -96,13 +96,13 @@
             <div style="margin-bottom:0.25rem;">
                 @switch($refund->status)
                     @case(\App\Enums\RefundStatus::Refunded)
-                        Refunded {{ $money($refund->amount_cents) }} for cancelled items. It can take several business days to reach your account.
+                        Refunded {{ \App\Support\Shop::money($refund->amount_cents, $refund->currency) }} for cancelled items. It can take several business days to reach your account.
                         @break
                     @case(\App\Enums\RefundStatus::Submitted)
-                        Refund requested: {{ $money($refund->amount_cents) }} for cancelled items. Paystack is processing it; it is not complete until Paystack confirms.
+                        Refund requested: {{ \App\Support\Shop::money($refund->amount_cents, $refund->currency) }} for cancelled items. Paystack is processing it; it is not complete until Paystack confirms.
                         @break
                     @default
-                        Refund owed: {{ $money($refund->amount_cents) }} for cancelled items. It is recorded and being arranged; it has not been sent yet.
+                        Refund owed: {{ \App\Support\Shop::money($refund->amount_cents, $refund->currency) }} for cancelled items. It is recorded and being arranged; it has not been sent yet.
                 @endswitch
             </div>
             @endforeach
@@ -149,15 +149,15 @@
                 </div>
                 <div style="font-size:0.7rem;color:#71717a;">
                     @unless($isSeller){{ $item->displayStoreName() }} · @endunless
-                    Qty {{ $item->quantity }} × ${{ number_format($item->unit_price, 2) }}
+                    Qty {{ $item->quantity }} × {{ $order->amount($item->unit_price) }}
                     @if(! $linkable) · listing no longer sold @endif
                 </div>
             </div>
             <x-status-pill :status="$item->status" size="sm" />
             <div style="text-align:right;min-width:90px;">
-                <div style="font-family:'Syne',sans-serif;font-size:0.85rem;font-weight:700;color:#f4f4f5;{{ $cancelled ? 'text-decoration:line-through;' : '' }}">${{ number_format($item->total, 2) }}</div>
+                <div style="font-family:'Syne',sans-serif;font-size:0.85rem;font-weight:700;color:#f4f4f5;{{ $cancelled ? 'text-decoration:line-through;' : '' }}">{{ $order->amount($item->total) }}</div>
                 @if(! $cancelled && (float) $item->discount_amount > 0)
-                <div style="font-size:0.65rem;color:#4ade80;">promo -${{ number_format($item->discount_amount, 2) }}</div>
+                <div style="font-size:0.65rem;color:#4ade80;">promo -{{ $order->amount($item->discount_amount) }}</div>
                 @endif
             </div>
 
@@ -196,17 +196,17 @@
         @if($view['fullOrder'])
             <div style="display:flex;justify-content:space-between;font-size:0.8rem;color:#a1a1aa;margin-bottom:0.4rem;">
                 <span>Subtotal</span>
-                <span>${{ number_format($order->subtotal, 2) }}</span>
+                <span>{{ $order->amount($order->subtotal) }}</span>
             </div>
             @if((float) $order->discount_amount > 0)
             <div style="display:flex;justify-content:space-between;font-size:0.8rem;color:#4ade80;margin-bottom:0.4rem;">
                 <span>Promo ({{ $order->promo_code }})</span>
-                <span>-${{ number_format($order->discount_amount, 2) }}</span>
+                <span>-{{ $order->amount($order->discount_amount) }}</span>
             </div>
             @endif
             <div style="display:flex;justify-content:space-between;font-family:'Syne',sans-serif;font-size:1rem;font-weight:800;color:#f4f4f5;padding-top:0.6rem;border-top:1px solid rgba(255,255,255,0.06);">
                 <span>{{ $totalLabel }}</span>
-                <span>${{ number_format($order->total, 2) }}</span>
+                <span>{{ $order->amount($order->total) }}</span>
             </div>
             @if($lines->contains(fn ($l) => $l->isCancelled()))
             <div style="margin-top:0.6rem;font-size:0.7rem;color:#71717a;">Cancelled items are not counted in these totals.</div>
@@ -214,7 +214,7 @@
         @else
             <div style="display:flex;justify-content:space-between;font-family:'Syne',sans-serif;font-size:1rem;font-weight:800;color:#f4f4f5;">
                 <span>Your items, net of promo</span>
-                <span>${{ number_format($view['sellerNetCents'] / 100, 2) }}</span>
+                <span>{{ $order->money($view['sellerNetCents']) }}</span>
             </div>
             <div style="margin-top:0.6rem;font-size:0.7rem;color:#71717a;">Cancelled items are not counted. This is only your share of the order.@if($order->requires_payment && ! $awaitingPayment) Earned, not paid out: payout is not available yet.@endif</div>
         @endif

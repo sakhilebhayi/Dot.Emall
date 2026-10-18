@@ -88,7 +88,7 @@ class DashboardTest extends TestCase
         $response = $this->actingAs($seller)->get('/dashboard');
 
         $response->assertOk();
-        $response->assertSee('$30.00');
+        $response->assertSee('R30.00');
         $response->assertSee($order->reference());
     }
 }

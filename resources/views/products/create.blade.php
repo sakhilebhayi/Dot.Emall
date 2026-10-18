@@ -28,11 +28,11 @@
 
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
             <div>
-                <label style="display:block;font-size:0.75rem;color:#a1a1aa;margin-bottom:0.25rem;">Price</label>
+                <label style="display:block;font-size:0.75rem;color:#a1a1aa;margin-bottom:0.25rem;">Price ({{ \App\Support\Shop::currency() }})</label>
                 <input type="number" step="0.01" name="price" value="{{ old('price') }}" required style="width:100%;padding:0.5rem;border-radius:6px;">
             </div>
             <div>
-                <label style="display:block;font-size:0.75rem;color:#a1a1aa;margin-bottom:0.25rem;">Compare-at Price</label>
+                <label style="display:block;font-size:0.75rem;color:#a1a1aa;margin-bottom:0.25rem;">Compare-at Price ({{ \App\Support\Shop::currency() }})</label>
                 <input type="number" step="0.01" name="compare_price" value="{{ old('compare_price') }}" style="width:100%;padding:0.5rem;border-radius:6px;">
             </div>
             <div>
