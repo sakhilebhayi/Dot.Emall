@@ -224,6 +224,69 @@ the real migrations and check what happened to that data.
 Listing photos are stored on the `public` disk: run `php artisan storage:link` once per environment
 and make sure the PHP `gd` extension is installed (it is what strips metadata from uploads).
 
+## Daily metrics to Dot.Analytics
+
+Once a day this app posts aggregate numbers, server to server, to Dot.Analytics
+(`POST {ANALYTICS_INGEST_URL}`, the full URL ending `/api/ingest/snapshots`). The request is signed
+with HMAC-SHA256 over `"{timestamp}.{raw body}"` using `ANALYTICS_INGEST_SECRET`, headers
+`X-InfoDot-Timestamp` (unix seconds) and `X-InfoDot-Signature` (`sha256=<hex>`), computed when the
+request is sent, so a retry carries a fresh timestamp. The body is
+
+```json
+{"platform": "emall", "company_uuid": "<uuid>", "taken_at": "2026-11-05T00:00:00Z", "period": "day", "metrics": {"orders_7d": 0, "revenue_7d_cents": 0, "low_stock_products": 0, "currency": "ZAR"}}
+```
+
+`emall:publish-metrics` collects and queues one `SendAnalyticsSnapshot` job per company. It takes
+`--company=<uuid>` (one company only) and `--dry-run` (collect and print, queue and send nothing).
+
+**What is sent: these keys and nothing else** (Dot.Analytics' metrics contract, `config/metrics.php`).
+The definitions are the seller dashboard's own (`App\Services\SellerDashboard`), and the unit is a
+seller's own order **line**, matched on the `seller_id` snapshot taken at checkout:
+
+| Key | Meaning |
+|---|---|
+| `orders_7d` | distinct orders placed in the last 7 whole UTC days that hold at least one non-cancelled line of the company's stores |
+| `revenue_7d_cents` | the company's **delivered** lines of those orders, each at its line total less its share of the promo discount, in integer cents. Another store's lines in a mixed order never count. It is the value of delivered lines, not money received (payment is not implemented). There is no delivery timestamp, so a line counts in the window its order was **placed** in, and an order placed on day 6 that is delivered on day 8 is missed by that day's snapshot |
+| `low_stock_products` | active products in the company's stores with fewer than 5 in stock right now (`SellerDashboard::LOW_STOCK_BELOW`); archived products are not counted |
+| `currency` | the ISO 4217 code of `revenue_7d_cents`, from `ANALYTICS_CURRENCY` |
+
+**Currency: `revenue_7d_cents` and `currency` are only sent when `ANALYTICS_CURRENCY` is set.**
+Dot.Emall has no currency setting (prices are plain decimals, the views print a `$`, and no payment
+provider exists), so none is assumed. Leave `ANALYTICS_CURRENCY` blank and the snapshot carries
+`orders_7d` and `low_stock_products` only; set it (for example `ZAR`) only once the owner has decided
+which currency the marketplace trades in. Nothing is ever converted or mixed across currencies.
+
+Aggregates only: no names, emails, store or product names, SKUs, addresses, phone numbers, promo
+codes and no row ever appears in the body. A company with no activity sends true zeros (zero is a real
+count).
+
+**Which company:** stores belong to their owner, a user, and Dot.Analytics wants a company, so the
+company is the InfoDot team (`infodot_team_uuid`) the store owner currently belongs to: their current
+team's uuid, or their personal team's if the current team has none (the rule the Dot.Notify client
+uses in the other Dot apps). The stores of one company are added together. A seller with no
+`infodot_team_uuid` (not provisioned from InfoDot) is in no company and is **never published**; users
+who own no store are not companies. A seller who switches teams is reported under the new team from
+then on; history already sent stays with the old one. There is no platform-wide snapshot: every number
+belongs to a company's own stores, and no `ANALYTICS_COMPANY_UUID` exists here.
+
+**Windows are UTC.** `taken_at` is the start of the UTC day the command runs on, and the "7d"
+numbers cover the seven whole UTC days before it, so a re-run on the same day describes the same
+snapshot and Dot.Analytics keeps the first one (replays are idempotent per company, platform,
+`taken_at` and period). `low_stock_products` is read at collection time, shortly after 00:15 UTC.
+
+**What it takes for anything to be sent:** nothing is collected, queued or sent until
+`ANALYTICS_INGEST_URL` **and** `ANALYTICS_INGEST_SECRET` are both set. The secret is this app's
+`ANALYTICS_INGEST_SECRET_EMALL` value in Dot.Analytics' `.env` (same value; `ANALYTICS_PLATFORM_KEY`
+is `emall`), and each company must be connected there. The **scheduler cron is required**
+(`* * * * * php artisan schedule:run`; the command runs daily at 00:15 UTC) and so is a **queue
+worker** (`php artisan queue:work`); with `QUEUE_CONNECTION=sync` the send happens inside the command.
+
+**Safety:** a Dot.Analytics outage or misconfiguration cannot affect this app. The send is a queued
+job, never part of a request; it has a 5 second HTTP timeout, 3 tries with 30 s and 120 s backoff,
+never throws, logs without secrets or numbers, and a cache-based circuit breaker pauses calls for 60
+seconds after 5 consecutive failures. A refusal (401, 404, 422) is not retried. A collection or
+queueing error is logged and only ends that run of the command.
+
 ## Ecosystem
 
 **Dot.Emall** is one of the platforms in the Dot ecosystem, connected via shared PostgreSQL and
