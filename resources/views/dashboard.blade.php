@@ -40,7 +40,7 @@
 
     @if($hasStore)
     {{-- Ruled readout: panels share edges (1px gap over a ruled background). --}}
-    <div style="display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:1px;background:rgba(255,255,255,0.09);border:1px solid rgba(255,255,255,0.09);border-radius:4px;overflow:hidden;margin-bottom:2rem;">
+    <div class="readout-grid" style="display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:1px;background:rgba(255,255,255,0.09);border:1px solid rgba(255,255,255,0.09);border-radius:4px;overflow:hidden;margin-bottom:2rem;">
         <div style="{{ $cell }}grid-column:span 2;">
             <div style="{{ $label }}">Delivered value</div>
             <div class="metric-val" style="font-size:2rem;color:#f59e0b;line-height:1.1;margin-top:0.4rem;">{{ $money($revenueCents) }}</div>
@@ -120,7 +120,7 @@
                 No orders for your store yet.
             </div>
             @else
-            <div style="overflow-x:auto;">
+            <div class="table-scroll" style="overflow-x:auto;" role="region" aria-label="Recent orders" tabindex="0">
                 <table style="width:100%;border-collapse:collapse;">
                     <thead>
                         <tr style="border-bottom:1px solid rgba(67,70,86,0.3);">

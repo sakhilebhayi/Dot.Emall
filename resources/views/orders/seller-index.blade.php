@@ -18,7 +18,7 @@
             <div style="font-size:0.85rem;color:#71717a;">No orders yet.</div>
         </div>
         @else
-        <div style="overflow-x:auto;">
+        <div class="table-scroll" style="overflow-x:auto;" role="region" aria-label="Orders to fulfil" tabindex="0">
             <table style="width:100%;border-collapse:collapse;">
                 <thead>
                     <tr style="border-bottom:1px solid rgba(67,70,86,0.3);">
