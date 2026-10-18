@@ -30,6 +30,9 @@ use App\Models\User;
  */
 class SellerDashboard
 {
+    /** A product with fewer than this many in stock is "low stock". Also what Dot.Analytics is told. */
+    public const LOW_STOCK_BELOW = 5;
+
     /**
      * @return array<string, mixed>
      */
@@ -89,7 +92,7 @@ class SellerDashboard
             'recentOrders' => $recent,
             'totalReviews' => Review::query()->whereIn('product_id', $productIds)->count(),
             'avgRating' => round((float) Review::query()->whereIn('product_id', $productIds)->avg('rating'), 1),
-            'lowStockCount' => Product::query()->whereIn('id', $productIds)->where('is_active', true)->where('stock', '<', 5)->count(),
+            'lowStockCount' => Product::query()->whereIn('id', $productIds)->where('is_active', true)->where('stock', '<', self::LOW_STOCK_BELOW)->count(),
             'myOrdersCount' => Order::query()->where('user_id', $seller->id)->count(),
         ];
     }
