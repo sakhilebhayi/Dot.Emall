@@ -65,5 +65,52 @@
             </a>
         </div>
     </form>
+
+    {{-- Photos --}}
+    @php $photoCount = $product->images->count(); $room = max(0, \App\Services\ProductImages::MAX_PER_PRODUCT - $photoCount); @endphp
+    <div style="background:#141416;border:1px solid rgba(255,255,255,0.06);border-radius:1rem;padding:1.5rem;margin-top:1.5rem;">
+        <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:0.75rem;">
+            <h2 style="margin:0;font-family:'Syne',sans-serif;font-size:1rem;font-weight:700;color:#f4f4f5;">Photos</h2>
+            <span style="font-size:0.72rem;color:#71717a;">{{ $photoCount }} of {{ \App\Services\ProductImages::MAX_PER_PRODUCT }}</span>
+        </div>
+
+        @if($photoCount === 0)
+        <p style="font-size:0.78rem;color:#71717a;margin:0 0 1rem;">No photos yet. Listings with photos are easier to trust.</p>
+        @else
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:0.75rem;margin-bottom:1rem;">
+            @foreach($product->images as $image)
+            <div style="border:1px solid rgba(255,255,255,0.08);border-radius:10px;overflow:hidden;background:#0d0d10;">
+                <img src="{{ $image->url() }}" alt="Photo {{ $loop->iteration }} of {{ $product->name }}" style="width:100%;aspect-ratio:1/1;object-fit:cover;display:block;">
+                <div style="padding:0.4rem 0.5rem;display:flex;flex-direction:column;gap:0.3rem;">
+                    @if($loop->first)
+                    <span style="font-size:0.65rem;font-weight:700;color:#f59e0b;text-transform:uppercase;letter-spacing:0.06em;">Cover</span>
+                    @else
+                    <form method="POST" action="{{ route('seller.products.images.cover', [$product, $image]) }}">
+                        @csrf @method('PATCH')
+                        <button type="submit" style="background:none;border:none;padding:0;font-size:0.7rem;color:#a1a1aa;cursor:pointer;text-decoration:underline;">Make cover</button>
+                    </form>
+                    @endif
+                    <form method="POST" action="{{ route('seller.products.images.destroy', [$product, $image]) }}" onsubmit="return confirm('Remove this photo?');">
+                        @csrf @method('DELETE')
+                        <button type="submit" style="background:none;border:none;padding:0;font-size:0.7rem;color:#f87171;cursor:pointer;text-decoration:underline;">Remove</button>
+                    </form>
+                </div>
+            </div>
+            @endforeach
+        </div>
+        @endif
+
+        @if($room > 0)
+        <form method="POST" action="{{ route('seller.products.images.store', $product) }}" enctype="multipart/form-data" style="display:flex;flex-direction:column;gap:0.6rem;">
+            @csrf
+            <label for="photo-upload" style="font-size:0.75rem;color:#a1a1aa;">Add photos ({{ $room }} more allowed)</label>
+            <input id="photo-upload" type="file" name="images[]" multiple required accept="image/jpeg,image/png,image/webp" class="dot-input">
+            <div style="font-size:0.7rem;color:#71717a;">JPEG, PNG or WebP, up to 4 MB each. Large photos are resized and location data is removed.</div>
+            <div><button type="submit" class="dot-btn dot-btn-ghost">Upload</button></div>
+        </form>
+        @else
+        <p style="font-size:0.75rem;color:#71717a;margin:0;">This listing has the maximum of {{ \App\Services\ProductImages::MAX_PER_PRODUCT }} photos. Remove one to add another.</p>
+        @endif
+    </div>
 </div>
 </x-app-layout>

@@ -21,11 +21,22 @@
     @endif
 
     <div style="display:grid;grid-template-columns:340px 1fr;gap:2rem;margin-bottom:2.5rem;">
-        <div style="width:100%;aspect-ratio:1/1;border-radius:12px;background:linear-gradient(135deg,rgba(245,158,11,0.15),rgba(217,119,6,0.08));display:flex;align-items:center;justify-content:center;overflow:hidden;">
-            @if($product->images->isNotEmpty())
-                <img src="{{ asset('storage/' . $product->images->first()->path) }}" alt="{{ $product->name }}" style="width:100%;height:100%;object-fit:cover;">
-            @else
-                <span class="material-symbols-rounded" style="font-size:56px;color:#f59e0b;opacity:0.6;">inventory_2</span>
+        <div x-data="{ current: @js($product->images->first()?->url()) }">
+            <div style="width:100%;aspect-ratio:1/1;border-radius:12px;background:linear-gradient(135deg,rgba(245,158,11,0.15),rgba(217,119,6,0.08));display:flex;align-items:center;justify-content:center;overflow:hidden;">
+                @if($product->images->isNotEmpty())
+                    <img :src="current" src="{{ $product->images->first()->url() }}" alt="{{ $product->name }}" style="width:100%;height:100%;object-fit:cover;">
+                @else
+                    <span class="material-symbols-rounded" style="font-size:56px;color:#f59e0b;opacity:0.6;">inventory_2</span>
+                @endif
+            </div>
+            @if($product->images->count() > 1)
+            <div style="display:flex;gap:0.5rem;margin-top:0.6rem;flex-wrap:wrap;">
+                @foreach($product->images as $image)
+                <a href="{{ $image->url() }}" @click.prevent="current = '{{ $image->url() }}'" aria-label="Show photo {{ $loop->iteration }} of {{ $product->images->count() }}" style="width:56px;height:56px;border-radius:8px;overflow:hidden;border:1px solid rgba(255,255,255,0.1);display:block;">
+                    <img src="{{ $image->url() }}" alt="" style="width:100%;height:100%;object-fit:cover;">
+                </a>
+                @endforeach
+            </div>
             @endif
         </div>
 
@@ -59,8 +70,17 @@
                 {{ $product->stock > 0 ? "{$product->stock} in stock" : 'Out of stock' }}
             </div>
 
+            @guest
+                @if($product->stock > 0)
+                <a href="{{ route('login') }}" class="dot-btn dot-btn-primary">
+                    <span class="material-symbols-rounded" style="font-size:16px;">login</span>
+                    Sign in to buy
+                </a>
+                <div style="font-size:0.7rem;color:#71717a;margin-top:0.5rem;">No account yet? <a href="{{ route('register') }}" style="color:#f59e0b;">Create one</a>. You come back to this page afterwards.</div>
+                @endif
+            @endguest
             @auth
-                @if($product->is_active && $product->store->is_active && $product->stock > 0)
+                @if($product->is_active && $product->store->is_active && $product->stock > 0 && $product->store->owner_id !== auth()->id())
                 <form method="POST" action="{{ route('cart.store') }}" style="display:flex;gap:0.75rem;align-items:center;">
                     @csrf
                     <input type="hidden" name="product_id" value="{{ $product->id }}">

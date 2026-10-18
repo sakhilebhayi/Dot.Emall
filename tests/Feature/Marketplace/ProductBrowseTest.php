@@ -38,9 +38,9 @@ class ProductBrowseTest extends TestCase
         ], $overrides));
     }
 
-    public function test_guest_is_redirected_to_login(): void
+    public function test_guest_can_view_the_marketplace_without_signing_in(): void
     {
-        $this->get('/products')->assertRedirect('/login');
+        $this->get('/products')->assertOk();
     }
 
     public function test_authenticated_user_can_browse_products(): void

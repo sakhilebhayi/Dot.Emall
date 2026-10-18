@@ -13,7 +13,7 @@
         </div>
     @endif
 
-    <form method="POST" action="{{ route('seller.products.store') }}" style="background:#141416;border:1px solid rgba(255,255,255,0.06);border-radius:1rem;padding:1.5rem;display:flex;flex-direction:column;gap:1rem;">
+    <form method="POST" action="{{ route('seller.products.store') }}" enctype="multipart/form-data" style="background:#141416;border:1px solid rgba(255,255,255,0.06);border-radius:1rem;padding:1.5rem;display:flex;flex-direction:column;gap:1rem;">
         @csrf
 
         <div>
@@ -53,6 +53,12 @@
                     <option value="{{ $category->id }}" @selected(old('category_id') == $category->id)>{{ $category->name }}</option>
                 @endforeach
             </select>
+        </div>
+
+        <div>
+            <label for="images" style="display:block;font-size:0.75rem;color:#a1a1aa;margin-bottom:0.25rem;">Photos (optional)</label>
+            <input id="images" type="file" name="images[]" multiple accept="image/jpeg,image/png,image/webp" class="dot-input">
+            <div style="font-size:0.7rem;color:#71717a;margin-top:0.3rem;">Up to 6 JPEG, PNG or WebP files, 4 MB each. The first is the cover; you can change that later. Location data in photos is removed.</div>
         </div>
 
         <button type="submit" style="margin-top:0.5rem;padding:0.6rem;border-radius:8px;background:linear-gradient(135deg,#f59e0b,#d97706);color:#1a1a1a;font-weight:700;border:none;cursor:pointer;">

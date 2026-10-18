@@ -6,6 +6,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\OrderItemCancellationController;
 use App\Http\Controllers\ProductController;
+use App\Http\Controllers\ProductImageController;
 use App\Http\Controllers\ProductModerationController;
 use App\Http\Controllers\PromoCodeController;
 use App\Http\Controllers\ReviewController;
@@ -30,6 +31,11 @@ Route::get('/cookies', function () {
     ]);
 })->name('cookies');
 
+// The storefront is public: anyone can browse and open a product. Everything
+// that spends, stores or discloses something about a person is behind auth.
+Route::get('/products', [ProductController::class, 'index'])->name('products.index');
+Route::get('/products/{product}', [ProductController::class, 'show'])->name('products.show');
+
 Route::middleware([
     'auth:sanctum',
     config('jetstream.auth_session'),
@@ -37,8 +43,6 @@ Route::middleware([
 ])->group(function () {
     Route::get('/dashboard', DashboardController::class)->name('dashboard');
 
-    Route::get('/products', [ProductController::class, 'index'])->name('products.index');
-    Route::get('/products/{product}', [ProductController::class, 'show'])->name('products.show');
     Route::post('/products/{product}/reviews', [ReviewController::class, 'store'])->name('reviews.store');
     Route::delete('/reviews/{review}', [ReviewController::class, 'destroy'])->name('reviews.destroy');
 
@@ -54,6 +58,8 @@ Route::middleware([
 
     Route::get('/sell', [StoreController::class, 'create'])->name('seller.store.create');
     Route::post('/sell', [StoreController::class, 'store'])->name('seller.store.store');
+    Route::get('/sell/store/edit', [StoreController::class, 'edit'])->name('seller.store.edit');
+    Route::patch('/sell/store', [StoreController::class, 'update'])->name('seller.store.update');
 
     // "create" must stay registered before "{product}"-shaped routes below,
     // otherwise it's swallowed by {product}'s implicit route-model binding.
@@ -63,6 +69,9 @@ Route::middleware([
     Route::get('/sell/products/{product}/edit', [SellerProductController::class, 'edit'])->name('seller.products.edit');
     Route::patch('/sell/products/{product}', [SellerProductController::class, 'update'])->name('seller.products.update');
     Route::delete('/sell/products/{product}', [SellerProductController::class, 'destroy'])->name('seller.products.destroy');
+    Route::post('/sell/products/{product}/images', [ProductImageController::class, 'store'])->name('seller.products.images.store');
+    Route::delete('/sell/products/{product}/images/{image}', [ProductImageController::class, 'destroy'])->name('seller.products.images.destroy')->scopeBindings();
+    Route::patch('/sell/products/{product}/images/{image}/cover', [ProductImageController::class, 'cover'])->name('seller.products.images.cover')->scopeBindings();
     Route::patch('/sell/products/{product}/toggle-active', [SellerProductController::class, 'toggleActive'])->name('seller.products.toggle-active');
 
     Route::get('/sell/orders', [SellerOrderController::class, 'index'])->name('seller.orders.index');

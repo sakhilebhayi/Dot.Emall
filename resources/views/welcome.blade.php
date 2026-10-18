@@ -84,7 +84,7 @@
 
                 <div class="hidden md:flex items-center gap-8 font-mono text-[13px] tracking-wide uppercase text-[var(--ink-soft)]">
                     <a href="#sellers" class="link-underline hover:text-[var(--ink)] pb-0.5">Sell</a>
-                    <a href="#buyers" class="link-underline hover:text-[var(--ink)] pb-0.5">Shop</a>
+                    <a href="{{ route('products.index') }}" class="link-underline hover:text-[var(--ink)] pb-0.5">Shop</a>
                 </div>
 
                 @if (Route::has('login'))
@@ -125,7 +125,7 @@
                  style="display: none;">
                 <div class="flex flex-col px-5 py-4 gap-1 font-mono text-sm uppercase tracking-wide">
                     <a href="#sellers" class="px-3 py-2.5 text-[var(--ink-soft)] hover:text-[var(--ink)]">Sell</a>
-                    <a href="#buyers" class="px-3 py-2.5 text-[var(--ink-soft)] hover:text-[var(--ink)]">Shop</a>
+                    <a href="{{ route('products.index') }}" class="px-3 py-2.5 text-[var(--ink-soft)] hover:text-[var(--ink)]">Shop</a>
                     @guest
                         <a href="{{ route('login') }}" class="px-3 py-2.5 text-[var(--ink-soft)] hover:text-[var(--ink)]">Sign in</a>
                     @endguest

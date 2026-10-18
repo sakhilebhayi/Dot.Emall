@@ -66,7 +66,7 @@ class ProductController extends Controller
      */
     public function show(Product $product, ReviewService $reviews): View
     {
-        $isOwner = auth()->id() === $product->store->owner_id;
+        $isOwner = auth()->check() && auth()->id() === $product->store->owner_id;
 
         abort_unless(
             $isOwner || ($product->is_active && $product->status === 'approved' && $product->store->is_active),
@@ -76,6 +76,12 @@ class ProductController extends Controller
         $product->load(['store', 'category', 'images', 'reviews.user']);
 
         $user = auth()->user();
+
+        // A guest who clicks "Sign in to buy" should land back on this page.
+        if ($user === null) {
+            session(['url.intended' => url()->current()]);
+        }
+
         $hasReviewed = $user !== null && $reviews->hasReviewed($user, $product);
         $canReview = $user !== null && ! $hasReviewed && Gate::forUser($user)->allows('create', [Review::class, $product]);
 

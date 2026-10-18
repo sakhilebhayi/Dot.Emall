@@ -97,7 +97,10 @@
                 @endif
                 <div style="font-size:0.7rem;color:#71717a;margin-top:0.4rem;">{{ $store->products_count }} {{ \Illuminate\Support\Str::plural('listing', $store->products_count) }}</div>
             </div>
-            <a href="{{ route('seller.products.index') }}" class="dot-btn dot-btn-ghost">Manage listings</a>
+            <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+                <a href="{{ route('seller.store.edit') }}" class="dot-btn dot-btn-ghost">Edit store</a>
+                <a href="{{ route('seller.products.index') }}" class="dot-btn dot-btn-ghost">Manage listings</a>
+            </div>
         </div>
         @endforeach
         @endif

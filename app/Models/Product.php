@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\ProductImages;
 use Database\Factories\ProductFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -30,6 +31,14 @@ class Product extends Model
             // break the cart page; the global user scope is bypassed because
             // this runs on behalf of the seller, not the cart's owner.
             CartItem::withoutGlobalScopes()->where('product_id', $product->id)->delete();
+        });
+
+        // Listing photos go with the listing, files included. Runs BEFORE the
+        // delete: on a hard delete the database's own ON DELETE CASCADE would
+        // remove the rows first and leave their files orphaned on the disk.
+        // (Order history keeps its own snapshot and never needed the photos.)
+        static::deleting(function (Product $product): void {
+            app(ProductImages::class)->purge($product);
         });
     }
 
@@ -60,7 +69,7 @@ class Product extends Model
 
     public function images(): HasMany
     {
-        return $this->hasMany(ProductImage::class)->orderBy('sort_order');
+        return $this->hasMany(ProductImage::class)->orderBy('sort_order')->orderBy('id');
     }
 
     public function reviews(): HasMany

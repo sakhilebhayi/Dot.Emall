@@ -111,14 +111,17 @@
         <div class="sidebar-divider"></div>
 
         <nav class="sidebar-nav">
+            @auth
             <a href="{{ route('dashboard') }}" class="nav-item {{ request()->routeIs('dashboard') ? 'active' : '' }}">
                 <span class="material-symbols-rounded nav-icon">dashboard</span>
                 Dashboard
             </a>
+            @endauth
             <a href="{{ route('products.index') }}" class="nav-item {{ request()->routeIs('products.*') ? 'active' : '' }}">
                 <span class="material-symbols-rounded nav-icon">storefront</span>
                 Browse Products
             </a>
+            @auth
             <a href="{{ route('cart.index') }}" class="nav-item {{ request()->routeIs('cart.*') ? 'active' : '' }}">
                 <span class="material-symbols-rounded nav-icon">shopping_cart</span>
                 Cart
@@ -142,6 +145,10 @@
                 <span class="material-symbols-rounded nav-icon">sell</span>
                 Promo codes
             </a>
+            <a href="{{ route('seller.store.edit') }}" class="nav-item {{ request()->routeIs('seller.store.edit', 'seller.store.update') ? 'active' : '' }}">
+                <span class="material-symbols-rounded nav-icon">store</span>
+                My store
+            </a>
             @else
             <a href="{{ route('seller.store.create') }}" class="nav-item {{ request()->routeIs('seller.store.*') ? 'active' : '' }}">
                 <span class="material-symbols-rounded nav-icon">add_business</span>
@@ -153,6 +160,17 @@
                 <span class="material-symbols-rounded nav-icon">manage_accounts</span>
                 Profile & Settings
             </a>
+            @else
+            <div class="sidebar-divider" style="margin:10px 0;"></div>
+            <a href="{{ route('login') }}" class="nav-item">
+                <span class="material-symbols-rounded nav-icon">login</span>
+                Sign in
+            </a>
+            <a href="{{ route('register') }}" class="nav-item">
+                <span class="material-symbols-rounded nav-icon">person_add</span>
+                Create an account
+            </a>
+            @endauth
         </nav>
 
         @auth
@@ -163,6 +181,12 @@
                     <div class="user-name">{{ Auth::user()->name }}</div>
                     <div class="user-team">{{ Auth::user()->currentTeam->name ?? 'Personal' }}</div>
                 </div>
+                <form method="POST" action="{{ route('logout') }}">
+                    @csrf
+                    <button type="submit" class="topbar-btn" title="Sign out" aria-label="Sign out">
+                        <span class="material-symbols-rounded">logout</span>
+                    </button>
+                </form>
             </div>
         </div>
         @endauth
@@ -185,12 +209,18 @@
         >
             <span class="material-symbols-rounded">dark_mode</span>
         </button>
+        @auth
         <a href="{{ route('profile.show') }}" class="topbar-btn" title="Profile">
             <span class="material-symbols-rounded">account_circle</span>
         </a>
+        @else
+        <a href="{{ route('login') }}" class="dot-btn dot-btn-primary" style="padding:5px 12px;">Sign in</a>
+        @endauth
     </header>
 
+    @auth
     @livewire('navigation-menu')
+    @endauth
 
     <div class="content-wrap">
         <main>{{ $slot }}</main>
