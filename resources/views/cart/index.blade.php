@@ -52,7 +52,7 @@
             </div>
             <div style="flex:1;min-width:180px;">
                 <a href="{{ route('products.show', $item->product) }}" style="font-size:0.82rem;font-weight:700;color:#f4f4f5;text-decoration:none;">{{ $item->product->name }}</a>
-                <div style="font-size:0.7rem;color:#71717a;">{{ $item->product->store->name }} · ${{ number_format($item->product->price, 2) }} each</div>
+                <div style="font-size:0.7rem;color:#71717a;">{{ $item->product->store->name }} · {{ \App\Support\Shop::amount($item->product->price) }} each</div>
                 @if($problem)
                 <div style="font-size:0.72rem;font-weight:600;color:#f59e0b;margin-top:0.25rem;" role="alert">{{ $problem }}</div>
                 @endif
@@ -65,7 +65,7 @@
                 <button type="submit" class="dot-btn dot-btn-ghost" style="padding:0.35rem 0.7rem;font-size:0.72rem;">Update</button>
             </form>
             <div style="font-family:'Syne',sans-serif;font-size:0.85rem;font-weight:700;color:#f4f4f5;white-space:nowrap;min-width:80px;text-align:right;">
-                ${{ number_format($item->quantity * $item->product->price, 2) }}
+                {{ \App\Support\Shop::amount($item->quantity * $item->product->price) }}
             </div>
             <form method="POST" action="{{ route('cart.destroy', $item) }}">
                 @csrf @method('DELETE')
@@ -80,7 +80,7 @@
     <div class="dot-card" style="padding:1.25rem 1.5rem;margin-bottom:1.5rem;">
         <div style="display:flex;justify-content:space-between;font-family:'Syne',sans-serif;font-size:1rem;font-weight:800;color:#f4f4f5;">
             <span>Subtotal</span>
-            <span>${{ number_format($subtotal, 2) }}</span>
+            <span>{{ \App\Support\Shop::amount($subtotal) }}</span>
         </div>
     </div>
 

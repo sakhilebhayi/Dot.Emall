@@ -1,6 +1,5 @@
 @php
     $hasStore = $stores->isNotEmpty();
-    $money = fn (int $cents) => '$'.number_format($cents / 100, 2);
 
     if (! $hasStore) {
         $stateLine = 'You are not selling on Dot.Emall yet.';
@@ -47,7 +46,10 @@
     <div class="readout-grid" style="display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:1px;background:rgba(255,255,255,0.09);border:1px solid rgba(255,255,255,0.09);border-radius:4px;overflow:hidden;margin-bottom:2rem;">
         <div style="{{ $cell }}grid-column:span 2;">
             <div style="{{ $label }}">Delivered value</div>
-            <div class="metric-val" style="font-size:2rem;color:#f59e0b;line-height:1.1;margin-top:0.4rem;">{{ $money($revenueCents) }}</div>
+            {{-- One row per currency: a total never adds unlike currencies together. --}}
+            @foreach($revenueByCurrency as $code => $cents)
+            <div class="metric-val" style="font-size:{{ count($revenueByCurrency) > 1 ? '1.5rem' : '2rem' }};color:#f59e0b;line-height:1.1;margin-top:{{ $loop->first ? '0.4rem' : '0.25rem' }};">{{ \App\Support\Shop::money($cents, $code) }}@if(count($revenueByCurrency) > 1) <span style="font-size:0.7rem;font-weight:700;letter-spacing:0.08em;color:#71717a;">{{ $code }}</span>@endif</div>
+            @endforeach
             <div style="font-size:0.68rem;color:#71717a;margin-top:0.35rem;">Delivered items, net of promos; orders still awaiting payment are left out. Payout is not available yet: amounts shown are earned, not paid out.</div>
         </div>
         <div style="{{ $cell }}">
@@ -145,7 +147,7 @@
                             <td style="padding:0.9rem 1.25rem;white-space:nowrap;">
                                 @if($row['awaitingPayment'])<x-status-pill status="awaiting payment" size="sm" />@else<x-status-pill :status="$row['status']" size="sm" />@endif
                             </td>
-                            <td style="padding:0.9rem 1.25rem;text-align:right;white-space:nowrap;font-family:'Syne',sans-serif;font-size:0.82rem;font-weight:700;color:#f4f4f5;">{{ $money($row['netCents']) }}</td>
+                            <td style="padding:0.9rem 1.25rem;text-align:right;white-space:nowrap;font-family:'Syne',sans-serif;font-size:0.82rem;font-weight:700;color:#f4f4f5;">{{ $row['order']->money($row['netCents']) }}</td>
                         </tr>
                         @endforeach
                     </tbody>

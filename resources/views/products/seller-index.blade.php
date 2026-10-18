@@ -40,7 +40,7 @@
                     <span style="font-size:10px;font-weight:600;padding:2px 9px;border-radius:100px;background:rgba(107,114,128,0.15);color:#9ca3af;">Deactivated</span>
                     @endunless
                 </div>
-                <div style="font-size:0.75rem;color:#71717a;">${{ number_format($product->price, 2) }} · {{ $product->stock }} in stock</div>
+                <div style="font-size:0.75rem;color:#71717a;">{{ \App\Support\Shop::amount($product->price) }} · {{ $product->stock }} in stock</div>
             </div>
             <div style="display:flex;gap:0.5rem;">
                 <a href="{{ route('seller.products.edit', $product) }}" style="padding:0.4rem 0.9rem;border-radius:6px;background:rgba(255,255,255,0.06);color:#e4e4e7;font-size:0.75rem;font-weight:600;text-decoration:none;">Edit</a>

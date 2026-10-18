@@ -8,9 +8,11 @@ use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\Store;
 use App\Services\SellerDashboard;
+use App\Support\Shop;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Log;
 
 /**
  * The numbers Dot.Emall publishes to Dot.Analytics: pure read-only aggregate queries, scoped
@@ -34,8 +36,14 @@ use Illuminate\Support\Carbon;
  *                       company's DELIVERED lines of orders placed in the window. No delivery
  *                       timestamp exists, so a line counts in the window its order was placed in;
  *                       "revenue" is the value of delivered lines, not money received (payment is
- *                       not implemented). Left out, with `currency`, unless ANALYTICS_CURRENCY is
- *                       declared: Dot.Emall has no currency setting and none is assumed
+ *                       not implemented). Published together with `currency`, the ISO code of the
+ *                       ORDERS' currency (orders.currency, the storefront's SHOP_CURRENCY when
+ *                       they were placed); with no delivered lines it is 0 in today's SHOP_CURRENCY.
+ *                       A snapshot is one company with one `currency`, so if its delivered lines in
+ *                       the window span several currencies both money keys are left out and a
+ *                       warning is logged (nothing is converted or added across currencies, as in
+ *                       Billing). ANALYTICS_CURRENCY, if set, only PINS the currency: money in any
+ *                       other one is left out the same way
  *   low_stock_products  active products in the company's stores with fewer than
  *                       SellerDashboard::LOW_STOCK_BELOW in stock, right now. Archived products
  *                       are not counted
@@ -102,16 +110,10 @@ class MetricsCollector
             'orders_7d' => $lines()->where('status', '!=', OrderStatus::Cancelled->value)->distinct()->count('order_id'),
         ];
 
-        $currency = strtoupper(trim((string) config('analytics.currency')));
+        $money = $this->revenue($lines(), count($sellerIds));
 
-        if (preg_match('/^[A-Z]{3}$/', $currency) === 1) {
-            $revenue = 0;
-
-            foreach ($lines()->where('status', OrderStatus::Delivered->value)->select(['id', 'total', 'discount_amount'])->cursor() as $line) {
-                $revenue += $line->netCents();
-            }
-
-            $metrics['revenue_7d_cents'] = $revenue;
+        if ($money !== null) {
+            $metrics['revenue_7d_cents'] = $money['cents'];
         }
 
         $metrics['low_stock_products'] = Product::query()
@@ -120,10 +122,58 @@ class MetricsCollector
             ->where('stock', '<', SellerDashboard::LOW_STOCK_BELOW)
             ->count();
 
-        if (isset($metrics['revenue_7d_cents'])) {
-            $metrics['currency'] = $currency;
+        if ($money !== null) {
+            $metrics['currency'] = $money['currency'];
         }
 
         return $metrics;
+    }
+
+    /**
+     * Delivered, in-window revenue of the company in ONE currency, or null
+     * when it cannot be stated honestly (several currencies, or a pinned
+     * ANALYTICS_CURRENCY that the orders do not match or that is invalid).
+     *
+     * @param  Builder<OrderItem>  $lines  the company's lines of orders placed in the window
+     * @return array{cents: int, currency: string}|null
+     */
+    private function revenue(Builder $lines, int $sellers): ?array
+    {
+        $pinned = strtoupper(trim((string) config('analytics.currency')));
+
+        if ($pinned !== '' && ! Shop::isCode($pinned)) {
+            Log::warning('Dot.Emall metrics: ANALYTICS_CURRENCY is not a three-uppercase-letter ISO 4217 code, so revenue was left out of the snapshot.', ['sellers' => $sellers]);
+
+            return null;
+        }
+
+        $totals = [];
+
+        $delivered = $lines->where('status', OrderStatus::Delivered->value)
+            ->select(['id', 'total', 'discount_amount'])
+            ->addSelect(['order_currency' => Order::query()->select('currency')->whereColumn('orders.id', 'order_items.order_id')->limit(1)])
+            ->cursor();
+
+        foreach ($delivered as $line) {
+            $currency = Shop::isCode($line->order_currency) ? $line->order_currency : Shop::currency();
+            $totals[$currency] = ($totals[$currency] ?? 0) + $line->netCents();
+        }
+
+        if ($totals === []) {
+            return ['cents' => 0, 'currency' => $pinned !== '' ? $pinned : Shop::currency()];
+        }
+
+        $currencies = array_keys($totals);
+        sort($currencies);
+
+        if (count($currencies) > 1 || ($pinned !== '' && $currencies[0] !== $pinned)) {
+            Log::warning('Dot.Emall metrics: delivered lines span several currencies or differ from the pinned ANALYTICS_CURRENCY, so revenue was left out of the snapshot.', [
+                'currencies' => $currencies, 'pinned' => $pinned !== '' ? $pinned : null, 'sellers' => $sellers,
+            ]);
+
+            return null;
+        }
+
+        return ['cents' => $totals[$currencies[0]], 'currency' => $currencies[0]];
     }
 }

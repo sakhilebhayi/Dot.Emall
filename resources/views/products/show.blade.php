@@ -48,9 +48,9 @@
             <div style="font-size:0.8rem;color:#71717a;margin-bottom:1rem;">Sold by <strong style="color:#a1a1aa;">{{ $product->store->name }}</strong></div>
 
             <div style="display:flex;align-items:baseline;gap:0.6rem;margin-bottom:1rem;">
-                <span style="font-family:'Syne',sans-serif;font-size:1.6rem;font-weight:800;color:#f59e0b;">${{ number_format($product->price, 2) }}</span>
+                <span style="font-family:'Syne',sans-serif;font-size:1.6rem;font-weight:800;color:#f59e0b;">{{ \App\Support\Shop::amount($product->price) }}</span>
                 @if($product->compare_price && $product->compare_price > $product->price)
-                <span style="font-size:0.9rem;color:#52525b;text-decoration:line-through;">${{ number_format($product->compare_price, 2) }}</span>
+                <span style="font-size:0.9rem;color:#52525b;text-decoration:line-through;">{{ \App\Support\Shop::amount($product->compare_price) }}</span>
                 @endif
             </div>
 

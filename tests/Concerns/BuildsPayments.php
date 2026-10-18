@@ -27,7 +27,9 @@ trait BuildsPayments
             'paystack.public_key' => 'pk_test_unit_public_0123456789',
             'paystack.base_url' => 'https://api.paystack.co',
             'paystack.allow_live' => false,
-            'paystack.currency' => 'ZAR',
+            // Unset on purpose: Paystack charges in the storefront currency (SHOP_CURRENCY, ZAR by default).
+            'paystack.currency' => null,
+            'shop.currency' => 'ZAR',
             'paystack.unpaid_window_minutes' => 60,
             'paystack.attempt_ttl_minutes' => 30,
         ], $extra));
@@ -64,7 +66,7 @@ trait BuildsPayments
             'status' => $status,
             'reference' => $reference,
             'amount' => $amountCents,
-            'currency' => 'ZAR',
+            'currency' => config('shop.currency'),
             'paid_at' => '2026-10-18T12:00:00.000Z',
             'gateway_response' => 'Successful',
             'channel' => 'card',

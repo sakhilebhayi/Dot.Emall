@@ -134,9 +134,41 @@ php artisan migrate
 php artisan serve
 ```
 
+> **Back up the database before `php artisan migrate`** on an existing install: the currency
+> migration (below) stamps every existing order with `SHOP_CURRENCY` and `down()` cannot restore a
+> value you later correct by hand.
+
 > **Ecosystem SSO:** Set `DB_*` env vars to the shared Dot ecosystem PostgreSQL instance and
 > `APP_URL=https://emall.infodot.app`. Users authenticated elsewhere in the ecosystem gain access
 > automatically via the Sanctum handoff at `/auth/ecosystem`.
+
+## Storefront currency
+
+One currency, set in `.env`:
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `SHOP_CURRENCY` | `ZAR` | ISO 4217 code, **three uppercase letters**. Anything else stops the app from starting, with a message naming `SHOP_CURRENCY`. A blank value counts as unset (`ZAR`) |
+
+Every price, cart total, order total, promo amount, seller figure and notification is printed through
+`App\Support\Shop` (`Shop::money($cents)`, `Shop::amount($decimal)`), in the same format as Dot.Auction:
+the symbol straight against the number, a comma between thousands, two decimals. `ZAR` prints `R1,234.56`,
+`USD` `$1,234.56`, `EUR` `€1,234.56`, `GBP` `£1,234.56`; any other code prints as a prefix
+(`CHF 1,234.56`). Prices stay plain decimals in this currency; nothing is converted.
+
+- **Orders remember their currency.** `orders.currency` is stamped at checkout, and order pages, refunds
+  and the seller's figures use the order's own currency. Changing `SHOP_CURRENCY` later does not
+  relabel history: old orders keep theirs, the catalogue and new orders use the new one. It does not
+  re-price listings either, so change it on a fresh marketplace or re-price by hand at the same time.
+- **Sellers never see mixed currencies.** The dashboard's "Delivered value" has one row per currency
+  when a seller has orders in several; nothing is added across them.
+- **A literal currency symbol can no longer be typed into a view or notification:** a test
+  (`NoHardCodedCurrencyTest`) fails the build on one.
+- **Migration:** `2026_10_21_100000_add_currency_to_orders_table` adds `orders.currency`
+  (`string(3)`, not null) in one statement with the current `SHOP_CURRENCY` as the default, so every
+  existing order is stamped with it. That is a best guess (the old storefront printed `$` and never
+  recorded a currency); correct it by hand per order if your history was in something else. An invalid
+  `SHOP_CURRENCY` stops the migration before it changes anything.
 
 ## Paystack payments
 
@@ -156,7 +188,7 @@ finance decisions that have not been made. Sellers are never told or shown that 
    | `PAYSTACK_PUBLIC_KEY` | blank | `pk_test_...` (not used by the server-side flow today; reserved) |
    | `PAYSTACK_BASE_URL` | `https://api.paystack.co` | Must be https |
    | `PAYSTACK_ALLOW_LIVE` | `false` | A `sk_live_` key is refused unless this is also `true` |
-   | `PAYSTACK_CURRENCY` | `ZAR` | Currency charged, in its subunit (cents) |
+   | `PAYSTACK_CURRENCY` | unset | Do not set. Paystack charges in `SHOP_CURRENCY` (in its subunit, cents). If it is set and differs, card payments are refused with a message on the operator payments desk and nothing is sent to Paystack |
    | `PAYSTACK_UNPAID_WINDOW_MINUTES` | `60` | Unpaid orders older than this are cancelled |
    | `PAYSTACK_ATTEMPT_TTL_MINUTES` | `30` | How long Pay now reuses an open Paystack attempt |
 
@@ -212,9 +244,9 @@ finance decisions that have not been made. Sellers are never told or shown that 
 
 ### Known limits
 
-- Amounts on screen use a `$` sign throughout the existing storefront, while Paystack is charged in
-  `PAYSTACK_CURRENCY` (ZAR). The pay panel names the currency explicitly (`ZAR 236.90`); the storefront
-  does not yet have a currency setting.
+- A payment is for the **order's** currency. If `SHOP_CURRENCY` is changed after an order was placed and
+  unpaid, Pay now refuses it ("placed in ZAR, but card payments now charge in EUR") and nothing is charged;
+  the buyer must be helped by an operator.
 - Orders placed before Paystack was configured cannot be paid afterwards (they never required it).
 - Paystack never being called from the automated tests is deliberate (`Http::fake`); the first real
   test-mode run against Paystack is still to be done by hand.
@@ -257,13 +289,16 @@ seller's own order **line**, matched on the `seller_id` snapshot taken at checko
 | `orders_7d` | distinct orders placed in the last 7 whole UTC days that hold at least one non-cancelled line of the company's stores |
 | `revenue_7d_cents` | the company's **delivered** lines of those orders, each at its line total less its share of the promo discount, in integer cents. Another store's lines in a mixed order never count. It is the value of delivered lines, not money received (payment is not implemented). There is no delivery timestamp, so a line counts in the window its order was **placed** in, and an order placed on day 6 that is delivered on day 8 is missed by that day's snapshot |
 | `low_stock_products` | active products in the company's stores with fewer than 5 in stock right now (`SellerDashboard::LOW_STOCK_BELOW`); archived products are not counted |
-| `currency` | the ISO 4217 code of `revenue_7d_cents`, from `ANALYTICS_CURRENCY` |
+| `currency` | the ISO 4217 code of `revenue_7d_cents`: the currency of the orders (`orders.currency`; `SHOP_CURRENCY` when they were placed) |
 
-**Currency: `revenue_7d_cents` and `currency` are only sent when `ANALYTICS_CURRENCY` is set.**
-Dot.Emall has no currency setting (prices are plain decimals, the views print a `$`, and no payment
-provider exists), so none is assumed. Leave `ANALYTICS_CURRENCY` blank and the snapshot carries
-`orders_7d` and `low_stock_products` only; set it (for example `ZAR`) only once the owner has decided
-which currency the marketplace trades in. Nothing is ever converted or mixed across currencies.
+**Currency: `revenue_7d_cents` and `currency` are sent whenever the company's delivered lines are in one
+currency.** That is the normal case: the code is the orders' own currency (`SHOP_CURRENCY`, `ZAR` by
+default), or today's `SHOP_CURRENCY` when there is nothing delivered yet (a true zero). One snapshot carries
+one `currency`, so if a company's delivered lines in the window span several currencies (the setting was
+changed mid-window) both money keys are **left out** and a warning is logged, as Dot.Billing does;
+`orders_7d` and `low_stock_products` are still sent. Nothing is ever converted or added across currencies.
+`ANALYTICS_CURRENCY` is an optional override that only *pins* the published currency: money in any other
+currency, or an override that is not three uppercase letters, is left out the same way (never relabelled).
 
 Aggregates only: no names, emails, store or product names, SKUs, addresses, phone numbers, promo
 codes and no row ever appears in the body. A company with no activity sends true zeros (zero is a real

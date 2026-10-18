@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Support\Shop;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
@@ -22,6 +23,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // A mistyped SHOP_CURRENCY would print wrong prices and ask Paystack
+        // for the wrong money, so the app refuses to start instead.
+        Shop::assertConfigured();
+
         // Placing an order is the one expensive, stateful action a buyer can
         // repeat: 10 submissions a minute per signed-in user, and a looser
         // 20 a minute per IP address so one buyer's tab-mashing cannot lock

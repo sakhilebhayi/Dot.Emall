@@ -1,7 +1,7 @@
 @php
     use App\Enums\RefundStatus;
 
-    $money = fn (int $cents, ?string $currency = null) => ($currency ?? $gateway['currency']).' '.number_format($cents / 100, 2);
+    $money = fn (int $cents, ?string $currency = null) => \App\Support\Shop::money($cents, $currency ?? $gateway['currency']);
     $reasons = [
         'order_cancelled' => 'Payment received for a cancelled order. The order was not re-opened and its stock was not taken again. Refund the buyer in the Paystack dashboard, or contact them to place the order again.',
         'order_already_paid' => 'A second payment arrived for an order that was already paid. Refund the extra payment in the Paystack dashboard.',

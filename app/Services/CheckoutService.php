@@ -13,6 +13,7 @@ use App\Models\PromoCode;
 use App\Models\User;
 use App\Services\Paystack\PaystackConfig;
 use App\Support\Money;
+use App\Support\Shop;
 use App\Support\Throttles;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Collection;
@@ -153,6 +154,8 @@ class CheckoutService
             $order = Order::create([
                 'user_id' => $buyer->id,
                 'status' => OrderStatus::Pending,
+                // Stamped for life: a later SHOP_CURRENCY change never relabels this order.
+                'currency' => Shop::currency(),
                 'requires_payment' => $this->paystack->isConfigured(),
                 'payment_status' => PaymentStatus::Unpaid,
                 'subtotal' => 0,

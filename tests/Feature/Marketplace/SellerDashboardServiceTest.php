@@ -37,8 +37,8 @@ class SellerDashboardServiceTest extends TestCase
         $this->deliver($order, $a);
         $this->deliver($order, $b);
 
-        $this->assertSame(10000, $this->summary($a)['revenueCents']);
-        $this->assertSame(90000, $this->summary($b)['revenueCents']);
+        $this->assertSame(10000, $this->summary($a)['revenueByCurrency']['ZAR']);
+        $this->assertSame(90000, $this->summary($b)['revenueByCurrency']['ZAR']);
     }
 
     public function test_an_undelivered_line_earns_nothing_even_if_the_other_sellers_line_was_delivered(): void
@@ -52,8 +52,8 @@ class SellerDashboardServiceTest extends TestCase
 
         $this->deliver($order, $b);
 
-        $this->assertSame(0, $this->summary($a)['revenueCents']);
-        $this->assertSame(90000, $this->summary($b)['revenueCents']);
+        $this->assertSame(0, $this->summary($a)['revenueByCurrency']['ZAR']);
+        $this->assertSame(90000, $this->summary($b)['revenueByCurrency']['ZAR']);
     }
 
     public function test_cancelled_lines_never_count_as_revenue_or_as_orders(): void
@@ -68,7 +68,7 @@ class SellerDashboardServiceTest extends TestCase
 
         $summary = $this->summary($a);
 
-        $this->assertSame(10000, $summary['revenueCents']);
+        $this->assertSame(10000, $summary['revenueByCurrency']['ZAR']);
         $this->assertSame(1, $summary['totalOrders']);
     }
 
@@ -85,8 +85,8 @@ class SellerDashboardServiceTest extends TestCase
         $this->deliver($order, $a);
         $this->deliver($order, $b);
 
-        $this->assertSame(8000, $this->summary($a)['revenueCents'], 'A carries the whole 20 discount');
-        $this->assertSame(10000, $this->summary($b)['revenueCents'], 'B is untouched by A\'s promo');
+        $this->assertSame(8000, $this->summary($a)['revenueByCurrency']['ZAR'], 'A carries the whole 20 discount');
+        $this->assertSame(10000, $this->summary($b)['revenueByCurrency']['ZAR'], 'B is untouched by A\'s promo');
     }
 
     public function test_orders_awaiting_fulfilment_counts_only_this_sellers_open_lines(): void
@@ -113,7 +113,7 @@ class SellerDashboardServiceTest extends TestCase
 
         $product->delete();
 
-        $this->assertSame(7000, $this->summary($a)['revenueCents']);
+        $this->assertSame(7000, $this->summary($a)['revenueByCurrency']['ZAR']);
         $this->assertSame(1, $this->summary($a)['totalOrders']);
     }
 
@@ -175,7 +175,7 @@ class SellerDashboardServiceTest extends TestCase
         $summary = $this->summary($this->makeBuyer());
 
         $this->assertCount(0, $summary['stores']);
-        $this->assertSame(0, $summary['revenueCents']);
+        $this->assertSame(0, $summary['revenueByCurrency']['ZAR']);
         $this->assertSame(0, $summary['totalOrders']);
     }
 }

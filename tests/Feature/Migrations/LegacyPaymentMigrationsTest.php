@@ -77,7 +77,7 @@ class LegacyPaymentMigrationsTest extends TestCase
         $this->migrateUpTo('2026_10_20_100000');
         $this->migrateRest();
 
-        Artisan::call('migrate:rollback', ['--step' => 4, '--force' => true]);
+        Artisan::call('migrate:rollback', ['--step' => 5, '--force' => true]);
 
         $this->assertFalse(Schema::hasTable('payments'));
         $this->assertFalse(Schema::hasColumn('orders', 'payment_status'));

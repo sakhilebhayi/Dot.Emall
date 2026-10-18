@@ -18,10 +18,12 @@ return [
     // Dot.Analytics' name for this app (it picks the signing secret by this key).
     'platform' => env('ANALYTICS_PLATFORM_KEY', 'emall'),
 
-    // ISO 4217 code of the money in this marketplace. Dot.Emall has no currency setting of its own
-    // (prices are plain decimals and no payment provider exists), so nothing is assumed: while this
-    // is blank or not a three-letter code, the revenue key is left out of every snapshot.
-    'currency' => env('ANALYTICS_CURRENCY'),
+    // OPTIONAL override. The currency of the money published is the storefront's (SHOP_CURRENCY,
+    // config/shop.php), or rather the currency each order was placed in. Leave this blank. Set it only
+    // to PIN the published currency: money in any other currency is then left out of the snapshot (with
+    // a logged warning) rather than relabelled or converted, and so is money when the value is not a
+    // three-uppercase-letter ISO 4217 code.
+    'currency' => env('ANALYTICS_CURRENCY') ?: null,
 
     // Seconds, for connecting and for the whole request.
     'timeout' => 5,

@@ -68,6 +68,10 @@ class OrderPaymentController extends Controller
      */
     public static function gatewayMessage(PaymentGatewayException $e): string
     {
+        if ($e->isCurrencyMismatch()) {
+            return $e->getMessage();
+        }
+
         $minutes = app(PaystackConfig::class)->unpaidWindowMinutes();
 
         return $e->isTemporary()

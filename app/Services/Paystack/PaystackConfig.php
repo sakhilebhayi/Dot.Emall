@@ -2,6 +2,7 @@
 
 namespace App\Services\Paystack;
 
+use App\Support\Shop;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -13,6 +14,9 @@ use Illuminate\Support\Facades\Log;
  *    without PAYSTACK_ALLOW_LIVE=true, a key that is not a Paystack secret
  *    key at all, or a non-https base URL. secretKey() refuses to hand such a
  *    key out, so nothing can ever send it anywhere.
+ *  - misconfigured also covers PAYSTACK_CURRENCY being set to something other
+ *    than SHOP_CURRENCY: Paystack charges in the storefront currency, so a
+ *    second, different answer is a mistake that would charge the wrong money.
  *  - test mode: the key starts `sk_test_`.
  *
  * Reads config on every call (cheap) so a changed .env or a test override
@@ -64,6 +68,12 @@ class PaystackConfig
             return 'PAYSTACK_BASE_URL must be an https:// URL. It was refused and nothing was sent.';
         }
 
+        $explicit = strtoupper(trim((string) config('paystack.currency')));
+
+        if ($explicit !== '' && $explicit !== Shop::currency()) {
+            return 'PAYSTACK_CURRENCY ('.$explicit.') does not match SHOP_CURRENCY ('.Shop::currency().'). Card payments were refused and nothing was sent, because the shop would show one currency and Paystack charge another. Remove PAYSTACK_CURRENCY (it follows SHOP_CURRENCY) or make the two the same.';
+        }
+
         return null;
     }
 
@@ -93,7 +103,9 @@ class PaystackConfig
 
     public function currency(): string
     {
-        return strtoupper((string) (config('paystack.currency') ?: 'ZAR'));
+        $explicit = strtoupper(trim((string) config('paystack.currency')));
+
+        return $explicit !== '' ? $explicit : Shop::currency();
     }
 
     public function unpaidWindowMinutes(): int

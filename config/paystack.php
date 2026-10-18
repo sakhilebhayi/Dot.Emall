@@ -27,9 +27,12 @@ return [
 
     'allow_live' => (bool) env('PAYSTACK_ALLOW_LIVE', false),
 
-    // ISO 4217 code of the account's settlement currency. Amounts are sent in
-    // its subunit (cents for ZAR).
-    'currency' => env('PAYSTACK_CURRENCY', 'ZAR'),
+    // Paystack charges in the STOREFRONT currency (SHOP_CURRENCY, config/shop.php):
+    // one source of truth, so the shop and the charge cannot disagree. Leave this
+    // unset. It exists only to be checked: if it is set and differs from
+    // SHOP_CURRENCY, checkout is refused (see PaystackConfig::problem()).
+    // Amounts are sent in the subunit (cents for ZAR).
+    'currency' => env('PAYSTACK_CURRENCY') ?: null,
 
     // An order that requires payment and is still unpaid after this many
     // minutes is cancelled by `orders:expire-unpaid` (stock and promo use go

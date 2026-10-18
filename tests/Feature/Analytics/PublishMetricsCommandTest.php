@@ -48,7 +48,7 @@ class PublishMetricsCommandTest extends TestCase
         Carbon::setTestNow('2026-11-05 00:15:00');
         Cache::flush();
         config([
-            'analytics' => ['url' => self::URL, 'secret' => self::SECRET, 'platform' => 'emall', 'timeout' => 5, 'currency' => 'ZAR',
+            'analytics' => ['url' => self::URL, 'secret' => self::SECRET, 'platform' => 'emall', 'timeout' => 5, 'currency' => null,
                 'circuit' => ['threshold' => 5, 'pause_seconds' => 60]],
         ]);
         Http::swap(new HttpFactory);
@@ -353,9 +353,9 @@ class PublishMetricsCommandTest extends TestCase
         }
     }
 
-    public function test_without_a_declared_currency_the_money_key_is_never_sent(): void
+    public function test_without_an_analytics_override_the_storefront_currency_is_published(): void
     {
-        config(['analytics.currency' => null]);
+        config(['analytics.currency' => null, 'shop.currency' => 'ZAR']);
         $seller = $this->company(self::COMPANY_A);
         $order = $this->placeOrder($this->makeBuyer(), [[$this->makeListing($seller, ['price' => 100]), 1]]);
         $order->forceFill(['created_at' => Carbon::parse('2026-11-02 10:00:00')])->save();
@@ -363,10 +363,24 @@ class PublishMetricsCommandTest extends TestCase
 
         $this->artisan('emall:publish-metrics')->assertSuccessful();
 
-        $metrics = $this->sent()[0]['json']['metrics'];
-        $this->assertSame(['orders_7d', 'low_stock_products'], array_keys($metrics));
+        $this->assertSame(['orders_7d' => 1, 'revenue_7d_cents' => 10000, 'low_stock_products' => 0, 'currency' => 'ZAR'], $this->sent()[0]['json']['metrics']);
+    }
+
+    public function test_a_company_with_several_currencies_in_the_window_sends_no_money_key(): void
+    {
+        $seller = $this->company(self::COMPANY_A);
+        $listing = $this->makeListing($seller, ['price' => 100, 'stock' => 50]);
+        foreach (['ZAR' => '2026-11-02 10:00:00', 'EUR' => '2026-11-03 10:00:00'] as $currency => $when) {
+            config(['shop.currency' => $currency]);
+            $order = $this->placeOrder($this->makeBuyer(), [[$listing, 1]]);
+            $order->forceFill(['created_at' => Carbon::parse($when)])->save();
+            $order->items[0]->update(['status' => OrderStatus::Delivered]);
+        }
+
+        $this->artisan('emall:publish-metrics')->assertSuccessful();
+
+        $this->assertSame(['orders_7d', 'low_stock_products'], array_keys($this->sent()[0]['json']['metrics']));
         $this->assertStringNotContainsString('revenue', $this->sent()[0]['request']->body());
-        $this->assertStringNotContainsString('currency', $this->sent()[0]['request']->body());
     }
 
     // ---- schedule ----------------------------------------------------------------------------
