@@ -16,6 +16,11 @@
             {{ session('status') }}
         </div>
     @endif
+    @if($errors->any())
+        <div style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.25);color:#ef4444;padding:0.75rem 1rem;border-radius:8px;font-size:0.8rem;margin-bottom:1.25rem;">
+            @foreach($errors->all() as $error)<div>{{ $error }}</div>@endforeach
+        </div>
+    @endif
     @if(session('error'))
         <div style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.25);color:#ef4444;padding:0.75rem 1rem;border-radius:8px;font-size:0.8rem;margin-bottom:1.25rem;">
             {{ session('error') }}
@@ -70,14 +75,20 @@
 
     <form method="POST" action="{{ route('cart.checkout') }}" class="dot-card" style="padding:1.25rem 1.5rem;">
         @csrf
-        <label style="display:block;font-size:0.75rem;font-weight:600;color:#a1a1aa;margin-bottom:0.4rem;">Shipping address</label>
-        <input type="text" name="shipping_address" required placeholder="Street, city, postal code" class="dot-input" style="margin-bottom:1rem;">
+        <div style="font-size:0.7rem;font-weight:700;color:#71717a;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.75rem;">Delivery</div>
+        <label for="shipping_name" style="display:block;font-size:0.75rem;font-weight:600;color:#a1a1aa;margin-bottom:0.4rem;">Name for delivery</label>
+        <input id="shipping_name" type="text" name="shipping_name" value="{{ old('shipping_name', auth()->user()->name) }}" maxlength="120" class="dot-input" style="margin-bottom:1rem;">
+        <label for="shipping_address" style="display:block;font-size:0.75rem;font-weight:600;color:#a1a1aa;margin-bottom:0.4rem;">Shipping address</label>
+        <input id="shipping_address" type="text" name="shipping_address" value="{{ old('shipping_address') }}" required placeholder="Street, city, postal code" class="dot-input" style="margin-bottom:1rem;">
+        <label for="shipping_phone" style="display:block;font-size:0.75rem;font-weight:600;color:#a1a1aa;margin-bottom:0.4rem;">Phone for the courier (optional)</label>
+        <input id="shipping_phone" type="tel" name="shipping_phone" value="{{ old('shipping_phone') }}" maxlength="40" class="dot-input" style="margin-bottom:0.4rem;">
+        <div style="font-size:0.68rem;color:#71717a;margin-bottom:1rem;">Sellers see these details only for items they still have to ship.</div>
         <label style="display:block;font-size:0.75rem;font-weight:600;color:#a1a1aa;margin-bottom:0.4rem;">Promo code (optional)</label>
         <input type="text" name="promo_code" placeholder="e.g. SUMMER10" class="dot-input" style="margin-bottom:1rem;text-transform:uppercase;">
         <button type="submit" class="dot-btn dot-btn-primary" style="width:100%;justify-content:center;">
-            <span class="material-symbols-rounded" style="font-size:16px;">lock</span>
-            Place Order
+            Place order
         </button>
+        <div style="font-size:0.7rem;color:#71717a;margin-top:0.6rem;text-align:center;">No payment is taken. Your order is placed as pending and unpaid.</div>
     </form>
     @endif
 

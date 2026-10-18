@@ -33,27 +33,16 @@
                 </thead>
                 <tbody>
                     @foreach($orders as $order)
-                    @php
-                        $statusStyles = match($order->status) {
-                            'pending'    => ['bg' => 'rgba(245,158,11,0.12)',  'color' => '#f59e0b'],
-                            'confirmed', 'processing' => ['bg' => 'rgba(96,165,250,0.12)',  'color' => '#60a5fa'],
-                            'shipped'    => ['bg' => 'rgba(34,211,238,0.12)',  'color' => '#22d3ee'],
-                            'delivered'  => ['bg' => 'rgba(34,197,94,0.12)',   'color' => '#22c55e'],
-                            'cancelled'  => ['bg' => 'rgba(239,68,68,0.12)',   'color' => '#ef4444'],
-                            'refunded'   => ['bg' => 'rgba(167,139,250,0.12)', 'color' => '#a78bfa'],
-                            default      => ['bg' => 'rgba(107,114,128,0.12)', 'color' => '#6b7280'],
-                        };
-                    @endphp
                     <tr style="border-bottom:1px solid rgba(67,70,86,0.15);">
                         <td style="padding:0.9rem 1.25rem;font-size:0.75rem;color:#71717a;white-space:nowrap;">{{ $order->created_at->format('d M Y') }}</td>
                         <td style="padding:0.9rem 1.25rem;white-space:nowrap;">
                             <a href="{{ route('orders.show', $order) }}" style="font-family:'Syne',sans-serif;font-size:0.78rem;font-weight:700;color:#f4f4f5;text-decoration:none;">
-                                #{{ str_pad($order->id, 5, '0', STR_PAD_LEFT) }}
+                                {{ $order->reference() }}
                             </a>
                         </td>
                         <td style="padding:0.9rem 1.25rem;font-size:0.78rem;color:#a1a1aa;">{{ $order->items->count() }} item{{ $order->items->count() === 1 ? '' : 's' }}</td>
                         <td style="padding:0.9rem 1.25rem;">
-                            <span style="display:inline-block;padding:0.2rem 0.65rem;border-radius:9999px;background:{{ $statusStyles['bg'] }};font-size:0.65rem;font-weight:700;color:{{ $statusStyles['color'] }};text-transform:capitalize;">{{ $order->status }}</span>
+                            <x-status-pill :status="$order->status" size="sm" />
                         </td>
                         <td style="padding:0.9rem 1.25rem;text-align:right;font-family:'Syne',sans-serif;font-size:0.82rem;font-weight:700;color:#f4f4f5;">${{ number_format($order->total, 2) }}</td>
                         <td style="padding:0.9rem 1.25rem;text-align:right;">

@@ -2,13 +2,37 @@
 
 namespace App\Models;
 
+use Database\Factories\ProductFactory;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
+/**
+ * Deleting a listing is an archive (soft delete): the row stays so order
+ * history, reviews and snapshots that reference it keep resolving, and it
+ * disappears from every storefront query. Any cart still holding it is
+ * emptied of it at the moment it is archived.
+ */
 class Product extends Model
 {
+    /** @use HasFactory<ProductFactory> */
+    use HasFactory;
+
+    use SoftDeletes;
+
+    protected static function booted(): void
+    {
+        static::deleted(function (Product $product): void {
+            // A cart line for a product nobody can buy any more would only
+            // break the cart page; the global user scope is bypassed because
+            // this runs on behalf of the seller, not the cart's owner.
+            CartItem::withoutGlobalScopes()->where('product_id', $product->id)->delete();
+        });
+    }
+
     protected $fillable = [
         'store_id', 'category_id', 'name', 'slug', 'description',
         'price', 'compare_price', 'stock', 'sku', 'is_active',

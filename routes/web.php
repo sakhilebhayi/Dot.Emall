@@ -2,7 +2,9 @@
 
 use App\Http\Controllers\Auth\EcosystemAuthController;
 use App\Http\Controllers\CartController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\OrderController;
+use App\Http\Controllers\OrderItemCancellationController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProductModerationController;
 use App\Http\Controllers\PromoCodeController;
@@ -10,11 +12,6 @@ use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\SellerOrderController;
 use App\Http\Controllers\SellerProductController;
 use App\Http\Controllers\StoreController;
-use App\Models\Order;
-use App\Models\OrderItem;
-use App\Models\Product;
-use App\Models\Review;
-use App\Models\Store;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
 use Laravel\Jetstream\Jetstream;
@@ -38,57 +35,7 @@ Route::middleware([
     config('jetstream.auth_session'),
     'verified',
 ])->group(function () {
-    Route::get('/dashboard', function () {
-        $userId = auth()->id();
-
-        // Stores owned by the current user
-        $stores = Store::where('owner_id', $userId)
-            ->withCount('products')
-            ->get();
-
-        $storeIds = $stores->pluck('id');
-
-        // Products belonging to those stores
-        $productIds = Product::whereIn('store_id', $storeIds)->pluck('id');
-
-        // Orders that contain at least one of this seller's products
-        $orderIds = OrderItem::whereIn('product_id', $productIds)
-            ->pluck('order_id')
-            ->unique()
-            ->values();
-
-        $totalProducts = $productIds->count();
-        $totalOrders = $orderIds->count();
-        $totalRevenue = Order::whereIn('id', $orderIds)
-            ->where('status', 'delivered')
-            ->sum('total');
-        $pendingOrders = Order::whereIn('id', $orderIds)
-            ->where('status', 'pending')
-            ->count();
-        $recentOrders = Order::whereIn('id', $orderIds)
-            ->with(['user', 'items.product.store'])
-            ->latest()
-            ->limit(8)
-            ->get();
-
-        // Additional widgets (platform-loop pass): reviews and low-stock
-        // signal across the seller's own products, plus the buyer-side
-        // "my orders" count so the dashboard reflects both roles a user
-        // can occupy in this marketplace.
-        $totalReviews = Review::whereIn('product_id', $productIds)->count();
-        $avgRating = round((float) Review::whereIn('product_id', $productIds)->avg('rating'), 1);
-        $lowStockCount = Product::whereIn('id', $productIds)
-            ->where('is_active', true)
-            ->where('stock', '<', 5)
-            ->count();
-        $myOrdersCount = Order::where('user_id', $userId)->count();
-
-        return view('dashboard', compact(
-            'stores', 'totalProducts', 'totalOrders',
-            'totalRevenue', 'pendingOrders', 'recentOrders',
-            'totalReviews', 'avgRating', 'lowStockCount', 'myOrdersCount'
-        ));
-    })->name('dashboard');
+    Route::get('/dashboard', DashboardController::class)->name('dashboard');
 
     Route::get('/products', [ProductController::class, 'index'])->name('products.index');
     Route::get('/products/{product}', [ProductController::class, 'show'])->name('products.show');
@@ -102,6 +49,7 @@ Route::middleware([
 
     Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
     Route::get('/orders/{order}', [OrderController::class, 'show'])->name('orders.show');
+    Route::post('/order-items/{orderItem}/cancel', OrderItemCancellationController::class)->name('order-items.cancel');
 
     Route::get('/sell', [StoreController::class, 'create'])->name('seller.store.create');
     Route::post('/sell', [StoreController::class, 'store'])->name('seller.store.store');
@@ -113,6 +61,7 @@ Route::middleware([
     Route::post('/sell/products', [SellerProductController::class, 'store'])->name('seller.products.store');
     Route::get('/sell/products/{product}/edit', [SellerProductController::class, 'edit'])->name('seller.products.edit');
     Route::patch('/sell/products/{product}', [SellerProductController::class, 'update'])->name('seller.products.update');
+    Route::delete('/sell/products/{product}', [SellerProductController::class, 'destroy'])->name('seller.products.destroy');
     Route::patch('/sell/products/{product}/toggle-active', [SellerProductController::class, 'toggleActive'])->name('seller.products.toggle-active');
 
     Route::get('/sell/orders', [SellerOrderController::class, 'index'])->name('seller.orders.index');

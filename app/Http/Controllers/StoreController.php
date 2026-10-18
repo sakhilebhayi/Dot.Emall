@@ -17,7 +17,7 @@ class StoreController extends Controller
      */
     public function create(): View|RedirectResponse
     {
-        $existing = Store::where('owner_id', auth()->id())->first();
+        $existing = auth()->user()->store;
 
         if ($existing) {
             return redirect()->route('seller.products.create');
@@ -28,7 +28,7 @@ class StoreController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        $existing = Store::where('owner_id', auth()->id())->first();
+        $existing = auth()->user()->store;
 
         if ($existing) {
             return redirect()->route('seller.products.create');

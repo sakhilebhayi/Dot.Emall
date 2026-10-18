@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Marketplace;
 
+use App\Enums\OrderStatus;
 use App\Events\OrderPlaced;
 use App\Models\CartItem;
 use App\Models\Order;
@@ -115,7 +116,7 @@ class CartCheckoutTest extends TestCase
 
         $this->assertNotNull($order);
         $this->assertEquals(120, (float) $order->total);
-        $this->assertEquals('pending', $order->status);
+        $this->assertSame(OrderStatus::Pending, $order->status);
         $this->assertDatabaseCount('cart_items', 0);
         $this->assertEquals(2, $product->fresh()->stock);
 

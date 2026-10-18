@@ -2,20 +2,40 @@
 
 namespace App\Models;
 
+use App\Enums\OrderStatus;
+use Database\Factories\OrderFactory;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * A buyer's checkout. Payment is NOT implemented anywhere in Dot.Emall (the
+ * provider is undecided), so every order is "pending, unpaid": nothing here
+ * records, requires or implies that money has changed hands.
+ *
+ * The money columns always describe the order *as it stands now*: cancelled
+ * lines are excluded from subtotal / discount_amount / total (see
+ * App\Services\OrderPricing).
+ */
 class Order extends Model
 {
+    /** @use HasFactory<OrderFactory> */
+    use HasFactory;
+
     protected $fillable = [
-        'user_id', 'status', 'subtotal', 'promo_code', 'discount_amount', 'total', 'shipping_address',
+        'user_id', 'status', 'subtotal', 'promo_code', 'promo_code_id', 'promo_store_id',
+        'promo_discount_type', 'promo_discount_value', 'promo_released_at',
+        'discount_amount', 'total', 'shipping_name', 'shipping_address', 'shipping_phone',
     ];
 
     protected $casts = [
+        'status' => OrderStatus::class,
         'subtotal' => 'decimal:2',
         'discount_amount' => 'decimal:2',
         'total' => 'decimal:2',
+        'promo_discount_value' => 'decimal:2',
+        'promo_released_at' => 'datetime',
     ];
 
     public function user(): BelongsTo
@@ -28,26 +48,16 @@ class Order extends Model
         return $this->hasMany(OrderItem::class);
     }
 
-    /**
-     * Derives the order's overall status from its items rather than
-     * letting a single seller's action set it directly -- a mixed-seller
-     * order should only read as "delivered" once every seller has
-     * delivered their own items, so the dashboard's existing
-     * sum(total) where status='delivered' revenue metric stays correct.
-     * Call after any OrderItem status change.
-     */
-    public function recomputeStatusFromItems(): void
+    public function promoCode(): BelongsTo
     {
-        $statuses = $this->items()->pluck('status');
+        return $this->belongsTo(PromoCode::class);
+    }
 
-        $status = match (true) {
-            $statuses->every(fn ($s) => $s === 'delivered') => 'delivered',
-            $statuses->contains('cancelled') && $statuses->filter(fn ($s) => $s !== 'cancelled')->every(fn ($s) => $s === 'delivered') => 'delivered',
-            $statuses->every(fn ($s) => in_array($s, ['shipped', 'delivered', 'cancelled'], true)) => 'shipped',
-            $statuses->contains(fn ($s) => in_array($s, ['processing', 'shipped', 'delivered'], true)) => 'processing',
-            default => 'pending',
-        };
-
-        $this->update(['status' => $status]);
+    /**
+     * Zero-padded order reference, shown to buyers and sellers alike.
+     */
+    public function reference(): string
+    {
+        return '#'.str_pad((string) $this->id, 5, '0', STR_PAD_LEFT);
     }
 }

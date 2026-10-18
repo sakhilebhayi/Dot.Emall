@@ -127,6 +127,27 @@
                 <span class="material-symbols-rounded nav-icon">receipt_long</span>
                 My Orders
             </a>
+            @php $sidebarStore = auth()->user()->store; @endphp
+            <div class="nav-section-label">Selling</div>
+            @if($sidebarStore)
+            <a href="{{ route('seller.products.index') }}" class="nav-item {{ request()->routeIs('seller.products.*') ? 'active' : '' }}">
+                <span class="material-symbols-rounded nav-icon">inventory_2</span>
+                My listings
+            </a>
+            <a href="{{ route('seller.orders.index') }}" class="nav-item {{ request()->routeIs('seller.orders.*', 'seller.order-items.*') ? 'active' : '' }}">
+                <span class="material-symbols-rounded nav-icon">local_shipping</span>
+                Orders to fulfil
+            </a>
+            <a href="{{ route('seller.promo-codes.index') }}" class="nav-item {{ request()->routeIs('seller.promo-codes.*') ? 'active' : '' }}">
+                <span class="material-symbols-rounded nav-icon">sell</span>
+                Promo codes
+            </a>
+            @else
+            <a href="{{ route('seller.store.create') }}" class="nav-item {{ request()->routeIs('seller.store.*') ? 'active' : '' }}">
+                <span class="material-symbols-rounded nav-icon">add_business</span>
+                Become a seller
+            </a>
+            @endif
             <div class="sidebar-divider" style="margin:10px 0;"></div>
             <a href="{{ route('profile.show') }}" class="nav-item {{ request()->routeIs('profile.show') ? 'active' : '' }}">
                 <span class="material-symbols-rounded nav-icon">manage_accounts</span>

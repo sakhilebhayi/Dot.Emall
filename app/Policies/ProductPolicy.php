@@ -23,4 +23,12 @@ class ProductPolicy
     {
         return $user->id === $product->store->owner_id;
     }
+
+    /**
+     * Only the owning store's owner may archive (soft-delete) a listing.
+     */
+    public function delete(User $user, Product $product): bool
+    {
+        return $user->id === $product->store->owner_id;
+    }
 }

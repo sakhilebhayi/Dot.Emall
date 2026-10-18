@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\Product;
-use App\Models\Store;
 use App\Models\StoreCategory;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -15,7 +14,7 @@ class SellerProductController extends Controller
 {
     public function index(): View
     {
-        $store = Store::where('owner_id', auth()->id())->first();
+        $store = auth()->user()->store;
 
         $products = $store
             ? Product::where('store_id', $store->id)->latest()->get()
@@ -26,7 +25,7 @@ class SellerProductController extends Controller
 
     public function create(): View|RedirectResponse
     {
-        $store = Store::where('owner_id', auth()->id())->first();
+        $store = auth()->user()->store;
 
         if (! $store) {
             return redirect()->route('seller.store.create');
@@ -39,7 +38,7 @@ class SellerProductController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        $store = Store::where('owner_id', auth()->id())->first();
+        $store = auth()->user()->store;
 
         if (! $store) {
             return redirect()->route('seller.store.create');
@@ -124,5 +123,19 @@ class SellerProductController extends Controller
 
         return redirect()->route('seller.products.index')
             ->with('status', $product->is_active ? 'Listing reactivated.' : 'Listing deactivated.');
+    }
+
+    /**
+     * Archives (soft-deletes) a listing. It leaves every storefront query
+     * and any cart immediately, but the row stays, so order history, which
+     * also carries its own snapshot of the line, is never affected.
+     */
+    public function destroy(Product $product): RedirectResponse
+    {
+        Gate::authorize('delete', $product);
+
+        $product->delete();
+
+        return redirect()->route('seller.products.index')->with('status', 'Listing deleted. Existing orders keep their history.');
     }
 }

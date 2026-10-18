@@ -21,7 +21,7 @@ class PromoCodeController extends Controller
 {
     public function index(Request $request): View|RedirectResponse
     {
-        $store = Store::where('owner_id', $request->user()->id)->first();
+        $store = $request->user()->store;
 
         if (! $store) {
             return redirect()->route('seller.store.create');
@@ -34,7 +34,7 @@ class PromoCodeController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        $store = Store::where('owner_id', $request->user()->id)->first();
+        $store = $request->user()->store;
 
         if (! $store) {
             return redirect()->route('seller.store.create');

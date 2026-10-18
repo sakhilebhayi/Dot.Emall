@@ -7,11 +7,14 @@ use App\Models\Store;
 use Illuminate\Notifications\Notification;
 
 /**
- * In-app (database channel) notification sent to a store owner the moment
- * a buyer places an order containing at least one of that store's
- * products. Dispatched from App\Http\Controllers\CartController::checkout()
- * — one notification per affected store, since a single order can span
- * multiple sellers.
+ * In-app (database channel) notification sent to a store owner when a buyer
+ * places an order containing at least one of that store's products. One per
+ * seller per order, sent by App\Listeners\NotifySellersOfNewOrder after the
+ * order has committed.
+ *
+ * The message describes only THIS seller's share of the order (their line
+ * count and their net value) -- never the order total, which would leak
+ * what the buyer bought from other sellers.
  */
 class NewOrderNotification extends Notification
 {
@@ -30,13 +33,17 @@ class NewOrderNotification extends Notification
      */
     public function toDatabase(object $notifiable): array
     {
+        $lines = $this->order->items()->where('store_id', $this->store->id)->get();
+        $netCents = $lines->sum(fn ($line) => $line->netCents());
+        $count = $lines->count();
+
         return [
             'type' => 'new_order',
             'title' => 'New order received',
-            'message' => "\"{$this->store->name}\" received a new order (#".str_pad((string) $this->order->id, 5, '0', STR_PAD_LEFT).') worth $'.number_format((float) $this->order->total, 2).'.',
+            'message' => "\"{$this->store->name}\" received a new order ({$this->order->reference()}): {$count} ".($count === 1 ? 'item' : 'items').' worth $'.number_format($netCents / 100, 2).' (unpaid).',
             'order_id' => $this->order->id,
             'store_id' => $this->store->id,
-            'url' => route('dashboard'),
+            'url' => route('orders.show', $this->order),
         ];
     }
 }
