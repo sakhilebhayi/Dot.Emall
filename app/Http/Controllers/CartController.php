@@ -8,6 +8,7 @@ use App\Services\CheckoutException;
 use App\Services\CheckoutService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
 
 /**
@@ -24,7 +25,31 @@ class CartController extends Controller
 
         $subtotal = $items->sum(fn (CartItem $item) => $item->quantity * $item->product->price);
 
-        return view('cart.index', compact('items', 'subtotal'));
+        // Lines that cannot be bought as they stand: the listing was
+        // switched off / its store closed, or stock dropped below the
+        // quantity in the cart. Shown per line, and they hold back checkout
+        // until the buyer fixes them (the server re-checks regardless).
+        $problems = [];
+        foreach ($items as $item) {
+            $product = $item->product;
+
+            if (! $product->is_active || $product->status !== 'approved' || ! $product->store->is_active) {
+                $problems[$item->id] = 'No longer available. Remove it to continue.';
+            } elseif ($item->quantity > $product->stock) {
+                $problems[$item->id] = $product->stock === 0
+                    ? 'Out of stock now. Remove it to continue.'
+                    : "Only {$product->stock} left. Lower the quantity to continue.";
+            }
+        }
+
+        return view('cart.index', [
+            'items' => $items,
+            'subtotal' => $subtotal,
+            'problems' => $problems,
+            // One fresh token per page render: the single-use key for this
+            // submission of the checkout form (see CheckoutService::place()).
+            'checkoutToken' => (string) Str::uuid(),
+        ]);
     }
 
     public function store(Request $request): RedirectResponse
@@ -37,14 +62,69 @@ class CartController extends Controller
         $product = Product::browsable()->findOrFail($validated['product_id']);
         $quantity = $validated['quantity'] ?? 1;
 
+        if ($product->store->owner_id === $request->user()->id) {
+            return back()->withErrors(['product_id' => 'This is your own listing, so you cannot buy it.']);
+        }
+
         $item = CartItem::firstOrNew([
             'user_id' => auth()->id(),
             'product_id' => $product->id,
         ]);
-        $item->quantity = min(99, ($item->exists ? $item->quantity : 0) + $quantity);
+        $already = $item->exists ? $item->quantity : 0;
+
+        if ($error = $this->quantityProblem($product, $already + $quantity, $already)) {
+            return back()->withErrors(['quantity' => $error]);
+        }
+
+        $item->quantity = $already + $quantity;
         $item->save();
 
         return redirect()->route('cart.index')->with('status', "Added \"{$product->name}\" to cart.");
+    }
+
+    public function update(Request $request, CartItem $cartItem): RedirectResponse
+    {
+        $validated = $request->validate([
+            'quantity' => ['required', 'integer', 'min:1', 'max:99'],
+        ]);
+
+        $product = $cartItem->product;
+
+        if (! $product->is_active || $product->status !== 'approved' || ! $product->store->is_active) {
+            return back()->withErrors(['quantity' => "\"{$product->name}\" is no longer available. Remove it from your cart."]);
+        }
+
+        if ($error = $this->quantityProblem($product, (int) $validated['quantity'], 0)) {
+            return back()->withErrors(['quantity' => $error]);
+        }
+
+        $cartItem->update(['quantity' => $validated['quantity']]);
+
+        return redirect()->route('cart.index')->with('status', 'Quantity updated.');
+    }
+
+    /**
+     * Null when $wanted of the product can be held in a cart; otherwise a
+     * plain-words reason. $already is how many the buyer holds now, only to
+     * word the message when they are topping up.
+     */
+    private function quantityProblem(Product $product, int $wanted, int $already): ?string
+    {
+        if ($product->stock < 1) {
+            return "\"{$product->name}\" is out of stock.";
+        }
+
+        if ($wanted > $product->stock) {
+            return $already > 0
+                ? "Only {$product->stock} of \"{$product->name}\" in stock, and you already have {$already} in your cart."
+                : "Only {$product->stock} of \"{$product->name}\" in stock.";
+        }
+
+        if ($wanted > 99) {
+            return 'You can order at most 99 of one item at a time.';
+        }
+
+        return null;
     }
 
     public function destroy(CartItem $cartItem): RedirectResponse
@@ -63,6 +143,7 @@ class CartController extends Controller
     public function checkout(Request $request, CheckoutService $checkout): RedirectResponse
     {
         $validated = $request->validate([
+            'checkout_token' => ['required', 'uuid'],
             'shipping_name' => ['nullable', 'string', 'max:120'],
             'shipping_address' => ['required', 'string', 'max:255'],
             'shipping_phone' => ['nullable', 'string', 'max:40', 'regex:/^[0-9+()\-.\s]{5,40}$/'],
@@ -70,9 +151,14 @@ class CartController extends Controller
         ]);
 
         try {
-            $order = $checkout->place($request->user(), $validated);
+            $order = $checkout->place($request->user(), $validated, $validated['checkout_token'], $request->ip());
         } catch (CheckoutException $e) {
             return redirect()->route('cart.index')->with('error', $e->getMessage());
+        }
+
+        if (! $order->wasRecentlyCreated) {
+            return redirect()->route('orders.show', $order)
+                ->with('status', 'This order was already placed, so nothing was ordered twice. Here it is.');
         }
 
         return redirect()->route('orders.show', $order)->with('status', 'Order placed. It is pending and unpaid: payment is not available yet.');

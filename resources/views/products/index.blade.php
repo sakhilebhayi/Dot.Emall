@@ -50,10 +50,10 @@
             <div style="font-size:0.68rem;color:#71717a;margin-bottom:0.5rem;">{{ $product->store->name }}</div>
             <div style="display:flex;align-items:center;justify-content:space-between;">
                 <span style="font-family:'Syne',sans-serif;font-size:0.9rem;font-weight:800;color:#f59e0b;">${{ number_format($product->price, 2) }}</span>
-                @if($product->reviews_count > 0)
+                @if($product->rating_count > 0)
                 <span style="display:flex;align-items:center;gap:0.2rem;font-size:0.68rem;color:#a1a1aa;">
                     <span class="material-symbols-rounded" style="font-size:13px;color:#facc15;">star</span>
-                    {{ number_format($product->reviews_avg_rating, 1) }} ({{ $product->reviews_count }})
+                    {{ number_format($product->rating_average, 1) }} ({{ $product->rating_count }})
                 </span>
                 @else
                 <span style="font-size:0.65rem;color:#52525b;">No reviews yet</span>

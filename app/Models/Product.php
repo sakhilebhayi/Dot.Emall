@@ -42,6 +42,8 @@ class Product extends Model
     protected $casts = [
         'price' => 'decimal:2',
         'compare_price' => 'decimal:2',
+        'rating_average' => 'decimal:2',
+        'rating_count' => 'integer',
         'is_active' => 'boolean',
         'reviewed_at' => 'datetime',
     ];
@@ -69,11 +71,6 @@ class Product extends Model
     public function reviewer(): BelongsTo
     {
         return $this->belongsTo(User::class, 'reviewed_by');
-    }
-
-    public function averageRating(): float
-    {
-        return round((float) $this->reviews()->avg('rating'), 1);
     }
 
     /**

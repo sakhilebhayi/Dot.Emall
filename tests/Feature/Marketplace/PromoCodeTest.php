@@ -9,6 +9,7 @@ use App\Models\PromoCode;
 use App\Models\Store;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class PromoCodeTest extends TestCase
@@ -154,7 +155,7 @@ class PromoCodeTest extends TestCase
             'store_id' => $store->id, 'code' => 'SAVE10', 'discount_type' => 'percent', 'discount_value' => 10,
         ]);
 
-        $this->actingAs($buyer)->post(route('cart.checkout'), [
+        $this->actingAs($buyer)->post(route('cart.checkout'), ['checkout_token' => (string) Str::uuid(),
             'shipping_address' => '1 Main St', 'promo_code' => 'save10',
         ]);
 
@@ -175,7 +176,7 @@ class PromoCodeTest extends TestCase
             'store_id' => $store->id, 'code' => 'SAVE10', 'discount_type' => 'percent', 'discount_value' => 10,
         ]);
 
-        $this->actingAs($buyer)->post(route('cart.checkout'), [
+        $this->actingAs($buyer)->post(route('cart.checkout'), ['checkout_token' => (string) Str::uuid(),
             'shipping_address' => '1 Main St', 'promo_code' => 'SAVE10',
         ]);
 
@@ -189,7 +190,7 @@ class PromoCodeTest extends TestCase
         $buyer = User::factory()->withPersonalTeam()->create();
         CartItem::create(['user_id' => $buyer->id, 'product_id' => $product->id, 'quantity' => 1]);
 
-        $response = $this->actingAs($buyer)->post(route('cart.checkout'), [
+        $response = $this->actingAs($buyer)->post(route('cart.checkout'), ['checkout_token' => (string) Str::uuid(),
             'shipping_address' => '1 Main St', 'promo_code' => 'DOESNOTEXIST',
         ]);
 
@@ -208,7 +209,7 @@ class PromoCodeTest extends TestCase
         $buyer = User::factory()->withPersonalTeam()->create();
         CartItem::create(['user_id' => $buyer->id, 'product_id' => $product->id, 'quantity' => 1]);
 
-        $response = $this->actingAs($buyer)->post(route('cart.checkout'), [
+        $response = $this->actingAs($buyer)->post(route('cart.checkout'), ['checkout_token' => (string) Str::uuid(),
             'shipping_address' => '1 Main St', 'promo_code' => 'NOTAPPLICABLE',
         ]);
 
@@ -230,7 +231,7 @@ class PromoCodeTest extends TestCase
             'store_id' => $storeA->id, 'code' => 'STOREA20', 'discount_type' => 'percent', 'discount_value' => 20,
         ]);
 
-        $this->actingAs($buyer)->post(route('cart.checkout'), [
+        $this->actingAs($buyer)->post(route('cart.checkout'), ['checkout_token' => (string) Str::uuid(),
             'shipping_address' => '1 Main St', 'promo_code' => 'STOREA20',
         ]);
 
@@ -247,7 +248,7 @@ class PromoCodeTest extends TestCase
         $buyer = User::factory()->withPersonalTeam()->create();
         CartItem::create(['user_id' => $buyer->id, 'product_id' => $product->id, 'quantity' => 1]);
 
-        $this->actingAs($buyer)->post(route('cart.checkout'), ['shipping_address' => '1 Main St']);
+        $this->actingAs($buyer)->post(route('cart.checkout'), ['checkout_token' => (string) Str::uuid(), 'shipping_address' => '1 Main St']);
 
         $order = Order::where('user_id', $buyer->id)->firstOrFail();
         $this->assertEquals(0, (float) $order->discount_amount);

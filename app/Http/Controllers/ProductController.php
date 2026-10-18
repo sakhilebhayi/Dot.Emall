@@ -3,8 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\Product;
+use App\Models\Review;
 use App\Models\StoreCategory;
+use App\Services\ReviewService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
 
 /**
@@ -39,8 +42,6 @@ class ProductController extends Controller
         $products = Product::query()
             ->browsable()
             ->with(['store', 'category', 'images'])
-            ->withCount('reviews')
-            ->withAvg('reviews', 'rating')
             ->when($search !== '', fn ($q) => $q->where('name', 'like', "%{$search}%"))
             ->when($category, fn ($q) => $q->where('category_id', $category))
             ->latest()
@@ -63,7 +64,7 @@ class ProductController extends Controller
      * everyone except the owning seller (matches AuctionPolicy's draft
      * handling for the equivalent buyer-facing case).
      */
-    public function show(Product $product): View
+    public function show(Product $product, ReviewService $reviews): View
     {
         $isOwner = auth()->id() === $product->store->owner_id;
 
@@ -74,12 +75,14 @@ class ProductController extends Controller
 
         $product->load(['store', 'category', 'images', 'reviews.user']);
 
-        $hasReviewed = auth()->check()
-            && $product->reviews()->where('user_id', auth()->id())->exists();
+        $user = auth()->user();
+        $hasReviewed = $user !== null && $reviews->hasReviewed($user, $product);
+        $canReview = $user !== null && ! $hasReviewed && Gate::forUser($user)->allows('create', [Review::class, $product]);
 
         return view('products.show', [
             'product' => $product,
             'hasReviewed' => $hasReviewed,
+            'canReview' => $canReview,
         ]);
     }
 }

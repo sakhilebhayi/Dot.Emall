@@ -11,6 +11,7 @@ use App\Models\Store;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 /**
@@ -107,7 +108,7 @@ class CartCheckoutTest extends TestCase
 
         CartItem::create(['user_id' => $buyer->id, 'product_id' => $product->id, 'quantity' => 3]);
 
-        $response = $this->actingAs($buyer)->post(route('cart.checkout'), [
+        $response = $this->actingAs($buyer)->post(route('cart.checkout'), ['checkout_token' => (string) Str::uuid(),
             'shipping_address' => '123 Main St',
         ]);
 
@@ -133,7 +134,7 @@ class CartCheckoutTest extends TestCase
 
         CartItem::create(['user_id' => $buyer->id, 'product_id' => $product->id, 'quantity' => 1]);
 
-        $this->actingAs($buyer)->post(route('cart.checkout'), [
+        $this->actingAs($buyer)->post(route('cart.checkout'), ['checkout_token' => (string) Str::uuid(),
             'shipping_address' => '123 Main St',
         ]);
 
@@ -151,7 +152,7 @@ class CartCheckoutTest extends TestCase
 
         CartItem::create(['user_id' => $buyer->id, 'product_id' => $product->id, 'quantity' => 5]);
 
-        $this->actingAs($buyer)->post(route('cart.checkout'), [
+        $this->actingAs($buyer)->post(route('cart.checkout'), ['checkout_token' => (string) Str::uuid(),
             'shipping_address' => '123 Main St',
         ]);
 
@@ -165,7 +166,7 @@ class CartCheckoutTest extends TestCase
 
         CartItem::create(['user_id' => $buyer->id, 'product_id' => $product->id, 'quantity' => 5]);
 
-        $response = $this->actingAs($buyer)->post(route('cart.checkout'), [
+        $response = $this->actingAs($buyer)->post(route('cart.checkout'), ['checkout_token' => (string) Str::uuid(),
             'shipping_address' => '123 Main St',
         ]);
 
@@ -181,7 +182,7 @@ class CartCheckoutTest extends TestCase
         CartItem::create(['user_id' => $buyer->id, 'product_id' => $product->id, 'quantity' => 1]);
 
         $this->actingAs($buyer)
-            ->post(route('cart.checkout'), [])
+            ->post(route('cart.checkout'), ['checkout_token' => (string) Str::uuid()])
             ->assertSessionHasErrors('shipping_address');
 
         $this->assertDatabaseCount('orders', 0);

@@ -43,11 +43,11 @@
                 @endif
             </div>
 
-            @if($product->reviews->isNotEmpty())
+            @if($product->rating_count > 0)
             <div style="display:flex;align-items:center;gap:0.3rem;margin-bottom:1.25rem;">
                 <span class="material-symbols-rounded" style="font-size:16px;color:#facc15;">star</span>
-                <span style="font-size:0.8rem;font-weight:700;color:#f4f4f5;">{{ number_format($product->averageRating(), 1) }}</span>
-                <span style="font-size:0.75rem;color:#71717a;">({{ $product->reviews->count() }} review{{ $product->reviews->count() === 1 ? '' : 's' }})</span>
+                <span style="font-size:0.8rem;font-weight:700;color:#f4f4f5;">{{ number_format($product->rating_average, 1) }}</span>
+                <span style="font-size:0.75rem;color:#71717a;">({{ $product->rating_count }} review{{ $product->rating_count === 1 ? '' : 's' }})</span>
             </div>
             @endif
 
@@ -80,7 +80,7 @@
         <h2 style="margin:0 0 1rem;font-family:'Syne',sans-serif;font-size:1rem;font-weight:700;color:#f4f4f5;">Reviews</h2>
 
         @auth
-            @if(!$hasReviewed)
+            @if($canReview)
             <form method="POST" action="{{ route('reviews.store', $product) }}" class="dot-card" style="padding:1.25rem;margin-bottom:1.5rem;">
                 @csrf
                 <div style="font-size:0.8rem;font-weight:600;color:#f4f4f5;margin-bottom:0.6rem;">Leave a review</div>
@@ -93,13 +93,15 @@
                 <textarea name="body" rows="2" placeholder="Optional comments…" class="dot-input" style="margin-bottom:0.75rem;resize:vertical;"></textarea>
                 <button type="submit" class="dot-btn dot-btn-primary">Submit Review</button>
             </form>
+            @elseif(!$hasReviewed)
+            <div style="font-size:0.75rem;color:#71717a;margin-bottom:1.25rem;">Reviews come from buyers: you can review this product after an order containing it has been delivered.</div>
             @endif
         @endauth
 
         @if($product->reviews->isEmpty())
         <div class="dot-card" style="padding:2rem;text-align:center;">
             <span class="material-symbols-rounded" style="font-size:30px;color:#71717a;display:block;margin-bottom:0.5rem;">rate_review</span>
-            <div style="font-size:0.8rem;color:#71717a;">No reviews yet. Be the first to review this product!</div>
+            <div style="font-size:0.8rem;color:#71717a;">No reviews yet.</div>
         </div>
         @else
         <div style="display:flex;flex-direction:column;gap:0.75rem;">
@@ -107,7 +109,7 @@
             <div class="dot-card" style="padding:1rem 1.25rem;">
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.3rem;">
                     <div style="display:flex;align-items:center;gap:0.5rem;">
-                        <span style="font-size:0.78rem;font-weight:700;color:#f4f4f5;">{{ $review->user->name ?? 'Anonymous' }}</span>
+                        <span style="font-size:0.78rem;font-weight:700;color:#f4f4f5;">{{ $review->user?->publicName() ?? 'Buyer' }}</span>
                         <span style="display:flex;">
                             @for($i = 1; $i <= 5; $i++)
                                 <span class="material-symbols-rounded" style="font-size:13px;color:{{ $i <= $review->rating ? '#facc15' : '#3f3f46' }};">star</span>

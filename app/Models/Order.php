@@ -27,6 +27,7 @@ class Order extends Model
         'user_id', 'status', 'subtotal', 'promo_code', 'promo_code_id', 'promo_store_id',
         'promo_discount_type', 'promo_discount_value', 'promo_released_at',
         'discount_amount', 'total', 'shipping_name', 'shipping_address', 'shipping_phone',
+        'idempotency_key',
     ];
 
     protected $casts = [

@@ -40,8 +40,19 @@ class PromoCodeController extends Controller
             return redirect()->route('seller.store.create');
         }
 
+        // Codes are matched case-insensitively and kept upper-case, so
+        // "summer10" and "SUMMER10" are the same code for uniqueness too.
+        $request->merge(['code' => Str::upper((string) $request->input('code'))]);
+
         $validated = $request->validate([
-            'code' => ['required', 'string', 'max:40', 'alpha_dash', 'unique:promo_codes,code'],
+            'code' => [
+                'required', 'string', 'max:40', 'alpha_dash',
+                // Unique within this store only: another store may run the same code.
+                Rule::unique('promo_codes', 'code')->where('store_id', $store->id),
+                fn ($attribute, $value, $fail) => $store->promoCodes()->whereRaw('UPPER(code) = ?', [$value])->exists()
+                    ? $fail('You already have a promo code with that name.')
+                    : null,
+            ],
             'discount_type' => ['required', Rule::in(['percent', 'fixed'])],
             'discount_value' => ['required', 'numeric', 'min:0.01'],
             'max_uses' => ['nullable', 'integer', 'min:1'],
@@ -53,7 +64,7 @@ class PromoCodeController extends Controller
         }
 
         $store->promoCodes()->create([
-            'code' => Str::upper($validated['code']),
+            'code' => $validated['code'],
             'discount_type' => $validated['discount_type'],
             'discount_value' => $validated['discount_value'],
             'max_uses' => $validated['max_uses'] ?? null,
