@@ -19,7 +19,7 @@
             <a href="{{ route('products.index') }}" style="font-size:0.78rem;font-weight:600;color:#f59e0b;text-decoration:none;">Browse the marketplace →</a>
         </div>
         @else
-        <div style="overflow-x:auto;">
+        <div class="table-scroll" style="overflow-x:auto;" role="region" aria-label="Your orders" tabindex="0">
             <table style="width:100%;border-collapse:collapse;">
                 <thead>
                     <tr style="border-bottom:1px solid rgba(67,70,86,0.3);">

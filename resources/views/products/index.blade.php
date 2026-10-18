@@ -34,7 +34,7 @@
 
     {{-- Results grid --}}
     @if($products->count())
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:1.1rem;margin-bottom:2rem;">
+    <div class="product-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:1.1rem;margin-bottom:2rem;">
         @foreach($products as $product)
         <a href="{{ route('products.show', $product) }}" class="dot-card" style="display:block;padding:1.1rem;text-decoration:none;transition:border-color .15s;">
             <div style="width:100%;aspect-ratio:1/1;border-radius:8px;background:linear-gradient(135deg,rgba(245,158,11,0.15),rgba(217,119,6,0.08));display:flex;align-items:center;justify-content:center;margin-bottom:0.85rem;overflow:hidden;">
