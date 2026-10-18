@@ -4,13 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\Storage;
 
 /**
- * Added (platform-loop pass, 2026-08-01) — the `product_images` table and
- * Product::images() relation already existed, but this model class did
- * not, so Product::images() would fatal with a "class not found" error
- * the moment it was ever called. No other code referenced ProductImage
- * directly, so the gap had not surfaced yet.
+ * One photo of a listing, stored on the public disk under a random name.
+ * sort_order 0 is the cover. See App\Services\ProductImages.
  */
 class ProductImage extends Model
 {
@@ -19,5 +17,10 @@ class ProductImage extends Model
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
+    }
+
+    public function url(): string
+    {
+        return Storage::disk('public')->url($this->path);
     }
 }

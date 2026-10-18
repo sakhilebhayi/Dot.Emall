@@ -51,6 +51,11 @@
                         {{ $product->is_active ? 'Deactivate' : 'Reactivate' }}
                     </button>
                 </form>
+                <form method="POST" action="{{ route('seller.products.destroy', $product) }}" onsubmit="return confirm('Delete this listing? It leaves the marketplace for good. Orders already placed keep their history.');">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" style="padding:0.4rem 0.9rem;border-radius:6px;background:rgba(255,255,255,0.06);color:#f87171;font-size:0.75rem;font-weight:600;border:none;cursor:pointer;">Delete</button>
+                </form>
             </div>
         </div>
         @endforeach

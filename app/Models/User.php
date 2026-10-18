@@ -6,6 +6,7 @@ namespace App\Models;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
@@ -77,6 +78,36 @@ class User extends Authenticatable
     public function stores(): HasMany
     {
         return $this->hasMany(Store::class, 'owner_id');
+    }
+
+    /**
+     * The user's one store. The marketplace is deliberately one store per
+     * user (an owner decision, not a technicality); oldestOfMany() makes
+     * the answer deterministic even on a database that predates the
+     * one-store-per-owner rule and somehow holds more than one.
+     */
+    public function store(): HasOne
+    {
+        return $this->hasOne(Store::class, 'owner_id')->oldestOfMany();
+    }
+
+    /**
+     * How this user is named to people who are not them (reviews seen by
+     * guests and other buyers): first name and the initial of the rest.
+     */
+    public function publicName(): string
+    {
+        $parts = preg_split('/\s+/', trim((string) $this->name), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+
+        if (count($parts) === 0) {
+            return 'Buyer';
+        }
+
+        if (count($parts) === 1) {
+            return $parts[0];
+        }
+
+        return $parts[0].' '.mb_strtoupper(mb_substr($parts[count($parts) - 1], 0, 1)).'.';
     }
 
     /**

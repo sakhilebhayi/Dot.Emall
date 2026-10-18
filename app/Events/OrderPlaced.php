@@ -3,28 +3,23 @@
 namespace App\Events;
 
 use App\Models\Order;
+use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
 /**
- * Fired once, inside the checkout transaction, the moment a buyer's cart
- * becomes a real Order (App\Http\Controllers\CartController::checkout()).
+ * Fired once, after the checkout transaction has committed, the moment a
+ * buyer's cart becomes a real Order (App\Services\CheckoutService::place()).
  *
- * This is the first domain event Dot.Emall dispatches at all — wiki.md §5
- * previously listed "Order placed" as a purely conceptual trigger with no
- * actual event dispatch behind it. It is scoped to this one, real trigger
- * point rather than the full roadmap list in wiki.md §7 (listing published,
- * listing unsold expiry, review submitted, etc.), because checkout is the
- * only one of those flows that currently exists in the codebase — the
- * others (seller product CRUD, expiry jobs) have no controller to dispatch
- * from yet and would mean inventing an event with no real trigger, which
- * this platform's engineering loop treats as fabrication.
+ * Listeners: App\Listeners\NotifySellersOfNewOrder (one database
+ * notification per seller). Dot.Brain Knowledge Pack publishing would be a
+ * second listener; it does not exist yet.
  *
- * No listener is registered yet — this event exists so a future Knowledge
- * Pack publisher (wiki.md §6, not yet built) has a real signal to subscribe
- * to instead of having to be wired directly into the controller later.
+ * Implements ShouldDispatchAfterCommit so that if checkout is ever called
+ * from inside a larger transaction, listeners still wait for the outermost
+ * commit.
  */
-class OrderPlaced
+class OrderPlaced implements ShouldDispatchAfterCommit
 {
     use Dispatchable, SerializesModels;
 

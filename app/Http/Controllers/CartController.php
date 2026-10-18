@@ -2,44 +2,20 @@
 
 namespace App\Http\Controllers;
 
-use App\Events\OrderPlaced;
 use App\Models\CartItem;
-use App\Models\Order;
-use App\Models\OrderItem;
 use App\Models\Product;
-use App\Models\PromoCode;
-use App\Notifications\NewOrderNotification;
+use App\Services\CheckoutException;
+use App\Services\CheckoutService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
 
 /**
- * Cart + checkout (platform-loop pass). Order and OrderItem were fully
- * modeled and CartItem existed with a unique(user_id, product_id)
- * constraint, but nothing in the codebase ever created an Order -- there
- * was no checkout flow at all. This is the single biggest gap the wiki
- * flagged implicitly: "Order placed" was listed as a "conceptual" event
- * with no trigger anywhere (wiki.md Sec5). This controller is that trigger.
- *
- * CartItem now applies App\Models\Concerns\HasUserScope (platform-loop
- * pass, 2026-08-04), so every query against it is already scoped to
- * auth()->id() by the model's global scope -- the explicit
- * where('user_id', auth()->id()) filters that used to appear in index()
- * and checkout() below are redundant reads and have been removed.
- * destroy()'s implicit route-model binding is scoped the same way, so a
- * cart item belonging to another user now 404s before this method body
- * ever runs, and the old abort_unless(...) 403 guard is gone -- see
- * tests/Feature/Marketplace/CartCheckoutTest.php.
- *
- * mass-assignment still sets user_id explicitly at create time (store(),
- * checkout()'s Order::create()) -- the scope only governs reads.
- *
- * checkout() also dispatches App\Events\OrderPlaced once the order
- * transaction has committed -- Dot.Emall's first real domain event
- * dispatch (a follow-up incremental pass; see App\Events\OrderPlaced's
- * docblock for why it's scoped to just this trigger).
+ * Cart and the checkout entry point. CartItem applies
+ * App\Models\Concerns\HasUserScope, so every cart query is already scoped
+ * to the signed-in user and another user's cart line 404s on route-model
+ * binding. user_id is still set explicitly at create time.
  */
 class CartController extends Controller
 {
@@ -49,7 +25,31 @@ class CartController extends Controller
 
         $subtotal = $items->sum(fn (CartItem $item) => $item->quantity * $item->product->price);
 
-        return view('cart.index', compact('items', 'subtotal'));
+        // Lines that cannot be bought as they stand: the listing was
+        // switched off / its store closed, or stock dropped below the
+        // quantity in the cart. Shown per line, and they hold back checkout
+        // until the buyer fixes them (the server re-checks regardless).
+        $problems = [];
+        foreach ($items as $item) {
+            $product = $item->product;
+
+            if (! $product->is_active || $product->status !== 'approved' || ! $product->store->is_active) {
+                $problems[$item->id] = 'No longer available. Remove it to continue.';
+            } elseif ($item->quantity > $product->stock) {
+                $problems[$item->id] = $product->stock === 0
+                    ? 'Out of stock now. Remove it to continue.'
+                    : "Only {$product->stock} left. Lower the quantity to continue.";
+            }
+        }
+
+        return view('cart.index', [
+            'items' => $items,
+            'subtotal' => $subtotal,
+            'problems' => $problems,
+            // One fresh token per page render: the single-use key for this
+            // submission of the checkout form (see CheckoutService::place()).
+            'checkoutToken' => (string) Str::uuid(),
+        ]);
     }
 
     public function store(Request $request): RedirectResponse
@@ -62,14 +62,69 @@ class CartController extends Controller
         $product = Product::browsable()->findOrFail($validated['product_id']);
         $quantity = $validated['quantity'] ?? 1;
 
+        if ($product->store->owner_id === $request->user()->id) {
+            return back()->withErrors(['product_id' => 'This is your own listing, so you cannot buy it.']);
+        }
+
         $item = CartItem::firstOrNew([
             'user_id' => auth()->id(),
             'product_id' => $product->id,
         ]);
-        $item->quantity = min(99, ($item->exists ? $item->quantity : 0) + $quantity);
+        $already = $item->exists ? $item->quantity : 0;
+
+        if ($error = $this->quantityProblem($product, $already + $quantity, $already)) {
+            return back()->withErrors(['quantity' => $error]);
+        }
+
+        $item->quantity = $already + $quantity;
         $item->save();
 
         return redirect()->route('cart.index')->with('status', "Added \"{$product->name}\" to cart.");
+    }
+
+    public function update(Request $request, CartItem $cartItem): RedirectResponse
+    {
+        $validated = $request->validate([
+            'quantity' => ['required', 'integer', 'min:1', 'max:99'],
+        ]);
+
+        $product = $cartItem->product;
+
+        if (! $product->is_active || $product->status !== 'approved' || ! $product->store->is_active) {
+            return back()->withErrors(['quantity' => "\"{$product->name}\" is no longer available. Remove it from your cart."]);
+        }
+
+        if ($error = $this->quantityProblem($product, (int) $validated['quantity'], 0)) {
+            return back()->withErrors(['quantity' => $error]);
+        }
+
+        $cartItem->update(['quantity' => $validated['quantity']]);
+
+        return redirect()->route('cart.index')->with('status', 'Quantity updated.');
+    }
+
+    /**
+     * Null when $wanted of the product can be held in a cart; otherwise a
+     * plain-words reason. $already is how many the buyer holds now, only to
+     * word the message when they are topping up.
+     */
+    private function quantityProblem(Product $product, int $wanted, int $already): ?string
+    {
+        if ($product->stock < 1) {
+            return "\"{$product->name}\" is out of stock.";
+        }
+
+        if ($wanted > $product->stock) {
+            return $already > 0
+                ? "Only {$product->stock} of \"{$product->name}\" in stock, and you already have {$already} in your cart."
+                : "Only {$product->stock} of \"{$product->name}\" in stock.";
+        }
+
+        if ($wanted > 99) {
+            return 'You can order at most 99 of one item at a time.';
+        }
+
+        return null;
     }
 
     public function destroy(CartItem $cartItem): RedirectResponse
@@ -80,153 +135,32 @@ class CartController extends Controller
     }
 
     /**
-     * Places an order from the current user's cart.
-     *
-     * Stock is locked, re-checked, and decremented atomically inside the
-     * transaction (lockForUpdate() + a WHERE-guarded decrement) rather than
-     * checked once beforehand -- a pre-check outside the transaction is a
-     * TOCTOU race: two concurrent checkouts on the last unit could both
-     * pass the pre-check and both decrement, driving stock negative. Under
-     * SQLite (this app's dev/test driver) lockForUpdate() is a no-op, so
-     * the WHERE-guarded decrement is the layer that actually matters
-     * everywhere; the lock is real protection under Postgres/MySQL.
+     * Places an order from the current user's cart. The work -- stock locks,
+     * promo handling, line snapshots, the after-commit event -- lives in
+     * App\Services\CheckoutService. No payment is taken: the order is
+     * placed "pending, unpaid".
      */
-    public function checkout(Request $request): RedirectResponse
+    public function checkout(Request $request, CheckoutService $checkout): RedirectResponse
     {
         $validated = $request->validate([
+            'checkout_token' => ['required', 'uuid'],
+            'shipping_name' => ['nullable', 'string', 'max:120'],
             'shipping_address' => ['required', 'string', 'max:255'],
+            'shipping_phone' => ['nullable', 'string', 'max:40', 'regex:/^[0-9+()\-.\s]{5,40}$/'],
             'promo_code' => ['nullable', 'string', 'max:40'],
         ]);
 
-        $shippingAddress = $validated['shipping_address'];
-        $promoCodeInput = $validated['promo_code'] ?? null;
-
-        $cartItemIds = CartItem::pluck('id');
-
-        if ($cartItemIds->isEmpty()) {
-            return redirect()->route('cart.index')->with('error', 'Your cart is empty.');
-        }
-
         try {
-            $order = DB::transaction(function () use ($cartItemIds, $shippingAddress, $promoCodeInput) {
-                // Re-fetch cart items + lock their products inside the transaction,
-                // ordered by product_id to avoid lock-ordering deadlocks between
-                // concurrent checkouts that share products.
-                $items = CartItem::whereIn('id', $cartItemIds)
-                    ->with(['product.store.owner' => fn ($q) => $q])
-                    ->get();
-
-                $productIds = $items->pluck('product_id')->sort()->values();
-                $lockedProducts = Product::whereIn('id', $productIds)
-                    ->lockForUpdate()
-                    ->get()
-                    ->keyBy('id');
-
-                foreach ($items as $item) {
-                    $product = $lockedProducts->get($item->product_id);
-
-                    if (! $product || ! $product->is_active || $product->status !== 'approved' || $item->quantity > $product->stock) {
-                        $available = $product->stock ?? 0;
-                        throw new \RuntimeException(
-                            "\"{$item->product->name}\" no longer has enough stock ({$available} left)."
-                        );
-                    }
-                }
-
-                $subtotal = $items->sum(fn (CartItem $item) => $item->quantity * $lockedProducts[$item->product_id]->price);
-
-                // Promo codes are store-scoped (see PromoCode's own doc
-                // comment): a code only discounts the portion of this
-                // order belonging to its own store, never the whole cart
-                // -- a mixed-seller checkout with one seller's code
-                // shouldn't silently discount another seller's items.
-                // Locked here too (same reasoning as the product lock
-                // above) so two concurrent checkouts racing the same
-                // limited-use code can't both slip past max_uses.
-                $discountAmount = 0;
-                $appliedCode = null;
-
-                if ($promoCodeInput !== null && $promoCodeInput !== '') {
-                    $promoCode = PromoCode::where('code', Str::upper($promoCodeInput))
-                        ->lockForUpdate()
-                        ->first();
-
-                    if (! $promoCode || ! $promoCode->isRedeemable()) {
-                        throw new \RuntimeException('That promo code is not valid.');
-                    }
-
-                    $eligibleSubtotal = $items
-                        ->filter(fn (CartItem $item) => $lockedProducts[$item->product_id]->store_id === $promoCode->store_id)
-                        ->sum(fn (CartItem $item) => $item->quantity * $lockedProducts[$item->product_id]->price);
-
-                    if ($eligibleSubtotal <= 0) {
-                        throw new \RuntimeException('That promo code doesn\'t apply to anything in your cart.');
-                    }
-
-                    $discountAmount = $promoCode->discountFor((float) $eligibleSubtotal);
-                    $appliedCode = $promoCode->code;
-                    $promoCode->increment('used_count');
-                }
-
-                $order = Order::create([
-                    'user_id' => auth()->id(),
-                    'status' => 'pending',
-                    'subtotal' => $subtotal,
-                    'promo_code' => $appliedCode,
-                    'discount_amount' => $discountAmount,
-                    'total' => $subtotal - $discountAmount,
-                    'shipping_address' => $shippingAddress,
-                ]);
-
-                $storesToNotify = [];
-
-                foreach ($items as $item) {
-                    $product = $lockedProducts[$item->product_id];
-                    $lineTotal = $item->quantity * $product->price;
-
-                    OrderItem::create([
-                        'order_id' => $order->id,
-                        'product_id' => $item->product_id,
-                        'quantity' => $item->quantity,
-                        'unit_price' => $product->price,
-                        'total' => $lineTotal,
-                    ]);
-
-                    // WHERE-guarded decrement: still checks stock >= quantity at
-                    // write time, so even without a real row lock (SQLite) this
-                    // can never drive stock negative -- it just affects 0 rows and
-                    // we catch that below.
-                    $updated = Product::where('id', $product->id)
-                        ->where('stock', '>=', $item->quantity)
-                        ->decrement('stock', $item->quantity);
-
-                    if ($updated === 0) {
-                        throw new \RuntimeException(
-                            "\"{$item->product->name}\" no longer has enough stock."
-                        );
-                    }
-
-                    $storesToNotify[$item->product->store_id] = $item->product->store;
-                }
-
-                CartItem::whereIn('id', $cartItemIds)->delete();
-
-                foreach ($storesToNotify as $store) {
-                    $store->owner?->notify(new NewOrderNotification($order, $store));
-                }
-
-                return $order;
-            });
-        } catch (\RuntimeException $e) {
+            $order = $checkout->place($request->user(), $validated, $validated['checkout_token'], $request->ip());
+        } catch (CheckoutException $e) {
             return redirect()->route('cart.index')->with('error', $e->getMessage());
         }
 
-        // Dispatched after the transaction has committed, not from inside
-        // the closure -- firing it mid-transaction would mean any later
-        // failure in that same transaction still left listeners believing
-        // an order existed.
-        event(new OrderPlaced($order));
+        if (! $order->wasRecentlyCreated) {
+            return redirect()->route('orders.show', $order)
+                ->with('status', 'This order was already placed, so nothing was ordered twice. Here it is.');
+        }
 
-        return redirect()->route('orders.show', $order)->with('status', 'Order placed successfully.');
+        return redirect()->route('orders.show', $order)->with('status', 'Order placed. It is pending and unpaid: payment is not available yet.');
     }
 }

@@ -39,7 +39,7 @@
         <a href="{{ route('products.show', $product) }}" class="dot-card" style="display:block;padding:1.1rem;text-decoration:none;transition:border-color .15s;">
             <div style="width:100%;aspect-ratio:1/1;border-radius:8px;background:linear-gradient(135deg,rgba(245,158,11,0.15),rgba(217,119,6,0.08));display:flex;align-items:center;justify-content:center;margin-bottom:0.85rem;overflow:hidden;">
                 @if($product->images->isNotEmpty())
-                    <img src="{{ asset('storage/' . $product->images->first()->path) }}" alt="{{ $product->name }}" style="width:100%;height:100%;object-fit:cover;">
+                    <img src="{{ $product->images->first()->url() }}" alt="{{ $product->name }}" style="width:100%;height:100%;object-fit:cover;">
                 @else
                     <span class="material-symbols-rounded" style="font-size:34px;color:#f59e0b;opacity:0.6;">inventory_2</span>
                 @endif
@@ -50,10 +50,10 @@
             <div style="font-size:0.68rem;color:#71717a;margin-bottom:0.5rem;">{{ $product->store->name }}</div>
             <div style="display:flex;align-items:center;justify-content:space-between;">
                 <span style="font-family:'Syne',sans-serif;font-size:0.9rem;font-weight:800;color:#f59e0b;">${{ number_format($product->price, 2) }}</span>
-                @if($product->reviews_count > 0)
+                @if($product->rating_count > 0)
                 <span style="display:flex;align-items:center;gap:0.2rem;font-size:0.68rem;color:#a1a1aa;">
                     <span class="material-symbols-rounded" style="font-size:13px;color:#facc15;">star</span>
-                    {{ number_format($product->reviews_avg_rating, 1) }} ({{ $product->reviews_count }})
+                    {{ number_format($product->rating_average, 1) }} ({{ $product->rating_count }})
                 </span>
                 @else
                 <span style="font-size:0.65rem;color:#52525b;">No reviews yet</span>

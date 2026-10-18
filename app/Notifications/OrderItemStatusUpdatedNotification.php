@@ -29,13 +29,13 @@ class OrderItemStatusUpdatedNotification extends Notification
      */
     public function toDatabase(object $notifiable): array
     {
-        $productName = $this->orderItem->product->name;
-        $status = $this->orderItem->status;
+        $productName = $this->orderItem->displayName();
+        $status = $this->orderItem->status->value;
 
         return [
             'type' => 'order_item_status_updated',
             'title' => 'Order update',
-            'message' => "\"{$productName}\" from your order #".str_pad((string) $this->orderItem->order_id, 5, '0', STR_PAD_LEFT)." is now {$status}.",
+            'message' => "\"{$productName}\" from your order {$this->orderItem->order->reference()} is now {$status}.",
             'order_id' => $this->orderItem->order_id,
             'order_item_id' => $this->orderItem->id,
             'status' => $status,

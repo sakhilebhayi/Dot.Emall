@@ -3,10 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\Product;
-use App\Models\Store;
 use App\Models\StoreCategory;
+use App\Services\ProductImages;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
@@ -15,7 +16,7 @@ class SellerProductController extends Controller
 {
     public function index(): View
     {
-        $store = Store::where('owner_id', auth()->id())->first();
+        $store = auth()->user()->store;
 
         $products = $store
             ? Product::where('store_id', $store->id)->latest()->get()
@@ -26,7 +27,7 @@ class SellerProductController extends Controller
 
     public function create(): View|RedirectResponse
     {
-        $store = Store::where('owner_id', auth()->id())->first();
+        $store = auth()->user()->store;
 
         if (! $store) {
             return redirect()->route('seller.store.create');
@@ -37,9 +38,9 @@ class SellerProductController extends Controller
         return view('products.create', ['store' => $store, 'categories' => $categories]);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request, ProductImages $images): RedirectResponse
     {
-        $store = Store::where('owner_id', auth()->id())->first();
+        $store = auth()->user()->store;
 
         if (! $store) {
             return redirect()->route('seller.store.create');
@@ -55,20 +56,29 @@ class SellerProductController extends Controller
             'stock' => 'required|integer|min:0',
             'sku' => 'nullable|string|unique:products,sku',
             'category_id' => 'nullable|exists:store_categories,id',
+            ...ProductImages::rules(),
         ]);
 
-        $product = Product::create([
-            'store_id' => $store->id,
-            'category_id' => $validated['category_id'] ?? null,
-            'name' => $validated['name'],
-            'slug' => Str::slug($validated['name']).'-'.Str::random(6),
-            'description' => $validated['description'] ?? null,
-            'price' => $validated['price'],
-            'compare_price' => $validated['compare_price'] ?? null,
-            'stock' => $validated['stock'],
-            'sku' => $validated['sku'] ?? null,
-            'status' => 'pending_approval',
-        ]);
+        $product = DB::transaction(function () use ($store, $validated, $request, $images) {
+            $product = Product::create([
+                'store_id' => $store->id,
+                'category_id' => $validated['category_id'] ?? null,
+                'name' => $validated['name'],
+                'slug' => Str::slug($validated['name']).'-'.Str::random(6),
+                'description' => $validated['description'] ?? null,
+                'price' => $validated['price'],
+                'compare_price' => $validated['compare_price'] ?? null,
+                'stock' => $validated['stock'],
+                'sku' => $validated['sku'] ?? null,
+                'status' => 'pending_approval',
+            ]);
+
+            // Decodes every photo before writing any: a bad one aborts the
+            // whole listing rather than leaving it half-created.
+            $images->add($product, $request->file('images', []));
+
+            return $product;
+        });
 
         return redirect()->route('products.show', $product)
             ->with('status', 'Listing submitted. It will appear in the marketplace once approved.');
@@ -79,6 +89,7 @@ class SellerProductController extends Controller
         Gate::authorize('update', $product);
 
         $categories = StoreCategory::orderBy('name')->get();
+        $product->load('images');
 
         return view('products.edit', compact('product', 'categories'));
     }
@@ -124,5 +135,19 @@ class SellerProductController extends Controller
 
         return redirect()->route('seller.products.index')
             ->with('status', $product->is_active ? 'Listing reactivated.' : 'Listing deactivated.');
+    }
+
+    /**
+     * Archives (soft-deletes) a listing. It leaves every storefront query
+     * and any cart immediately, but the row stays, so order history, which
+     * also carries its own snapshot of the line, is never affected.
+     */
+    public function destroy(Product $product): RedirectResponse
+    {
+        Gate::authorize('delete', $product);
+
+        $product->delete();
+
+        return redirect()->route('seller.products.index')->with('status', 'Listing deleted. Existing orders keep their history.');
     }
 }

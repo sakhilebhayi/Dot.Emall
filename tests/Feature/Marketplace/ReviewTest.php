@@ -2,42 +2,37 @@
 
 namespace Tests\Feature\Marketplace;
 
-use App\Models\Product;
+use App\Enums\OrderStatus;
 use App\Models\Review;
-use App\Models\Store;
-use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Concerns\BuildsMarketplace;
 use Tests\TestCase;
 
+/**
+ * Basic review mechanics. Who is allowed to review (verified purchase only)
+ * is covered in VerifiedReviewTest; these tests all use a buyer whose order
+ * has been delivered.
+ */
 class ReviewTest extends TestCase
 {
+    use BuildsMarketplace;
     use RefreshDatabase;
 
-    private function makeProduct(?User $sellerOwner = null): Product
+    private function deliveredBuyerOf($product)
     {
-        $seller = $sellerOwner ?? User::factory()->create();
-        $store = Store::create([
-            'owner_id' => $seller->id,
-            'name' => 'Test Store',
-            'slug' => 'test-store-'.uniqid(),
-            'is_active' => true,
-        ]);
+        $buyer = $this->makeBuyer();
+        $order = $this->placeOrder($buyer, [[$product, 1]]);
+        $order->items->first()->update(['status' => OrderStatus::Delivered]);
 
-        return Product::create([
-            'store_id' => $store->id,
-            'name' => 'Widget',
-            'slug' => 'widget-'.uniqid(),
-            'price' => 10,
-            'stock' => 5,
-            'is_active' => true,
-        ]);
+        return $buyer;
     }
 
     public function test_authenticated_user_can_review_a_product(): void
     {
-        $seller = User::factory()->create();
-        $buyer = User::factory()->withPersonalTeam()->create();
-        $product = $this->makeProduct($seller);
+        $seller = $this->makeSeller();
+        $product = $this->makeListing($seller);
+        $buyer = $this->deliveredBuyerOf($product);
+        $seller->notifications()->delete();
 
         $this->actingAs($buyer)
             ->post(route('reviews.store', $product), ['rating' => 5, 'body' => 'Great product!'])
@@ -55,9 +50,8 @@ class ReviewTest extends TestCase
 
     public function test_a_user_cannot_review_the_same_product_twice(): void
     {
-        $buyer = User::factory()->withPersonalTeam()->create();
-        $product = $this->makeProduct();
-
+        $product = $this->makeListing($this->makeSeller());
+        $buyer = $this->deliveredBuyerOf($product);
         Review::create(['product_id' => $product->id, 'user_id' => $buyer->id, 'rating' => 4]);
 
         $this->actingAs($buyer)
@@ -69,19 +63,23 @@ class ReviewTest extends TestCase
 
     public function test_rating_must_be_between_one_and_five(): void
     {
-        $buyer = User::factory()->withPersonalTeam()->create();
-        $product = $this->makeProduct();
+        $product = $this->makeListing($this->makeSeller());
+        $buyer = $this->deliveredBuyerOf($product);
 
-        $this->actingAs($buyer)
-            ->post(route('reviews.store', $product), ['rating' => 9])
-            ->assertSessionHasErrors('rating');
+        foreach ([0, 6, 9, 'x'] as $bad) {
+            $this->actingAs($buyer)
+                ->post(route('reviews.store', $product), ['rating' => $bad])
+                ->assertSessionHasErrors('rating');
+        }
+
+        $this->assertDatabaseCount('reviews', 0);
     }
 
     public function test_only_the_review_author_can_delete_it(): void
     {
-        $author = User::factory()->withPersonalTeam()->create();
-        $intruder = User::factory()->withPersonalTeam()->create();
-        $product = $this->makeProduct();
+        $product = $this->makeListing($this->makeSeller());
+        $author = $this->deliveredBuyerOf($product);
+        $intruder = $this->makeBuyer();
         $review = Review::create(['product_id' => $product->id, 'user_id' => $author->id, 'rating' => 3]);
 
         $this->actingAs($intruder)

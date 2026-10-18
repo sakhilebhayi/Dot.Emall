@@ -2,11 +2,17 @@
 
 namespace App\Models;
 
+use App\Support\Money;
+use Database\Factories\PromoCodeFactory;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class PromoCode extends Model
 {
+    /** @use HasFactory<PromoCodeFactory> */
+    use HasFactory;
+
     protected $fillable = [
         'store_id', 'code', 'discount_type', 'discount_value',
         'max_uses', 'used_count', 'expires_at', 'is_active',
@@ -48,10 +54,6 @@ class PromoCode extends Model
      */
     public function discountFor(float $eligibleSubtotal): float
     {
-        $discount = $this->discount_type === 'percent'
-            ? $eligibleSubtotal * ((float) $this->discount_value / 100)
-            : (float) $this->discount_value;
-
-        return round(min($discount, $eligibleSubtotal), 2);
+        return Money::discountCents($this->discount_type, $this->discount_value, Money::toCents($eligibleSubtotal)) / 100;
     }
 }

@@ -25,49 +25,61 @@ where sellers open a store, list products, and fulfil orders, while buyers brows
 every store in the marketplace.
 
 **Status:** built and running as a Laravel application. See [`wiki.md`](wiki.md) for the full,
-kept-honest breakdown of what's actually implemented vs. still roadmap.
+kept-honest breakdown of what is implemented and what is still roadmap.
 
-## Core Features (implemented today)
+> **Payment is NOT implemented.** The payment provider has not been chosen, so nothing in the
+> codebase takes, records or implies a payment. Checkout places an order that is **pending and
+> unpaid**, and every screen that shows an order says so. The dashboard's "delivered value" is the
+> value of delivered items, not money received.
 
-- Real marketplace schema: stores, products, product images, orders, order items, reviews, and
-  a cart
-- Multi-vendor storefronts — each store belongs to an owning `User`
-- Buyer-facing product marketplace: search and category filter (`/products`), product detail page
-  with gallery, price, stock, and reviews (`/products/{product}`)
-- Full cart -> checkout flow (`/cart`, `POST /cart`, `POST /cart/checkout`) — creates a real
-  `Order` + `OrderItem` rows, decrements stock inside a transaction, and rejects checkout outright
-  if any line item is out of stock
-- Buyer order history (`/orders`, `/orders/{order}`), strictly scoped to the signed-in user via
-  `OrderPolicy` — one customer can never view another customer's order
-- Product reviews: buyers can post one review per product (`POST /products/{product}/reviews`)
-  and delete their own; `ReviewPolicy` prevents deleting someone else's review
-- Seller operations dashboard — total products, orders, revenue (delivered orders), pending
-  orders, reviews received, average rating, and a low-stock alert widget across the seller's own
-  stores
-- In-app notification bell (Laravel's `database` notification channel); store owners get a live
-  notification the moment a buyer places an order or leaves a review
-- Category taxonomy validation: the product browse/filter endpoint rejects any `category` value
-  that isn't a real `store_categories` row, instead of accepting an arbitrary id silently
-- Dark / light mode toggle (Tailwind class-based strategy, persisted per browser)
-- Ecosystem SSO from the Dot hub
+## What works today
 
-> **Not yet built:** Stripe payment processing, a vendor payout/commission dashboard, promotional
-> codes and timed discounts, structured domain-event dispatch or a Knowledge Pack publisher to
-> Dot.Brain, and seller-side product/store management screens (there is still no UI for a seller
-> to create or edit a store or product — only the dashboard's read-only view of what already
-> exists in the database). These were all present as aspirations in earlier drafts of this
-> README but are not in the codebase; see `wiki.md` §7 for the full roadmap.
+**Buyers**
+- Public storefront: browse, search and filter products (`/products`) and open a product page with
+  its photo gallery, price, stock and reviews, without signing in. Buying needs an account.
+- Cart (`/cart`) with stock checks on add and on quantity change, then checkout. Checkout creates a
+  real `Order` and `OrderItem` rows inside one transaction (stock locked and decremented), collects a
+  delivery name, address and optional phone, accepts a store promo code, and is idempotent: a
+  single-use token means a double submit or a retried request can never place two orders. Checkout
+  is rate-limited (10 a minute per user) and wrong promo guesses are budgeted per user and per IP.
+- Order history (`/orders`). A buyer can cancel an item before it ships; it goes back into stock and
+  the order is re-priced without it.
+- Reviews from verified buyers only: one review per product, after an order containing it has been
+  delivered.
+
+**Sellers** (one store per user)
+- Open a store, edit it, close and reopen it (`/sell`, `/sell/store/edit`).
+- Create, edit, deactivate and delete listings (`/sell/products`), with up to 6 photos each (the
+  first is the cover; photos are content-checked, resized and re-encoded to strip location data).
+  New listings are reviewed by a platform operator before they appear.
+- Orders to fulfil (`/sell/orders`): a seller sees only their own items of an order, their own net
+  value, and the buyer's name, address and phone only while one of their items is still to ship.
+  Items move forward pending, processing, shipped, delivered, or are cancelled before shipping.
+- Store promo codes (`/sell/promo-codes`): percent or fixed, optional cap and expiry, unique per
+  store, matched case-insensitively. The discount applies only to that store's items.
+- A seller desk (`/dashboard`) with figures computed from the seller's own order lines.
+
+**Everyone**
+- In-app notifications (database channel): sellers are told once per order when they have items to
+  fulfil; buyers are told when an item changes status.
+- Order history never breaks: each order line snapshots the product name, store and seller, so
+  editing, archiving or deleting a listing does not change what a past order says.
+- Dark/light toggle, ecosystem SSO from the Dot hub, operator review screen for new listings.
+
+**Not built:** payments of any kind (provider undecided), vendor payouts or commissions, returns and
+refunds, multiple stores per user (a deliberate one-store rule), timed or automatic discounts,
+search integration (search is a plain `LIKE`), and a Dot.Brain Knowledge Pack publisher beyond the
+single `incident_report` pack described in `wiki.md`.
 
 ## Domain Models
 
-- **Store** — vendor storefront; belongs to a `User` owner, has many `Product`
-- **StoreCategory** — self-referential category tree
-- **Product** — belongs to a `Store` and optional `StoreCategory`; has many `ProductImage`, `Review`
-- **ProductImage** — ordered gallery per product
-- **Order** — belongs to a buyer `User`; has many `OrderItem`
-- **OrderItem** — line item linking an `Order` to a `Product`
-- **Review** — one review per (product, user)
-- **CartItem** — one row per (user, product); the pre-checkout cart
+- **Store** (one per owner) / **StoreCategory** (self-referential tree)
+- **Product** (soft-deleted, moderation `status`, stored average rating) / **ProductImage** (ordered, cover first)
+- **Order** (buyer, shipping contact, promo snapshot, idempotency key) / **OrderItem** (snapshot of what was bought, per-line status and promo share)
+- **PromoCode** (per store) / **Review** (verified, one per product per user) / **CartItem**
+- Services: `CheckoutService`, `OrderLifecycle` (cancellation and status moves), `OrderPricing`
+  (totals and discount shares, exact to the cent), `OrderAccess` (who sees what of an order),
+  `SellerDashboard`, `ReviewService`, `ProductImages`.
 
 ## Tech Stack
 
@@ -106,7 +118,12 @@ php artisan test
 ```
 
 Feature tests use an in-memory SQLite connection (see `phpunit.xml`) and Laravel's
-`RefreshDatabase` trait — no shared Postgres instance required to run them.
+`RefreshDatabase` trait — no shared Postgres instance required to run them. The migration tests in
+`tests/Feature/Migrations` build the schema as it was before a migration, insert legacy rows, run
+the real migrations and check what happened to that data.
+
+Listing photos are stored on the `public` disk: run `php artisan storage:link` once per environment
+and make sure the PHP `gd` extension is installed (it is what strips metadata from uploads).
 
 ## Ecosystem
 

@@ -16,6 +16,11 @@
             {{ session('status') }}
         </div>
     @endif
+    @if($errors->any())
+        <div style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.25);color:#ef4444;padding:0.75rem 1rem;border-radius:8px;font-size:0.8rem;margin-bottom:1.25rem;">
+            @foreach($errors->all() as $error)<div>{{ $error }}</div>@endforeach
+        </div>
+    @endif
     @if(session('error'))
         <div style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.25);color:#ef4444;padding:0.75rem 1rem;border-radius:8px;font-size:0.8rem;margin-bottom:1.25rem;">
             {{ session('error') }}
@@ -36,24 +41,35 @@
     @else
     <div class="dot-card" style="overflow:hidden;margin-bottom:1.5rem;">
         @foreach($items as $item)
-        <div style="display:flex;align-items:center;gap:1rem;padding:1rem 1.25rem;{{ !$loop->last ? 'border-bottom:1px solid rgba(255,255,255,0.06);' : '' }}">
+        @php $problem = $problems[$item->id] ?? null; @endphp
+        <div style="display:flex;align-items:center;gap:1rem;padding:1rem 1.25rem;flex-wrap:wrap;{{ !$loop->last ? 'border-bottom:1px solid rgba(255,255,255,0.06);' : '' }}">
             <div style="width:52px;height:52px;border-radius:8px;background:linear-gradient(135deg,rgba(245,158,11,0.15),rgba(217,119,6,0.08));display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;">
                 @if($item->product->images->isNotEmpty())
-                    <img src="{{ asset('storage/' . $item->product->images->first()->path) }}" alt="" style="width:100%;height:100%;object-fit:cover;">
+                    <img src="{{ $item->product->images->first()->url() }}" alt="" style="width:100%;height:100%;object-fit:cover;">
                 @else
                     <span class="material-symbols-rounded" style="font-size:22px;color:#f59e0b;opacity:0.6;">inventory_2</span>
                 @endif
             </div>
-            <div style="flex:1;min-width:0;">
+            <div style="flex:1;min-width:180px;">
                 <a href="{{ route('products.show', $item->product) }}" style="font-size:0.82rem;font-weight:700;color:#f4f4f5;text-decoration:none;">{{ $item->product->name }}</a>
-                <div style="font-size:0.7rem;color:#71717a;">{{ $item->product->store->name }} · Qty {{ $item->quantity }}</div>
+                <div style="font-size:0.7rem;color:#71717a;">{{ $item->product->store->name }} · ${{ number_format($item->product->price, 2) }} each</div>
+                @if($problem)
+                <div style="font-size:0.72rem;font-weight:600;color:#f59e0b;margin-top:0.25rem;" role="alert">{{ $problem }}</div>
+                @endif
             </div>
-            <div style="font-family:'Syne',sans-serif;font-size:0.85rem;font-weight:700;color:#f4f4f5;white-space:nowrap;">
+            <form method="POST" action="{{ route('cart.update', $item) }}" style="display:flex;gap:0.4rem;align-items:center;">
+                @csrf
+                @method('PATCH')
+                <label for="qty-{{ $item->id }}" style="position:absolute;left:-9999px;">Quantity of {{ $item->product->name }}</label>
+                <input id="qty-{{ $item->id }}" type="number" name="quantity" value="{{ $item->quantity }}" min="1" max="{{ max(1, min(99, $item->product->stock)) }}" class="dot-input" style="width:72px;padding:0.35rem 0.5rem;">
+                <button type="submit" class="dot-btn dot-btn-ghost" style="padding:0.35rem 0.7rem;font-size:0.72rem;">Update</button>
+            </form>
+            <div style="font-family:'Syne',sans-serif;font-size:0.85rem;font-weight:700;color:#f4f4f5;white-space:nowrap;min-width:80px;text-align:right;">
                 ${{ number_format($item->quantity * $item->product->price, 2) }}
             </div>
             <form method="POST" action="{{ route('cart.destroy', $item) }}">
                 @csrf @method('DELETE')
-                <button type="submit" class="topbar-btn" title="Remove">
+                <button type="submit" class="topbar-btn" title="Remove {{ $item->product->name }}" aria-label="Remove {{ $item->product->name }}">
                     <span class="material-symbols-rounded" style="font-size:16px;">delete</span>
                 </button>
             </form>
@@ -70,14 +86,23 @@
 
     <form method="POST" action="{{ route('cart.checkout') }}" class="dot-card" style="padding:1.25rem 1.5rem;">
         @csrf
-        <label style="display:block;font-size:0.75rem;font-weight:600;color:#a1a1aa;margin-bottom:0.4rem;">Shipping address</label>
-        <input type="text" name="shipping_address" required placeholder="Street, city, postal code" class="dot-input" style="margin-bottom:1rem;">
+        <input type="hidden" name="checkout_token" value="{{ $checkoutToken }}">
+        <div style="font-size:0.7rem;font-weight:700;color:#71717a;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.75rem;">Delivery</div>
+        <label for="shipping_name" style="display:block;font-size:0.75rem;font-weight:600;color:#a1a1aa;margin-bottom:0.4rem;">Name for delivery</label>
+        <input id="shipping_name" type="text" name="shipping_name" value="{{ old('shipping_name', auth()->user()->name) }}" maxlength="120" class="dot-input" style="margin-bottom:1rem;">
+        <label for="shipping_address" style="display:block;font-size:0.75rem;font-weight:600;color:#a1a1aa;margin-bottom:0.4rem;">Shipping address</label>
+        <input id="shipping_address" type="text" name="shipping_address" value="{{ old('shipping_address') }}" required placeholder="Street, city, postal code" class="dot-input" style="margin-bottom:1rem;">
+        <label for="shipping_phone" style="display:block;font-size:0.75rem;font-weight:600;color:#a1a1aa;margin-bottom:0.4rem;">Phone for the courier (optional)</label>
+        <input id="shipping_phone" type="tel" name="shipping_phone" value="{{ old('shipping_phone') }}" maxlength="40" class="dot-input" style="margin-bottom:0.4rem;">
+        <div style="font-size:0.68rem;color:#71717a;margin-bottom:1rem;">Sellers see these details only for items they still have to ship.</div>
         <label style="display:block;font-size:0.75rem;font-weight:600;color:#a1a1aa;margin-bottom:0.4rem;">Promo code (optional)</label>
         <input type="text" name="promo_code" placeholder="e.g. SUMMER10" class="dot-input" style="margin-bottom:1rem;text-transform:uppercase;">
-        <button type="submit" class="dot-btn dot-btn-primary" style="width:100%;justify-content:center;">
-            <span class="material-symbols-rounded" style="font-size:16px;">lock</span>
-            Place Order
-        </button>
+        @if(count($problems) > 0)
+        <div style="font-size:0.78rem;font-weight:600;color:#f59e0b;text-align:center;" role="alert">Fix the items marked above before placing your order.</div>
+        @else
+        <button type="submit" class="dot-btn dot-btn-primary" style="width:100%;justify-content:center;">Place order</button>
+        @endif
+        <div style="font-size:0.7rem;color:#71717a;margin-top:0.6rem;text-align:center;">No payment is taken. Your order is placed as pending and unpaid.</div>
     </form>
     @endif
 

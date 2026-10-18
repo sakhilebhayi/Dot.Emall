@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\OrderStatus;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
@@ -28,7 +29,7 @@ class DashboardTest extends TestCase
             ->get('/dashboard')
             ->assertOk()
             ->assertViewIs('dashboard')
-            ->assertSee('Marketplace Dashboard');
+            ->assertSee('Seller desk');
     }
 
     public function test_dashboard_shows_review_and_low_stock_widgets_for_the_sellers_own_products(): void
@@ -54,7 +55,7 @@ class DashboardTest extends TestCase
         $response = $this->actingAs($seller)->get('/dashboard');
 
         $response->assertOk();
-        $response->assertSee('Products low on stock', false);
+        $response->assertSee('1 listing low on stock.');
         $response->assertSee('5.0'); // average rating from the single 5-star review
     }
 
@@ -82,17 +83,12 @@ class DashboardTest extends TestCase
             'subtotal' => 30,
             'total' => 30,
         ]);
-        OrderItem::create([
-            'order_id' => $order->id,
-            'product_id' => $product->id,
-            'quantity' => 1,
-            'unit_price' => 30,
-            'total' => 30,
-        ]);
+        OrderItem::factory()->forProduct($product)->status(OrderStatus::Delivered)->create(['order_id' => $order->id]);
 
         $response = $this->actingAs($seller)->get('/dashboard');
 
         $response->assertOk();
         $response->assertSee('$30.00');
+        $response->assertSee($order->reference());
     }
 }

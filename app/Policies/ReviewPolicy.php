@@ -2,15 +2,12 @@
 
 namespace App\Policies;
 
+use App\Models\Product;
 use App\Models\Review;
 use App\Models\User;
+use App\Services\ReviewService;
 use Illuminate\Auth\Access\HandlesAuthorization;
 
-/**
- * Added (platform-loop pass, 2026-08-01) alongside the new
- * `POST /products/{product}/reviews` and `DELETE /reviews/{review}` routes
- * — the Review model already existed but nothing could ever create one.
- */
 class ReviewPolicy
 {
     use HandlesAuthorization;
@@ -26,13 +23,17 @@ class ReviewPolicy
     }
 
     /**
-     * Any authenticated buyer may leave a review; the one-review-per-
-     * (product, user) rule is enforced by the existing DB unique
-     * constraint on `reviews`, surfaced as a validation error.
+     * Verified purchase only: the user has a delivered order line for this
+     * product, and is not the seller of it. (The one-review-per-product rule
+     * is a validation error, not a permission: see ReviewService::submit().)
      */
-    public function create(User $user): bool
+    public function create(User $user, Product $product): bool
     {
-        return true;
+        if ($product->store->owner_id === $user->id) {
+            return false;
+        }
+
+        return app(ReviewService::class)->hasPurchased($user, $product);
     }
 
     /**

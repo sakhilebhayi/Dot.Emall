@@ -21,11 +21,22 @@
     @endif
 
     <div style="display:grid;grid-template-columns:340px 1fr;gap:2rem;margin-bottom:2.5rem;">
-        <div style="width:100%;aspect-ratio:1/1;border-radius:12px;background:linear-gradient(135deg,rgba(245,158,11,0.15),rgba(217,119,6,0.08));display:flex;align-items:center;justify-content:center;overflow:hidden;">
-            @if($product->images->isNotEmpty())
-                <img src="{{ asset('storage/' . $product->images->first()->path) }}" alt="{{ $product->name }}" style="width:100%;height:100%;object-fit:cover;">
-            @else
-                <span class="material-symbols-rounded" style="font-size:56px;color:#f59e0b;opacity:0.6;">inventory_2</span>
+        <div x-data="{ current: @js($product->images->first()?->url()) }">
+            <div style="width:100%;aspect-ratio:1/1;border-radius:12px;background:linear-gradient(135deg,rgba(245,158,11,0.15),rgba(217,119,6,0.08));display:flex;align-items:center;justify-content:center;overflow:hidden;">
+                @if($product->images->isNotEmpty())
+                    <img :src="current" src="{{ $product->images->first()->url() }}" alt="{{ $product->name }}" style="width:100%;height:100%;object-fit:cover;">
+                @else
+                    <span class="material-symbols-rounded" style="font-size:56px;color:#f59e0b;opacity:0.6;">inventory_2</span>
+                @endif
+            </div>
+            @if($product->images->count() > 1)
+            <div style="display:flex;gap:0.5rem;margin-top:0.6rem;flex-wrap:wrap;">
+                @foreach($product->images as $image)
+                <a href="{{ $image->url() }}" @click.prevent="current = '{{ $image->url() }}'" aria-label="Show photo {{ $loop->iteration }} of {{ $product->images->count() }}" style="width:56px;height:56px;border-radius:8px;overflow:hidden;border:1px solid rgba(255,255,255,0.1);display:block;">
+                    <img src="{{ $image->url() }}" alt="" style="width:100%;height:100%;object-fit:cover;">
+                </a>
+                @endforeach
+            </div>
             @endif
         </div>
 
@@ -43,11 +54,11 @@
                 @endif
             </div>
 
-            @if($product->reviews->isNotEmpty())
+            @if($product->rating_count > 0)
             <div style="display:flex;align-items:center;gap:0.3rem;margin-bottom:1.25rem;">
                 <span class="material-symbols-rounded" style="font-size:16px;color:#facc15;">star</span>
-                <span style="font-size:0.8rem;font-weight:700;color:#f4f4f5;">{{ number_format($product->averageRating(), 1) }}</span>
-                <span style="font-size:0.75rem;color:#71717a;">({{ $product->reviews->count() }} review{{ $product->reviews->count() === 1 ? '' : 's' }})</span>
+                <span style="font-size:0.8rem;font-weight:700;color:#f4f4f5;">{{ number_format($product->rating_average, 1) }}</span>
+                <span style="font-size:0.75rem;color:#71717a;">({{ $product->rating_count }} review{{ $product->rating_count === 1 ? '' : 's' }})</span>
             </div>
             @endif
 
@@ -59,8 +70,17 @@
                 {{ $product->stock > 0 ? "{$product->stock} in stock" : 'Out of stock' }}
             </div>
 
+            @guest
+                @if($product->stock > 0)
+                <a href="{{ route('login') }}" class="dot-btn dot-btn-primary">
+                    <span class="material-symbols-rounded" style="font-size:16px;">login</span>
+                    Sign in to buy
+                </a>
+                <div style="font-size:0.7rem;color:#71717a;margin-top:0.5rem;">No account yet? <a href="{{ route('register') }}" style="color:#f59e0b;">Create one</a>. You come back to this page afterwards.</div>
+                @endif
+            @endguest
             @auth
-                @if($product->is_active && $product->store->is_active && $product->stock > 0)
+                @if($product->is_active && $product->store->is_active && $product->stock > 0 && $product->store->owner_id !== auth()->id())
                 <form method="POST" action="{{ route('cart.store') }}" style="display:flex;gap:0.75rem;align-items:center;">
                     @csrf
                     <input type="hidden" name="product_id" value="{{ $product->id }}">
@@ -80,7 +100,7 @@
         <h2 style="margin:0 0 1rem;font-family:'Syne',sans-serif;font-size:1rem;font-weight:700;color:#f4f4f5;">Reviews</h2>
 
         @auth
-            @if(!$hasReviewed)
+            @if($canReview)
             <form method="POST" action="{{ route('reviews.store', $product) }}" class="dot-card" style="padding:1.25rem;margin-bottom:1.5rem;">
                 @csrf
                 <div style="font-size:0.8rem;font-weight:600;color:#f4f4f5;margin-bottom:0.6rem;">Leave a review</div>
@@ -93,13 +113,15 @@
                 <textarea name="body" rows="2" placeholder="Optional comments…" class="dot-input" style="margin-bottom:0.75rem;resize:vertical;"></textarea>
                 <button type="submit" class="dot-btn dot-btn-primary">Submit Review</button>
             </form>
+            @elseif(!$hasReviewed)
+            <div style="font-size:0.75rem;color:#71717a;margin-bottom:1.25rem;">Reviews come from buyers: you can review this product after an order containing it has been delivered.</div>
             @endif
         @endauth
 
         @if($product->reviews->isEmpty())
         <div class="dot-card" style="padding:2rem;text-align:center;">
             <span class="material-symbols-rounded" style="font-size:30px;color:#71717a;display:block;margin-bottom:0.5rem;">rate_review</span>
-            <div style="font-size:0.8rem;color:#71717a;">No reviews yet. Be the first to review this product!</div>
+            <div style="font-size:0.8rem;color:#71717a;">No reviews yet.</div>
         </div>
         @else
         <div style="display:flex;flex-direction:column;gap:0.75rem;">
@@ -107,7 +129,7 @@
             <div class="dot-card" style="padding:1rem 1.25rem;">
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.3rem;">
                     <div style="display:flex;align-items:center;gap:0.5rem;">
-                        <span style="font-size:0.78rem;font-weight:700;color:#f4f4f5;">{{ $review->user->name ?? 'Anonymous' }}</span>
+                        <span style="font-size:0.78rem;font-weight:700;color:#f4f4f5;">{{ $review->user?->publicName() ?? 'Buyer' }}</span>
                         <span style="display:flex;">
                             @for($i = 1; $i <= 5; $i++)
                                 <span class="material-symbols-rounded" style="font-size:13px;color:{{ $i <= $review->rating ? '#facc15' : '#3f3f46' }};">star</span>
