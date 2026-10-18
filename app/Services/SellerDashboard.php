@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\OrderStatus;
+use App\Enums\PaymentStatus;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
@@ -25,8 +26,12 @@ use App\Models\User;
  * archiving or deleting a listing never moves history between sellers or
  * out of the numbers.
  *
- * Payment is not implemented, so "revenue" means value of delivered lines,
- * not money received.
+ * "Revenue" is EARNED, not paid out. Paystack collects the buyer's money
+ * into the platform's own account; seller payouts do not exist yet, so a
+ * figure here never means a seller has been paid. Only lines of orders a
+ * seller may fulfil count: orders paid through Paystack, and orders placed
+ * before Paystack was configured (which never required payment). Lines of an
+ * order still awaiting payment are neither revenue nor "to fulfil".
  */
 class SellerDashboard
 {
@@ -44,8 +49,9 @@ class SellerDashboard
 
         $lines = fn () => OrderItem::query()->where('seller_id', $seller->id);
         $live = fn () => $lines()->where('status', '!=', OrderStatus::Cancelled->value);
+        $fulfillable = fn () => $lines()->whereHas('order', fn ($q) => $q->fulfillable());
 
-        $revenueCents = $lines()
+        $revenueCents = $fulfillable()
             ->where('status', OrderStatus::Delivered->value)
             ->get(['total', 'discount_amount'])
             ->sum(fn (OrderItem $line) => $line->netCents());
@@ -64,11 +70,12 @@ class SellerDashboard
             ->sortByDesc('id')
             ->map(function (Order $order) {
                 $lines = $order->items;
-                $needsShipping = $lines->contains(fn (OrderItem $l) => $l->status->needsShipping());
+                $needsShipping = $order->isFulfillable() && $lines->contains(fn (OrderItem $l) => $l->status->needsShipping());
 
                 return [
                     'order' => $order,
                     'status' => OrderStatus::derive($lines->pluck('status')),
+                    'awaitingPayment' => $order->isAwaitingPayment(),
                     'lineCount' => $lines->reject(fn (OrderItem $l) => $l->isCancelled())->count(),
                     'netCents' => $lines->reject(fn (OrderItem $l) => $l->isCancelled())->sum(fn (OrderItem $l) => $l->netCents()),
                     // Same rule as the order page: the buyer is named to a
@@ -82,8 +89,12 @@ class SellerDashboard
             'stores' => $stores,
             'totalProducts' => $productIds->count(),
             'totalOrders' => $live()->distinct()->count('order_id'),
-            'awaitingFulfilment' => $lines()
+            'awaitingFulfilment' => $fulfillable()
                 ->whereIn('status', [OrderStatus::Pending->value, OrderStatus::Processing->value])
+                ->distinct()->count('order_id'),
+            'awaitingPayment' => $live()
+                ->whereHas('order', fn ($q) => $q->where('requires_payment', true)
+                    ->whereNotIn('payment_status', [PaymentStatus::Paid->value, PaymentStatus::PartiallyRefunded->value, PaymentStatus::Refunded->value]))
                 ->distinct()->count('order_id'),
             'revenueCents' => $revenueCents,
             'recentOrders' => $recent,

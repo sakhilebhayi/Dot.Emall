@@ -43,6 +43,15 @@
                         <td style="padding:0.9rem 1.25rem;font-size:0.78rem;color:#a1a1aa;">{{ $order->items->count() }} item{{ $order->items->count() === 1 ? '' : 's' }}</td>
                         <td style="padding:0.9rem 1.25rem;">
                             <x-status-pill :status="$order->status" size="sm" />
+                            @if($order->requires_payment && $order->status !== \App\Enums\OrderStatus::Cancelled)
+                                @if($order->payment_status->isSettled())
+                                <x-status-pill status="paid" size="sm" />
+                                @elseif($order->payment_status === \App\Enums\PaymentStatus::Failed)
+                                <x-status-pill status="payment failed" size="sm" />
+                                @else
+                                <x-status-pill status="awaiting payment" size="sm" />
+                                @endif
+                            @endif
                         </td>
                         <td style="padding:0.9rem 1.25rem;text-align:right;font-family:'Syne',sans-serif;font-size:0.82rem;font-weight:700;color:#f4f4f5;">${{ number_format($order->total, 2) }}</td>
                         <td style="padding:0.9rem 1.25rem;text-align:right;">

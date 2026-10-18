@@ -2,6 +2,7 @@
 
 namespace App\Listeners;
 
+use App\Events\OrderPaid;
 use App\Events\OrderPlaced;
 use App\Models\Store;
 use App\Models\User;
@@ -9,7 +10,9 @@ use App\Notifications\NewOrderNotification;
 
 /**
  * Tells each seller on a new order, once, that they have something to
- * fulfil. Database notifications only -- no mail, no HTTP, nothing that can
+ * fulfil. That moment is OrderPlaced for an order that needs no payment, and
+ * OrderPaid for one that does: sellers hear nothing about an order the buyer
+ * may never pay for. Database notifications only -- no mail, no HTTP, nothing that can
  * fail slowly or leave the platform. Runs synchronously after the order's
  * transaction has committed (OrderPlaced is dispatched after commit).
  *
@@ -22,7 +25,7 @@ use App\Notifications\NewOrderNotification;
  */
 class NotifySellersOfNewOrder
 {
-    public function handle(OrderPlaced $event): void
+    public function handle(OrderPlaced|OrderPaid $event): void
     {
         $order = $event->order;
 

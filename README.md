@@ -27,10 +27,13 @@ every store in the marketplace.
 **Status:** built and running as a Laravel application. See [`wiki.md`](wiki.md) for the full,
 kept-honest breakdown of what is implemented and what is still roadmap.
 
-> **Payment is NOT implemented.** The payment provider has not been chosen, so nothing in the
-> codebase takes, records or implies a payment. Checkout places an order that is **pending and
-> unpaid**, and every screen that shows an order says so. The dashboard's "delivered value" is the
-> value of delivered items, not money received.
+> **Payments: Paystack, in TEST MODE until you deliberately say otherwise.** With a Paystack test key
+> configured, checkout places the order and sends the buyer to Paystack to pay the *platform's*
+> Paystack account; sellers can fulfil an order only once Paystack has confirmed the money. With no key
+> configured, checkout works exactly as it did before: the order is placed **pending and unpaid** and
+> says so. **Seller payouts, split payments, commissions and KYC are NOT built**: nobody is paid out, and
+> every seller screen says the amounts shown are *earned, not paid out*. See
+> [Paystack payments](#paystack-payments).
 
 ## What works today
 
@@ -42,6 +45,9 @@ kept-honest breakdown of what is implemented and what is still roadmap.
   delivery name, address and optional phone, accepts a store promo code, and is idempotent: a
   single-use token means a double submit or a retried request can never place two orders. Checkout
   is rate-limited (10 a minute per user) and wrong promo guesses are budgeted per user and per IP.
+- Paying (when Paystack is configured): checkout redirects to Paystack; a **Pay now** button on the
+  order page retries or resumes payment; an order not paid within 60 minutes is cancelled, restocked and
+  its promo use returned. Cancelling a paid order before it ships queues a refund.
 - Order history (`/orders`). A buyer can cancel an item before it ships; it goes back into stock and
   the order is re-priced without it.
 - Reviews from verified buyers only: one review per product, after an order containing it has been
@@ -54,10 +60,13 @@ kept-honest breakdown of what is implemented and what is still roadmap.
   New listings are reviewed by a platform operator before they appear.
 - Orders to fulfil (`/sell/orders`): a seller sees only their own items of an order, their own net
   value, and the buyer's name, address and phone only while one of their items is still to ship.
-  Items move forward pending, processing, shipped, delivered, or are cancelled before shipping.
+  Items move forward pending, processing, shipped, delivered, or are cancelled before shipping. An
+  order that is awaiting payment shows **Awaiting payment**, cannot be moved forward and does not
+  release the buyer's address.
 - Store promo codes (`/sell/promo-codes`): percent or fixed, optional cap and expiry, unique per
   store, matched case-insensitively. The discount applies only to that store's items.
-- A seller desk (`/dashboard`) with figures computed from the seller's own order lines.
+- A seller desk (`/dashboard`) with figures computed from the seller's own order lines. Revenue is
+  *earned, not paid out*: only delivered lines of paid orders count, and payout is not available yet.
 
 **Everyone**
 - In-app notifications (database channel): sellers are told once per order when they have items to
@@ -66,8 +75,12 @@ kept-honest breakdown of what is implemented and what is still roadmap.
   editing, archiving or deleting a listing does not change what a past order says.
 - Dark/light toggle, ecosystem SSO from the Dot hub, operator review screen for new listings.
 
-**Not built:** payments of any kind (provider undecided), vendor payouts or commissions, returns and
-refunds, multiple stores per user (a deliberate one-store rule), timed or automatic discounts,
+**Operators** also get a payments desk (`/operator/payments`): payments that need review, refunds owed
+to buyers, unmatched Paystack events, and the gateway's state.
+
+**Not built:** seller payouts, split payments or subaccounts, marketplace commission, KYC, saved cards,
+returns (cancelling a paid order before shipping is refunded; sending goods back is not modelled),
+multiple stores per user (a deliberate one-store rule), timed or automatic discounts,
 search integration (search is a plain `LIKE`), and a Dot.Brain Knowledge Pack publisher beyond the
 single `incident_report` pack described in `wiki.md`.
 
@@ -77,9 +90,13 @@ single `incident_report` pack described in `wiki.md`.
 - **Product** (soft-deleted, moderation `status`, stored average rating) / **ProductImage** (ordered, cover first)
 - **Order** (buyer, shipping contact, promo snapshot, idempotency key) / **OrderItem** (snapshot of what was bought, per-line status and promo share)
 - **PromoCode** (per store) / **Review** (verified, one per product per user) / **CartItem**
+- **Payment** (one Paystack attempt: reference, amount in cents, status) / **PaymentEvent** (audit trail
+  of what Paystack said and what we did) / **Refund** (money owed back to a buyer)
 - Services: `CheckoutService`, `OrderLifecycle` (cancellation and status moves), `OrderPricing`
   (totals and discount shares, exact to the cent), `OrderAccess` (who sees what of an order),
-  `SellerDashboard`, `ReviewService`, `ProductImages`.
+  `SellerDashboard`, `ReviewService`, `ProductImages`, `PaymentService`, `RefundService`,
+  `PaystackWebhookHandler` and `Paystack\PaystackClient` / `PaystackConfig` (the only code that talks to
+  Paystack, and the test-mode guard).
 
 ## Tech Stack
 
@@ -92,6 +109,7 @@ single `incident_report` pack described in `wiki.md`.
 | Realtime | Laravel Reverb (configured; not used by any commerce flow yet) |
 | Auth | Laravel Jetstream + Sanctum, team-based accounts (Dot ecosystem SSO) |
 | AI | Anthropic Claude (`ANTHROPIC_API_KEY`, `claude-sonnet-4-6`) — config only, not called by any marketplace logic yet |
+| Payments | Paystack (customer payments into the platform account; test mode by default) |
 | Queue | Database-backed queue |
 
 ## Quick Start
@@ -110,6 +128,87 @@ php artisan serve
 > **Ecosystem SSO:** Set `DB_*` env vars to the shared Dot ecosystem PostgreSQL instance and
 > `APP_URL=https://emall.infodot.app`. Users authenticated elsewhere in the ecosystem gain access
 > automatically via the Sanctum handoff at `/auth/ecosystem`.
+
+## Paystack payments
+
+The buyer pays the **platform's own Paystack account** for an order. Nothing else is built on top of it
+yet: no seller payouts, no split payments or subaccounts, no marketplace commission, no KYC, no card
+on file. Funds sit in the platform's Paystack balance; moving money to sellers needs compliance and
+finance decisions that have not been made. Sellers are never told or shown that they have been paid.
+
+### Set up (test mode)
+
+1. Create a Paystack account and copy its **test** keys (Dashboard, Settings, API Keys & Webhooks).
+2. In `.env`:
+
+   | Variable | Default | Meaning |
+   |---|---|---|
+   | `PAYSTACK_SECRET_KEY` | blank | `sk_test_...`. Blank = Paystack off: checkout places orders pending and unpaid, as before |
+   | `PAYSTACK_PUBLIC_KEY` | blank | `pk_test_...` (not used by the server-side flow today; reserved) |
+   | `PAYSTACK_BASE_URL` | `https://api.paystack.co` | Must be https |
+   | `PAYSTACK_ALLOW_LIVE` | `false` | A `sk_live_` key is refused unless this is also `true` |
+   | `PAYSTACK_CURRENCY` | `ZAR` | Currency charged, in its subunit (cents) |
+   | `PAYSTACK_UNPAID_WINDOW_MINUTES` | `60` | Unpaid orders older than this are cancelled |
+   | `PAYSTACK_ATTEMPT_TTL_MINUTES` | `30` | How long Pay now reuses an open Paystack attempt |
+
+3. In the Paystack dashboard set the **Webhook URL** to `https://<your-domain>/webhooks/paystack`. The
+   callback URL is sent per transaction (`/orders/{order}/payment/callback`), so nothing is configured
+   for it. Test and live modes have separate webhook settings in Paystack.
+4. Run the scheduler (`* * * * * php artisan schedule:run`): it runs `orders:expire-unpaid` every
+   10 minutes.
+5. Pay with one of Paystack's test cards. No real money moves in test mode.
+
+### Test-mode guard
+
+- A key that does not start `sk_test_` or `sk_live_` is refused.
+- A `sk_live_` key is refused **unless `PAYSTACK_ALLOW_LIVE=true` too**. A refused key is never sent
+  anywhere: checkout is stopped before an order exists (the buyer sees "card payment is not available
+  right now"), the webhook answers 401, and `/operator/payments` says the key was refused.
+- Pages that take payment show a **TEST MODE** badge whenever a test key is configured.
+- Do not flip live on without reading "Not built" above first.
+
+### The flows
+
+- **Checkout.** The existing locked, idempotent checkout creates the order (stock, promo and totals
+  unchanged), flagged `requires_payment`. The buyer is redirected to Paystack's `authorization_url`
+  (`POST /transaction/initialize`, amount in cents, a reference like `EMALL-<order id>-<random>`).
+  If Paystack cannot be reached the order is saved, unpaid, and the order page shows **Pay now**.
+- **Callback.** `GET /orders/{order}/payment/callback` (the order's buyer only; everyone else gets a
+  404). The URL's query string is never believed: the server calls `GET /transaction/verify/:reference`
+  and the order is marked paid only if the status is `success` **and** the amount, currency and
+  reference match the attempt.
+- **Webhook.** `POST /webhooks/paystack` (no session, no CSRF, throttled). The `x-paystack-signature`
+  header must equal the HMAC-SHA512 of the raw body keyed with the secret key (`hash_equals`), checked
+  before the body is parsed; any failure is the same generic 401. `charge.success` marks the order paid
+  exactly once however the callback and webhook race (a transaction with the order row locked, plus
+  unique indexes on `payments.reference` and `(provider, provider_transaction_id)`). A charge with an
+  unknown reference or a wrong amount or currency is recorded as an `unmatched` event and answered 200.
+- **Fulfilment.** Sellers see **Awaiting payment** and cannot move the order forward, and are not given
+  the buyer's address or a "new order" notification, until it is paid. Orders placed while Paystack was
+  not configured (`requires_payment = false`) behave exactly as before and are never auto-cancelled.
+- **Unpaid orders expire.** Past `PAYSTACK_UNPAID_WINDOW_MINUTES` an unpaid order is cancelled through
+  `OrderLifecycle` (stock restored, promo use returned) and the buyer is notified. Open attempts are
+  checked with Paystack first, and the cancel re-checks under the order lock, so a payment that lands
+  first wins. A paid order is never cancelled this way.
+- **Paid after cancelled.** If money arrives for an order that was cancelled (or a second payment for
+  an order already paid) the order is **not** re-opened: the payment goes to *needs review* on
+  `/operator/payments`.
+- **Refunds.** Cancelling lines of a **paid** order before shipping records what the buyer is owed
+  (`refund_pending`) and asks Paystack (`POST /refund`, partial amount). If Paystack accepts, the refund
+  is `refund_submitted`; it is only `refunded` when Paystack reports `refund.processed`. If the call
+  fails the cancellation still stands and the operator desk shows **Refund required**, with Retry or
+  "do it in the Paystack dashboard, then mark it done".
+- **Seller revenue** keeps its definition (delivered, non-cancelled lines) but counts only orders a
+  seller could fulfil, i.e. paid ones (and pre-Paystack orders). It is labelled earned, not paid out.
+
+### Known limits
+
+- Amounts on screen use a `$` sign throughout the existing storefront, while Paystack is charged in
+  `PAYSTACK_CURRENCY` (ZAR). The pay panel names the currency explicitly (`ZAR 236.90`); the storefront
+  does not yet have a currency setting.
+- Orders placed before Paystack was configured cannot be paid afterwards (they never required it).
+- Paystack never being called from the automated tests is deliberate (`Http::fake`); the first real
+  test-mode run against Paystack is still to be done by hand.
 
 ### Running Tests
 

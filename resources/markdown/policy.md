@@ -30,7 +30,7 @@ When you use another Dot Ecosystem platform to sign in to Dot.Emall (or vice ver
 
 ## 5. Sharing between buyers and sellers
 
-Placing an order necessarily shares your name and delivery details with the seller fulfilling it. Payment settlement and seller finance are handled by other Dot Ecosystem platforms (Dot.Billing, Dot.Finance), not by Dot.Emall directly — we share only what's needed to complete the order and settlement.
+Placing an order necessarily shares your name and delivery details with the seller fulfilling it. When card payment is switched on, your email address and the order amount are sent to Paystack so it can take your payment; your card details go to Paystack only and never reach Dot.Emall. Seller payouts and finance are handled outside Dot.Emall (Dot.Billing, Dot.Finance) — we share only what's needed to complete the order and settlement.
 
 ## 6. Cookies
 

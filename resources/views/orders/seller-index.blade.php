@@ -37,7 +37,8 @@
                         $mine = $order->items;
                         $live = $mine->reject(fn ($l) => $l->isCancelled());
                         $sliceStatus = \App\Enums\OrderStatus::derive($mine->pluck('status'));
-                        $toShip = $mine->contains(fn ($l) => $l->status->needsShipping());
+                        $toShip = $order->isFulfillable() && $mine->contains(fn ($l) => $l->status->needsShipping());
+                        $awaitingPayment = $order->isAwaitingPayment() && $live->isNotEmpty();
                         $net = $live->sum(fn ($l) => $l->netCents());
                     @endphp
                     <tr style="border-bottom:1px solid rgba(67,70,86,0.15);">
@@ -54,7 +55,9 @@
                                 <span style="color:#71717a;">({{ $mine->count() - $live->count() }} cancelled)</span>
                             @endif
                         </td>
-                        <td style="padding:0.9rem 1.25rem;"><x-status-pill :status="$sliceStatus" size="sm" /></td>
+                        <td style="padding:0.9rem 1.25rem;">
+                            @if($awaitingPayment)<x-status-pill status="awaiting payment" size="sm" />@else<x-status-pill :status="$sliceStatus" size="sm" />@endif
+                        </td>
                         <td style="padding:0.9rem 1.25rem;text-align:right;font-family:'Syne',sans-serif;font-size:0.82rem;font-weight:700;color:#f4f4f5;">${{ number_format($net / 100, 2) }}</td>
                         <td style="padding:0.9rem 1.25rem;text-align:right;">
                             <a href="{{ route('orders.show', $order) }}" style="font-size:0.7rem;font-weight:600;color:#f59e0b;text-decoration:none;">Manage →</a>

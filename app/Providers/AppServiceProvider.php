@@ -30,5 +30,10 @@ class AppServiceProvider extends ServiceProvider
             Limit::perMinute(10)->by('checkout:user:'.($request->user()?->id ?? $request->ip())),
             Limit::perMinute(20)->by('checkout:ip:'.$request->ip()),
         ]);
+
+        // Paystack's webhook is public (it is authenticated by signature, not
+        // a session). Bound per IP so a flood of forged requests is cheap to
+        // refuse; It is generous because Paystack retries; it is a flood guard, not a gate.
+        RateLimiter::for('webhooks', fn (Request $request) => Limit::perMinute(600)->by('webhooks:'.$request->ip()));
     }
 }
