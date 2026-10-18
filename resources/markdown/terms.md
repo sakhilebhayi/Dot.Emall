@@ -16,7 +16,7 @@ Your Dot Ecosystem account is also your identity on Dot.Emall. Signing in throug
 
 **Buyers.** Placing an order is a commitment to pay for it according to the store's stated price and terms. You're responsible for reviewing a listing carefully before ordering.
 
-**Settlement.** Payment settlement and seller finance are handled by other Dot Ecosystem platforms (Dot.Billing, Dot.Finance) — Dot.Emall itself manages listings, catalogue, cart, and order flow, not payment processing.
+**Payment.** When card payment is switched on, you pay for an order on Paystack's own payment page; Dot.Emall never sees or stores your card details. An order that is not paid within the stated time is cancelled automatically. Payment is collected by the platform; payouts to sellers, seller finance and settlement are not part of Dot.Emall today and are handled outside it (Dot.Billing, Dot.Finance).
 
 ## 4. Acceptable use
 

@@ -15,6 +15,10 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias(['operator' => EnsurePlatformOperator::class]);
+
+        // Paystack's server posts here with no session or CSRF token; the
+        // request is authenticated by its HMAC signature instead.
+        $middleware->validateCsrfTokens(except: ['webhooks/paystack']);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

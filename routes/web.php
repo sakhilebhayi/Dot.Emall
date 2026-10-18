@@ -3,8 +3,11 @@
 use App\Http\Controllers\Auth\EcosystemAuthController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\OperatorPaymentController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\OrderItemCancellationController;
+use App\Http\Controllers\OrderPaymentController;
+use App\Http\Controllers\PaystackWebhookController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProductImageController;
 use App\Http\Controllers\ProductModerationController;
@@ -18,6 +21,11 @@ use Illuminate\Support\Str;
 use Laravel\Jetstream\Jetstream;
 
 Route::get('/auth/ecosystem', [EcosystemAuthController::class, 'handle'])->middleware('throttle:10,1')->name('ecosystem.auth');
+
+// Paystack's server-to-server notifications. No session, no CSRF: the HMAC
+// signature header is the authentication (see PaystackWebhookController).
+Route::post('/webhooks/paystack', PaystackWebhookController::class)->middleware('throttle:webhooks')->name('webhooks.paystack');
+
 Route::get('/', function () {
     return view('welcome');
 });
@@ -54,6 +62,8 @@ Route::middleware([
 
     Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
     Route::get('/orders/{order}', [OrderController::class, 'show'])->name('orders.show');
+    Route::post('/orders/{order}/pay', [OrderPaymentController::class, 'pay'])->middleware('throttle:checkout')->name('orders.pay');
+    Route::get('/orders/{order}/payment/callback', [OrderPaymentController::class, 'callback'])->name('orders.payment.callback');
     Route::post('/order-items/{orderItem}/cancel', OrderItemCancellationController::class)->name('order-items.cancel');
 
     Route::get('/sell', [StoreController::class, 'create'])->name('seller.store.create');
@@ -85,5 +95,10 @@ Route::middleware([
         Route::get('/products', [ProductModerationController::class, 'index'])->name('products.index');
         Route::post('/products/{product}/approve', [ProductModerationController::class, 'approve'])->name('products.approve');
         Route::post('/products/{product}/reject', [ProductModerationController::class, 'reject'])->name('products.reject');
+
+        Route::get('/payments', [OperatorPaymentController::class, 'index'])->name('payments.index');
+        Route::post('/payments/{payment}/review', [OperatorPaymentController::class, 'review'])->name('payments.review');
+        Route::post('/refunds/{refund}/retry', [OperatorPaymentController::class, 'retryRefund'])->name('refunds.retry');
+        Route::post('/refunds/{refund}/mark-done', [OperatorPaymentController::class, 'markRefundDone'])->name('refunds.mark-done');
     });
 });

@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\OrderStatus;
+use App\Enums\PaymentStatus;
 use App\Events\OrderPlaced;
 use App\Models\CartItem;
 use App\Models\Order;
@@ -10,6 +11,7 @@ use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\PromoCode;
 use App\Models\User;
+use App\Services\Paystack\PaystackConfig;
 use App\Support\Money;
 use App\Support\Throttles;
 use Illuminate\Database\UniqueConstraintViolationException;
@@ -19,9 +21,13 @@ use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 
 /**
- * Turns a buyer's cart into an order. There is no payment step: the order
- * that comes out is "pending, unpaid" and stays that way until a payment
- * provider is chosen and integrated.
+ * Turns a buyer's cart into an order. Taking the payment is NOT done here:
+ * the order that comes out is pending and unpaid, and either
+ *   - Paystack is configured: it is flagged requires_payment, the caller
+ *     sends the buyer to pay (App\Services\PaymentService), and sellers hear
+ *     nothing and cannot fulfil it until it is paid; or
+ *   - Paystack is not configured: it is exactly the old "pending, unpaid"
+ *     order (requires_payment = false), sellers are told at once.
  *
  * Everything that must hold together happens in one transaction: product
  * rows are locked (in id order, so concurrent checkouts that share products
@@ -33,7 +39,10 @@ use Illuminate\Support\Str;
  */
 class CheckoutService
 {
-    public function __construct(private readonly OrderPricing $pricing) {}
+    public function __construct(
+        private readonly OrderPricing $pricing,
+        private readonly PaystackConfig $paystack,
+    ) {}
 
     /**
      * @param  array{shipping_name?: ?string, shipping_address: string, shipping_phone?: ?string, promo_code?: ?string}  $input
@@ -85,7 +94,11 @@ class CheckoutService
 
         // After the commit, not inside it: a listener must never believe an
         // order exists that a later failure in the same transaction undid.
-        event(new OrderPlaced($order));
+        // An order that must be paid first tells its sellers when it IS paid
+        // (OrderPaid), not now.
+        if (! $order->requires_payment) {
+            event(new OrderPlaced($order));
+        }
 
         return $order;
     }
@@ -140,6 +153,8 @@ class CheckoutService
             $order = Order::create([
                 'user_id' => $buyer->id,
                 'status' => OrderStatus::Pending,
+                'requires_payment' => $this->paystack->isConfigured(),
+                'payment_status' => PaymentStatus::Unpaid,
                 'subtotal' => 0,
                 'total' => 0,
                 'discount_amount' => 0,

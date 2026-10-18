@@ -99,10 +99,21 @@
         <input type="text" name="promo_code" placeholder="e.g. SUMMER10" class="dot-input" style="margin-bottom:1rem;text-transform:uppercase;">
         @if(count($problems) > 0)
         <div style="font-size:0.78rem;font-weight:600;color:#f59e0b;text-align:center;" role="alert">Fix the items marked above before placing your order.</div>
+        @elseif($paystack['refused'])
+        <div style="font-size:0.78rem;font-weight:600;color:#f59e0b;text-align:center;" role="alert">Card payment is not available right now, so orders cannot be placed. Please try again later.</div>
+        @elseif($paystack['enabled'])
+        <button type="submit" class="dot-btn dot-btn-primary" style="width:100%;justify-content:center;">Pay with Paystack</button>
         @else
         <button type="submit" class="dot-btn dot-btn-primary" style="width:100%;justify-content:center;">Place order</button>
         @endif
+        @if($paystack['enabled'])
+        <div style="font-size:0.7rem;color:#71717a;margin-top:0.6rem;text-align:center;">
+            @if($paystack['testMode'])<span style="display:inline-block;margin-right:0.4rem;padding:0.1rem 0.45rem;border-radius:4px;background:rgba(245,158,11,0.14);color:#f59e0b;font-weight:700;letter-spacing:0.06em;font-size:0.62rem;">TEST MODE</span>No real money moves.@endif
+            Placing the order holds your items and takes you to Paystack to pay in {{ $paystack['currency'] }}. An order that is not paid within {{ $paystack['windowMinutes'] }} minutes is cancelled.
+        </div>
+        @elseif(! $paystack['refused'])
         <div style="font-size:0.7rem;color:#71717a;margin-top:0.6rem;text-align:center;">No payment is taken. Your order is placed as pending and unpaid.</div>
+        @endif
     </form>
     @endif
 

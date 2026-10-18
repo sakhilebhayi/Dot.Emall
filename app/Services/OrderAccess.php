@@ -50,7 +50,7 @@ class OrderAccess
     /**
      * Everything the order page may render for this viewer.
      *
-     * @return array{role: string, lines: Collection<int, OrderItem>, fullOrder: bool, shipping: ?array{name: string, address: ?string, phone: ?string}, sellerNetCents: int}
+     * @return array{role: string, lines: Collection<int, OrderItem>, fullOrder: bool, shipping: ?array{name: string, address: ?string, phone: ?string}, sellerNetCents: int, awaitingPayment: bool, paymentDetail: bool, refunds: Collection}
      */
     public function present(Order $order, User $user): array
     {
@@ -66,7 +66,9 @@ class OrderAccess
             ? $order->items
             : $order->items->where('seller_id', $user->id)->values();
 
-        $mayShip = $fullOrder || $lines->contains(fn (OrderItem $line) => $line->status->needsShipping());
+        // A seller is not given the buyer's address for an order the buyer
+        // has not paid for: there is nothing to ship yet.
+        $mayShip = $fullOrder || ($order->isFulfillable() && $lines->contains(fn (OrderItem $line) => $line->status->needsShipping()));
 
         $shipping = $mayShip ? [
             'name' => $order->shipping_name ?: ($order->user?->name ?? 'Buyer'),
@@ -79,6 +81,11 @@ class OrderAccess
             'lines' => $lines,
             'fullOrder' => $fullOrder,
             'shipping' => $shipping,
+            'awaitingPayment' => $order->isAwaitingPayment(),
+            // Payment references, attempts and refunds are for the buyer and
+            // operators; a seller only ever learns "awaiting payment" or not.
+            'paymentDetail' => $fullOrder,
+            'refunds' => $fullOrder ? $order->refunds()->orderBy('id')->get() : collect(),
             'sellerNetCents' => $lines->reject(fn (OrderItem $l) => $l->isCancelled())->sum(fn (OrderItem $l) => $l->netCents()),
         ];
     }

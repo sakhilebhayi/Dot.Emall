@@ -6,10 +6,15 @@ use App\Models\CartItem;
 use App\Models\Product;
 use App\Services\CheckoutException;
 use App\Services\CheckoutService;
+use App\Services\PaymentService;
+use App\Services\Paystack\PaymentGatewayException;
+use App\Services\Paystack\PaystackConfig;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
+use InvalidArgumentException;
 
 /**
  * Cart and the checkout entry point. CartItem applies
@@ -19,7 +24,7 @@ use Illuminate\View\View;
  */
 class CartController extends Controller
 {
-    public function index(): View
+    public function index(PaystackConfig $paystack): View
     {
         $items = CartItem::with(['product.store', 'product.images'])->get();
 
@@ -49,6 +54,13 @@ class CartController extends Controller
             // One fresh token per page render: the single-use key for this
             // submission of the checkout form (see CheckoutService::place()).
             'checkoutToken' => (string) Str::uuid(),
+            'paystack' => [
+                'enabled' => $paystack->isUsable(),
+                'refused' => $paystack->isMisconfigured(),
+                'testMode' => $paystack->isTestMode(),
+                'currency' => $paystack->currency(),
+                'windowMinutes' => $paystack->unpaidWindowMinutes(),
+            ],
         ]);
     }
 
@@ -137,10 +149,12 @@ class CartController extends Controller
     /**
      * Places an order from the current user's cart. The work -- stock locks,
      * promo handling, line snapshots, the after-commit event -- lives in
-     * App\Services\CheckoutService. No payment is taken: the order is
-     * placed "pending, unpaid".
+     * App\Services\CheckoutService. With Paystack configured the buyer is
+     * then sent to Paystack to pay (a failure to reach it leaves a saved,
+     * unpaid order with a Pay now button); without it no payment is taken and
+     * the order is placed "pending, unpaid", as before.
      */
-    public function checkout(Request $request, CheckoutService $checkout): RedirectResponse
+    public function checkout(Request $request, CheckoutService $checkout, PaymentService $payments, PaystackConfig $paystack): RedirectResponse
     {
         $validated = $request->validate([
             'checkout_token' => ['required', 'uuid'],
@@ -149,6 +163,15 @@ class CartController extends Controller
             'shipping_phone' => ['nullable', 'string', 'max:40', 'regex:/^[0-9+()\-.\s]{5,40}$/'],
             'promo_code' => ['nullable', 'string', 'max:40'],
         ]);
+
+        // A key that must not be used (a live key without the second switch)
+        // stops checkout before an order exists: no stock is held for a
+        // payment that cannot be taken. Operators see why on their desk.
+        if ($paystack->isMisconfigured()) {
+            Log::error('Checkout stopped: the Paystack configuration was refused.');
+
+            return redirect()->route('cart.index')->with('error', 'Card payment is not available right now, so your order has not been placed and nothing was taken. Please try again later.');
+        }
 
         try {
             $order = $checkout->place($request->user(), $validated, $validated['checkout_token'], $request->ip());
@@ -161,6 +184,22 @@ class CartController extends Controller
                 ->with('status', 'This order was already placed, so nothing was ordered twice. Here it is.');
         }
 
-        return redirect()->route('orders.show', $order)->with('status', 'Order placed. It is pending and unpaid: payment is not available yet.');
+        if (! $order->requires_payment) {
+            return redirect()->route('orders.show', $order)->with('status', 'Order placed. It is pending and unpaid: payment is not available yet.');
+        }
+
+        try {
+            $payment = $payments->startPayment($order);
+        } catch (InvalidArgumentException|PaymentGatewayException $e) {
+            return redirect()->route('orders.show', $order)->with('error', $e instanceof PaymentGatewayException
+                ? OrderPaymentController::gatewayMessage($e)
+                : $e->getMessage());
+        }
+
+        if ($order->refresh()->payment_status->isSettled()) {
+            return redirect()->route('orders.show', $order)->with('status', 'Order placed. There was nothing to pay on it, so it is already with the seller.');
+        }
+
+        return redirect()->away($payment->authorization_url);
     }
 }

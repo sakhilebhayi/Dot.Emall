@@ -9,6 +9,9 @@
         'shipped'    => ['rgba(34,211,238,0.12)', '#22d3ee'],
         'delivered'  => ['rgba(34,197,94,0.12)', '#22c55e'],
         'cancelled'  => ['rgba(239,68,68,0.12)', '#ef4444'],
+        'paid'       => ['rgba(34,197,94,0.12)', '#22c55e'],
+        'awaiting payment' => ['rgba(245,158,11,0.12)', '#f59e0b'],
+        'payment failed'   => ['rgba(239,68,68,0.12)', '#ef4444'],
         default      => ['rgba(107,114,128,0.12)', '#9ca3af'],
     };
 

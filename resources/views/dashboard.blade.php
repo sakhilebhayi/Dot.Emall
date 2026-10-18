@@ -10,6 +10,10 @@
         $stateLine = 'Nothing is waiting on you.';
     }
 
+    if ($hasStore && $awaitingPayment > 0) {
+        $stateLine .= ' '.$awaitingPayment.' '.\Illuminate\Support\Str::plural('order', $awaitingPayment).' awaiting the buyer\'s payment: do not ship '.($awaitingPayment === 1 ? 'it' : 'them').' yet.';
+    }
+
     if ($hasStore && $lowStockCount > 0) {
         $stateLine .= ' '.$lowStockCount.' '.\Illuminate\Support\Str::plural('listing', $lowStockCount).' low on stock.';
     }
@@ -44,7 +48,7 @@
         <div style="{{ $cell }}grid-column:span 2;">
             <div style="{{ $label }}">Delivered value</div>
             <div class="metric-val" style="font-size:2rem;color:#f59e0b;line-height:1.1;margin-top:0.4rem;">{{ $money($revenueCents) }}</div>
-            <div style="font-size:0.68rem;color:#71717a;margin-top:0.35rem;">Your delivered items, net of promos. Not money received: payment is not collected yet.</div>
+            <div style="font-size:0.68rem;color:#71717a;margin-top:0.35rem;">Delivered items, net of promos; orders still awaiting payment are left out. Payout is not available yet: amounts shown are earned, not paid out.</div>
         </div>
         <div style="{{ $cell }}">
             <div style="{{ $label }}">Orders</div>
@@ -138,7 +142,9 @@
                             </td>
                             <td style="padding:0.9rem 1.25rem;font-size:0.78rem;color:#a1a1aa;white-space:nowrap;">{{ $row['buyerName'] ?? 'Hidden' }}</td>
                             <td style="padding:0.9rem 1.25rem;font-size:0.78rem;color:#a1a1aa;white-space:nowrap;">{{ $row['lineCount'] }}</td>
-                            <td style="padding:0.9rem 1.25rem;white-space:nowrap;"><x-status-pill :status="$row['status']" size="sm" /></td>
+                            <td style="padding:0.9rem 1.25rem;white-space:nowrap;">
+                                @if($row['awaitingPayment'])<x-status-pill status="awaiting payment" size="sm" />@else<x-status-pill :status="$row['status']" size="sm" />@endif
+                            </td>
                             <td style="padding:0.9rem 1.25rem;text-align:right;white-space:nowrap;font-family:'Syne',sans-serif;font-size:0.82rem;font-weight:700;color:#f4f4f5;">{{ $money($row['netCents']) }}</td>
                         </tr>
                         @endforeach

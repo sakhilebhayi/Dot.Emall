@@ -155,6 +155,17 @@
                 Become a seller
             </a>
             @endif
+            @if(auth()->user()->is_platform_operator)
+            <div class="nav-section-label">Operator</div>
+            <a href="{{ route('operator.products.index') }}" class="nav-item {{ request()->routeIs('operator.products.*') ? 'active' : '' }}">
+                <span class="material-symbols-rounded nav-icon">fact_check</span>
+                Listing review
+            </a>
+            <a href="{{ route('operator.payments.index') }}" class="nav-item {{ request()->routeIs('operator.payments.*', 'operator.refunds.*') ? 'active' : '' }}">
+                <span class="material-symbols-rounded nav-icon">payments</span>
+                Payments
+            </a>
+            @endif
             <div class="sidebar-divider" style="margin:10px 0;"></div>
             <a href="{{ route('profile.show') }}" class="nav-item {{ request()->routeIs('profile.show') ? 'active' : '' }}">
                 <span class="material-symbols-rounded nav-icon">manage_accounts</span>
