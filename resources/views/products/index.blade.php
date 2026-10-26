@@ -21,9 +21,9 @@
     <form method="GET" action="{{ route('products.index') }}" style="display:flex;gap:0.75rem;margin-bottom:1.75rem;flex-wrap:wrap;">
         <div style="flex:1;min-width:220px;position:relative;">
             <span class="material-symbols-rounded" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:17px;color:#52525b;">search</span>
-            <input type="text" name="q" value="{{ $search }}" placeholder="Search products by name…" class="dot-input" style="padding-left:36px;">
+            <input aria-label="Search products" type="text" name="q" value="{{ $search }}" placeholder="Search products by name…" class="dot-input" style="padding-left:36px;">
         </div>
-        <select name="category" class="dot-input" style="max-width:220px;" onchange="this.form.submit()">
+        <select aria-label="Filter by category" name="category" class="dot-input" style="max-width:220px;" onchange="this.form.submit()">
             <option value="">All categories</option>
             @foreach($categories as $cat)
                 <option value="{{ $cat->id }}" @selected((string) $category === (string) $cat->id)>{{ $cat->name }} ({{ $cat->products_count }})</option>

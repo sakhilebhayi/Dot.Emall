@@ -84,7 +84,7 @@
                 <form method="POST" action="{{ route('cart.store') }}" style="display:flex;gap:0.75rem;align-items:center;">
                     @csrf
                     <input type="hidden" name="product_id" value="{{ $product->id }}">
-                    <input type="number" name="quantity" value="1" min="1" max="{{ min(99, $product->stock) }}" class="dot-input" style="width:80px;">
+                    <input aria-label="Quantity" type="number" name="quantity" value="1" min="1" max="{{ min(99, $product->stock) }}" class="dot-input" style="width:80px;">
                     <button type="submit" class="dot-btn dot-btn-primary">
                         <span class="material-symbols-rounded" style="font-size:16px;">add_shopping_cart</span>
                         Add to Cart
@@ -104,13 +104,13 @@
             <form method="POST" action="{{ route('reviews.store', $product) }}" class="dot-card" style="padding:1.25rem;margin-bottom:1.5rem;">
                 @csrf
                 <div style="font-size:0.8rem;font-weight:600;color:#f4f4f5;margin-bottom:0.6rem;">Leave a review</div>
-                <select name="rating" class="dot-input" style="max-width:140px;margin-bottom:0.6rem;" required>
+                <select aria-label="Rating" name="rating" class="dot-input" style="max-width:140px;margin-bottom:0.6rem;" required>
                     <option value="">Rating…</option>
                     @for($i = 5; $i >= 1; $i--)
                         <option value="{{ $i }}">{{ $i }} star{{ $i === 1 ? '' : 's' }}</option>
                     @endfor
                 </select>
-                <textarea name="body" rows="2" placeholder="Optional comments…" class="dot-input" style="margin-bottom:0.75rem;resize:vertical;"></textarea>
+                <textarea aria-label="Comments (optional)" name="body" rows="2" placeholder="Optional comments…" class="dot-input" style="margin-bottom:0.75rem;resize:vertical;"></textarea>
                 <button type="submit" class="dot-btn dot-btn-primary">Submit Review</button>
             </form>
             @elseif(!$hasReviewed)

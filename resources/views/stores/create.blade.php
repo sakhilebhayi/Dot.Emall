@@ -16,13 +16,13 @@
         @csrf
 
         <div>
-            <label style="display:block;font-size:0.75rem;color:#a1a1aa;margin-bottom:0.25rem;">Store Name</label>
-            <input type="text" name="name" value="{{ old('name') }}" required style="width:100%;padding:0.5rem;border-radius:6px;">
+            <label for="stores-create-name" style="display:block;font-size:0.75rem;color:#a1a1aa;margin-bottom:0.25rem;">Store Name</label>
+            <input id="stores-create-name" type="text" name="name" value="{{ old('name') }}" required style="width:100%;padding:0.5rem;border-radius:6px;">
         </div>
 
         <div>
-            <label style="display:block;font-size:0.75rem;color:#a1a1aa;margin-bottom:0.25rem;">Description</label>
-            <textarea name="description" rows="4" style="width:100%;padding:0.5rem;border-radius:6px;">{{ old('description') }}</textarea>
+            <label for="stores-create-description" style="display:block;font-size:0.75rem;color:#a1a1aa;margin-bottom:0.25rem;">Description</label>
+            <textarea id="stores-create-description" name="description" rows="4" style="width:100%;padding:0.5rem;border-radius:6px;">{{ old('description') }}</textarea>
         </div>
 
         <button type="submit" style="margin-top:0.5rem;padding:0.6rem;border-radius:8px;background:linear-gradient(135deg,#f59e0b,#d97706);color:#1a1a1a;font-weight:700;border:none;cursor:pointer;">

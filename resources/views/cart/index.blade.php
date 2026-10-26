@@ -95,8 +95,8 @@
         <label for="shipping_phone" style="display:block;font-size:0.75rem;font-weight:600;color:#a1a1aa;margin-bottom:0.4rem;">Phone for the courier (optional)</label>
         <input id="shipping_phone" type="tel" name="shipping_phone" value="{{ old('shipping_phone') }}" maxlength="40" class="dot-input" style="margin-bottom:0.4rem;">
         <div style="font-size:0.68rem;color:#71717a;margin-bottom:1rem;">Sellers see these details only for items they still have to ship.</div>
-        <label style="display:block;font-size:0.75rem;font-weight:600;color:#a1a1aa;margin-bottom:0.4rem;">Promo code (optional)</label>
-        <input type="text" name="promo_code" placeholder="e.g. SUMMER10" class="dot-input" style="margin-bottom:1rem;text-transform:uppercase;">
+        <label for="cart-index-promo-code" style="display:block;font-size:0.75rem;font-weight:600;color:#a1a1aa;margin-bottom:0.4rem;">Promo code (optional)</label>
+        <input id="cart-index-promo-code" type="text" name="promo_code" placeholder="e.g. SUMMER10" class="dot-input" style="margin-bottom:1rem;text-transform:uppercase;">
         @if(count($problems) > 0)
         <div style="font-size:0.78rem;font-weight:600;color:#f59e0b;text-align:center;" role="alert">Fix the items marked above before placing your order.</div>
         @elseif($paystack['refused'])

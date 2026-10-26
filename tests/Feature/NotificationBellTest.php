@@ -79,4 +79,31 @@ class NotificationBellTest extends TestCase
 
         $this->assertEquals(0, $seller->fresh()->unreadNotifications()->count());
     }
+
+    public function test_a_notification_row_can_be_reached_and_operated_from_the_keyboard(): void
+    {
+        $seller = User::factory()->withPersonalTeam()->create();
+        $store = Store::create([
+            'owner_id' => $seller->id,
+            'name' => 'Keyboard Store',
+            'slug' => 'keyboard-store',
+            'is_active' => true,
+        ]);
+        $order = Order::create([
+            'user_id' => User::factory()->create()->id,
+            'status' => 'pending',
+            'subtotal' => 20,
+            'total' => 20,
+        ]);
+        $seller->notify(new NewOrderNotification($order, $store));
+        $id = $seller->notifications()->firstOrFail()->id;
+
+        // A row is a click target, so it needs a role, a tab stop and Enter/Space handlers (WCAG 2.1.1, 4.1.2).
+        Livewire::actingAs($seller)
+            ->test(NotificationBell::class)
+            ->set('open', true)
+            ->assertSeeHtml('role="button" tabindex="0"')
+            ->assertSeeHtml('wire:keydown.enter="markAsRead(\''.$id.'\')"')
+            ->assertSeeHtml('wire:keydown.space.prevent="markAsRead(\''.$id.'\')"');
+    }
 }
