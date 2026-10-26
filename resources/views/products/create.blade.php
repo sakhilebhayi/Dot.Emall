@@ -17,37 +17,37 @@
         @csrf
 
         <div>
-            <label style="display:block;font-size:0.75rem;color:#a1a1aa;margin-bottom:0.25rem;">Product Name</label>
-            <input type="text" name="name" value="{{ old('name') }}" required style="width:100%;padding:0.5rem;border-radius:6px;">
+            <label for="products-create-name" style="display:block;font-size:0.75rem;color:#a1a1aa;margin-bottom:0.25rem;">Product Name</label>
+            <input id="products-create-name" type="text" name="name" value="{{ old('name') }}" required style="width:100%;padding:0.5rem;border-radius:6px;">
         </div>
 
         <div>
-            <label style="display:block;font-size:0.75rem;color:#a1a1aa;margin-bottom:0.25rem;">Description</label>
-            <textarea name="description" rows="4" style="width:100%;padding:0.5rem;border-radius:6px;">{{ old('description') }}</textarea>
+            <label for="products-create-description" style="display:block;font-size:0.75rem;color:#a1a1aa;margin-bottom:0.25rem;">Description</label>
+            <textarea id="products-create-description" name="description" rows="4" style="width:100%;padding:0.5rem;border-radius:6px;">{{ old('description') }}</textarea>
         </div>
 
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
             <div>
-                <label style="display:block;font-size:0.75rem;color:#a1a1aa;margin-bottom:0.25rem;">Price ({{ \App\Support\Shop::currency() }})</label>
-                <input type="number" step="0.01" name="price" value="{{ old('price') }}" required style="width:100%;padding:0.5rem;border-radius:6px;">
+                <label for="products-create-price" style="display:block;font-size:0.75rem;color:#a1a1aa;margin-bottom:0.25rem;">Price ({{ \App\Support\Shop::currency() }})</label>
+                <input id="products-create-price" type="number" step="0.01" name="price" value="{{ old('price') }}" required style="width:100%;padding:0.5rem;border-radius:6px;">
             </div>
             <div>
-                <label style="display:block;font-size:0.75rem;color:#a1a1aa;margin-bottom:0.25rem;">Compare-at Price ({{ \App\Support\Shop::currency() }})</label>
-                <input type="number" step="0.01" name="compare_price" value="{{ old('compare_price') }}" style="width:100%;padding:0.5rem;border-radius:6px;">
+                <label for="products-create-compare-price" style="display:block;font-size:0.75rem;color:#a1a1aa;margin-bottom:0.25rem;">Compare-at Price ({{ \App\Support\Shop::currency() }})</label>
+                <input id="products-create-compare-price" type="number" step="0.01" name="compare_price" value="{{ old('compare_price') }}" style="width:100%;padding:0.5rem;border-radius:6px;">
             </div>
             <div>
-                <label style="display:block;font-size:0.75rem;color:#a1a1aa;margin-bottom:0.25rem;">Stock</label>
-                <input type="number" name="stock" value="{{ old('stock') }}" required style="width:100%;padding:0.5rem;border-radius:6px;">
+                <label for="products-create-stock" style="display:block;font-size:0.75rem;color:#a1a1aa;margin-bottom:0.25rem;">Stock</label>
+                <input id="products-create-stock" type="number" name="stock" value="{{ old('stock') }}" required style="width:100%;padding:0.5rem;border-radius:6px;">
             </div>
             <div>
-                <label style="display:block;font-size:0.75rem;color:#a1a1aa;margin-bottom:0.25rem;">SKU</label>
-                <input type="text" name="sku" value="{{ old('sku') }}" style="width:100%;padding:0.5rem;border-radius:6px;">
+                <label for="products-create-sku" style="display:block;font-size:0.75rem;color:#a1a1aa;margin-bottom:0.25rem;">SKU</label>
+                <input id="products-create-sku" type="text" name="sku" value="{{ old('sku') }}" style="width:100%;padding:0.5rem;border-radius:6px;">
             </div>
         </div>
 
         <div>
-            <label style="display:block;font-size:0.75rem;color:#a1a1aa;margin-bottom:0.25rem;">Category</label>
-            <select name="category_id" style="width:100%;padding:0.5rem;border-radius:6px;">
+            <label for="products-create-category-id" style="display:block;font-size:0.75rem;color:#a1a1aa;margin-bottom:0.25rem;">Category</label>
+            <select id="products-create-category-id" name="category_id" style="width:100%;padding:0.5rem;border-radius:6px;">
                 <option value="">— None —</option>
                 @foreach ($categories as $category)
                     <option value="{{ $category->id }}" @selected(old('category_id') == $category->id)>{{ $category->name }}</option>

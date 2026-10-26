@@ -21,28 +21,28 @@
     <form method="POST" action="{{ route('seller.promo-codes.store') }}" style="background:#141416;border:1px solid rgba(255,255,255,0.06);border-radius:1rem;padding:1.5rem;display:flex;flex-direction:column;gap:1rem;margin-bottom:2rem;">
         @csrf
         <div>
-            <label style="display:block;font-size:0.75rem;color:#a1a1aa;margin-bottom:0.25rem;">Code</label>
-            <input type="text" name="code" value="{{ old('code') }}" required maxlength="40" placeholder="SUMMER10" style="width:100%;padding:0.5rem;border-radius:6px;text-transform:uppercase;">
+            <label for="promo-codes-index-code" style="display:block;font-size:0.75rem;color:#a1a1aa;margin-bottom:0.25rem;">Code</label>
+            <input id="promo-codes-index-code" type="text" name="code" value="{{ old('code') }}" required maxlength="40" placeholder="SUMMER10" style="width:100%;padding:0.5rem;border-radius:6px;text-transform:uppercase;">
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
             <div>
-                <label style="display:block;font-size:0.75rem;color:#a1a1aa;margin-bottom:0.25rem;">Discount Type</label>
-                <select name="discount_type" style="width:100%;padding:0.5rem;border-radius:6px;">
+                <label for="promo-codes-index-discount-type" style="display:block;font-size:0.75rem;color:#a1a1aa;margin-bottom:0.25rem;">Discount Type</label>
+                <select id="promo-codes-index-discount-type" name="discount_type" style="width:100%;padding:0.5rem;border-radius:6px;">
                     <option value="percent" @selected(old('discount_type') === 'percent')>Percent off</option>
                     <option value="fixed" @selected(old('discount_type') === 'fixed')>Fixed amount off</option>
                 </select>
             </div>
             <div>
-                <label style="display:block;font-size:0.75rem;color:#a1a1aa;margin-bottom:0.25rem;">Discount Value</label>
-                <input type="number" step="0.01" name="discount_value" value="{{ old('discount_value') }}" required style="width:100%;padding:0.5rem;border-radius:6px;">
+                <label for="promo-codes-index-discount-value" style="display:block;font-size:0.75rem;color:#a1a1aa;margin-bottom:0.25rem;">Discount Value</label>
+                <input id="promo-codes-index-discount-value" type="number" step="0.01" name="discount_value" value="{{ old('discount_value') }}" required style="width:100%;padding:0.5rem;border-radius:6px;">
             </div>
             <div>
-                <label style="display:block;font-size:0.75rem;color:#a1a1aa;margin-bottom:0.25rem;">Max Uses (optional)</label>
-                <input type="number" name="max_uses" value="{{ old('max_uses') }}" style="width:100%;padding:0.5rem;border-radius:6px;">
+                <label for="promo-codes-index-max-uses" style="display:block;font-size:0.75rem;color:#a1a1aa;margin-bottom:0.25rem;">Max Uses (optional)</label>
+                <input id="promo-codes-index-max-uses" type="number" name="max_uses" value="{{ old('max_uses') }}" style="width:100%;padding:0.5rem;border-radius:6px;">
             </div>
             <div>
-                <label style="display:block;font-size:0.75rem;color:#a1a1aa;margin-bottom:0.25rem;">Expires (optional)</label>
-                <input type="date" name="expires_at" value="{{ old('expires_at') }}" style="width:100%;padding:0.5rem;border-radius:6px;">
+                <label for="promo-codes-index-expires-at" style="display:block;font-size:0.75rem;color:#a1a1aa;margin-bottom:0.25rem;">Expires (optional)</label>
+                <input id="promo-codes-index-expires-at" type="date" name="expires_at" value="{{ old('expires_at') }}" style="width:100%;padding:0.5rem;border-radius:6px;">
             </div>
         </div>
         <button type="submit" style="padding:0.6rem;border-radius:8px;background:linear-gradient(135deg,#f59e0b,#d97706);color:#1a1a1a;font-weight:700;border:none;cursor:pointer;">
