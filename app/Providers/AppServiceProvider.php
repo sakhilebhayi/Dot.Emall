@@ -4,10 +4,7 @@ namespace App\Providers;
 
 use App\Support\Shop;
 use Illuminate\Cache\RateLimiting\Limit;
-use Illuminate\Foundation\Events\DiagnosingHealth;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 
@@ -26,10 +23,6 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        // /up answered 200 whenever PHP booted, even with the database down. The framework dispatches DiagnosingHealth
-        // before it renders the page: a failing query turns the answer into a 500 (the exception text is never shown).
-        Event::listen(DiagnosingHealth::class, fn () => DB::select('select 1'));
-
         // A mistyped SHOP_CURRENCY would print wrong prices and ask Paystack
         // for the wrong money, so the app refuses to start instead.
         Shop::assertConfigured();
