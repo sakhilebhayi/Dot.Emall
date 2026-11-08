@@ -148,3 +148,15 @@
 }
 .co-total { font-weight: 700; white-space: nowrap; }
 .co-layout { margin-block-start: var(--s-4); }
+
+/* The orders list: the whole row opens the order (the order number is the link; its click area is stretched over the row), and "Buy again" is the one other action, kept above it (D-197). */
+.co-caption-hidden caption { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.co-orders tbody tr { position: relative; cursor: pointer; }
+.co-orders__open::after { content: ""; position: absolute; inset: 0; }
+.co-orders__open:focus-visible { outline: none; }
+.co-orders tbody tr:has(.co-orders__open:focus-visible) { outline: 2px solid var(--focus); outline-offset: -2px; }
+.co-orders__act { text-align: end; }
+.co-orders__act form { margin: 0; position: relative; z-index: 1; display: inline-block; }
+@media (max-width: 39.99rem) { .co-orders__act { justify-content: flex-end; } .co-orders td[data-label=""]::before { content: none; } }
+
+/* The order's own route: a one-line state above the steps and a key to the markers (D-198). */

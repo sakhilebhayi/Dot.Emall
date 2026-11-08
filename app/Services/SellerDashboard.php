@@ -91,7 +91,7 @@ class SellerDashboard
             ->whereIn('id', $recentOrderIds)
             ->with(['user:id,name', 'items' => fn ($q) => $q->where('seller_id', $seller->id)])
             ->get()
-            ->sortByDesc('id')
+            ->sortByDesc(fn (Order $order) => [$order->created_at?->getTimestamp(), $order->id])
             ->map(function (Order $order) {
                 $lines = $order->items;
                 $needsShipping = $order->isFulfillable() && $lines->contains(fn (OrderItem $l) => $l->status->needsShipping());

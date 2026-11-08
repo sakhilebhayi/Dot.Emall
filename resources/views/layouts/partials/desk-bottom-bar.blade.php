@@ -6,7 +6,7 @@
                 $r = \App\Support\Shell::first(array_merge([$item['route']], $item['alt'] ?? []));
                 $current = request()->routeIs(...$item['match']);
             @endphp
-            <li><a href="{{ $r['url'] }}" @if ($current) aria-current="page" @endif @if ($r['url'] === '#') data-pending-route="{{ $r['name'] }}" @endif><x-ds.icon :name="$item['icon']" :size="22" /><span>{{ $item['label'] }}</span></a></li>
+            <li><a href="{{ $r['url'] }}" @if ($current) aria-current="page" @endif @if ($r['url'] === '#') data-pending-route="{{ $r['name'] }}" @endif><x-ds.icon :name="$item['icon']" :size="22" /><span>{{ $item['short'] ?? $item['label'] }}</span></a></li>
         @endforeach
         <li><button type="button" data-dialog-open="{{ $moreId }}" aria-haspopup="dialog"><x-ds.icon name="menu" :size="22" /><span>More</span></button></li>
     </ul>

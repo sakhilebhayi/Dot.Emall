@@ -99,13 +99,19 @@
 .op-state { display: inline-flex; }
 
 /* ---- Small honest charts (dataviz): one series in the brand colour, zero baseline, thin bars, a table view beside them. --------------- */
-.op-chart { display: block; width: 100%; height: auto; max-height: 14rem; overflow: visible; }
+.op-plot { position: relative; margin: var(--s-2) 0 var(--s-6) 4.75rem; aspect-ratio: 3 / 1; }
+@media (max-width: 40rem) { .op-plot { aspect-ratio: 5 / 3; margin-inline-start: 4rem; } }
+.op-chart { display: block; position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.op-plot__y, .op-plot__x { position: absolute; font-size: 0.75rem; line-height: 1; color: var(--ink-2); font-variant-numeric: tabular-nums lining-nums; white-space: nowrap; }
+.op-plot__y { inset-inline-end: calc(100% + var(--s-2)); transform: translateY(-50%); text-align: end; }
+.op-plot__x { inset-block-start: calc(100% + var(--s-2)); }
+.op-plot__x--first { inset-inline-start: 0; }
+.op-plot__x--last { inset-inline-end: 0; }
 .op-chart__bar { fill: var(--brand); }
 .op-chart__base { stroke: var(--ink); stroke-width: 1; }
 .op-chart__grid { stroke: var(--line); stroke-width: 1; }
-.op-chart__text { fill: var(--ink-3); font-size: 13px; font-family: var(--font-text); font-variant-numeric: tabular-nums lining-nums; }
 .op-chart__hit:hover + .op-chart__bar, .op-chart__hit:focus + .op-chart__bar { fill: var(--brand-hover); }
-.op-chart-figure { margin: 0; display: grid; gap: var(--s-2); }
+.op-chart-figure { margin: 0; display: grid; gap: var(--s-2); grid-template-columns: minmax(0, 1fr); min-width: 0; }
 .op-chart-figure figcaption { font-weight: 700; }
 .op-chart-figure details summary { cursor: pointer; color: var(--brand); font-size: var(--text-sm); min-height: var(--tap); display: flex; align-items: center; }
 
@@ -163,3 +169,11 @@
 /* Consecutive chip rows (a view switch, then a status filter) read as two groups, not one wrapped row. */
 nav:has(> .op-chips) + nav:has(> .op-chips), nav:has(> .op-chips) + form, nav:has(> .op-chips) + p { margin-block-start: var(--s-3); }
 .op-charts { margin-block-start: var(--s-5); }
+
+/* ---- Desk shell touch-ups (D-196): the rail is wide enough for its longest label, and the phone bar keeps every label on one line with room at the edges. ---- */
+@media (min-width: 64rem) { .ds-desk__body { grid-template-columns: 17rem minmax(0, 1fr); } }
+.ds-rail__nav a span { min-width: 0; overflow-wrap: anywhere; }
+.ds-bottombar ul { padding-inline: var(--s-2); }
+.ds-bottombar a, .ds-bottombar button { min-width: 0; align-content: center; justify-items: center; }
+.ds-bottombar a > span, .ds-bottombar button > span { max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.2; }
+.ds-bottombar [aria-current="page"]::before { inset-inline: 18%; }

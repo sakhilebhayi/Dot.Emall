@@ -44,11 +44,11 @@ final class Navigation
         ];
     }
 
-    /** @return list<array{label: string, route: string, alt?: list<string>, icon: string, match: list<string>}> */
+    /** @return list<array{label: string, short?: string, route: string, alt?: list<string>, icon: string, match: list<string>}> */
     public static function operator(): array
     {
         return [
-            ['label' => 'Needs a person', 'route' => 'operator.home', 'icon' => 'home', 'match' => ['operator.home']],
+            ['label' => 'Needs a person', 'short' => 'Queue', 'route' => 'operator.home', 'icon' => 'home', 'match' => ['operator.home']],
             ['label' => 'Listings', 'route' => 'operator.products.index', 'icon' => 'box', 'match' => ['operator.products.*', 'operator.flags.*']],
             ['label' => 'Stores', 'route' => 'operator.stores.index', 'icon' => 'store', 'match' => ['operator.stores.*']],
             ['label' => 'Reports', 'route' => 'operator.reports', 'icon' => 'flag', 'match' => ['operator.reports*']],

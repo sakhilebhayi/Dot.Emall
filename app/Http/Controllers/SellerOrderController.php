@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Enums\OrderStatus;
 use App\Http\Controllers\Seller\SellerController;
+use App\Models\Order;
 use App\Models\OrderItem;
 use App\Services\OrderLifecycle;
 use App\Services\Seller\SellerParcels;
@@ -30,6 +31,8 @@ class SellerOrderController extends SellerController
 
         $page = $parcels->query($store, $tab)
             ->with(['order:id,user_id,guest_email,status,payment_status,requires_payment,paid_at,created_at,currency,shipping_name', 'items:id,order_group_id,order_id,product_name,variant_label,quantity,total,discount_amount,status', 'shipments:id,order_group_id,carrier_name,tracking_number'])
+            // By the day the order was placed (the date the page prints), oldest first where something must be sent, newest first elsewhere; the id only breaks ties (D-194).
+            ->orderBy(Order::query()->select('created_at')->whereColumn('orders.id', 'order_groups.order_id'), $tab === 'to_ship' ? 'asc' : 'desc')
             ->orderBy('id', $tab === 'to_ship' ? 'asc' : 'desc')->paginate(15)->withQueryString();
 
         return view('seller.orders.index', [

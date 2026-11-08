@@ -35,7 +35,7 @@
 
     <div class="co-layout co-layout--order">
         <div class="co-main">
-            <x-ds.order-timeline :steps="$steps" :code="$order->reference()" />
+            <x-ds.order-timeline :steps="$steps" :code="$order->reference()" :across="count($steps) <= 6" />
 
             @foreach ($parcels as $parcel)
                 @php

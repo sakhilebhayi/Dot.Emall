@@ -41,7 +41,7 @@
             @if ($missingRequired->isNotEmpty())<x-ds.alert tone="cau" title="Specifications still needed">{{ $missingRequired->pluck('label')->implode(', ') }} {{ $missingRequired->count() === 1 ? 'is' : 'are' }} required for this category. <a href="#specs">Add {{ $missingRequired->count() === 1 ? 'it' : 'them' }}</a>.</x-ds.alert>@endif
         </section>
 
-        <form method="POST" action="{{ route('seller.products.update', $product) }}" class="sd-form" novalidate data-fee-percent="{{ $fee['percent'] }}">
+        <form method="POST" action="{{ route('seller.products.update', $product) }}" class="sd-form" novalidate data-dirty-form data-fee-percent="{{ $fee['percent'] }}">
             @csrf @method('PATCH')
             <input type="hidden" name="stock_was" value="{{ $product->stock }}">
             <section class="sd-form__section" id="details" aria-labelledby="p-details">
@@ -80,6 +80,7 @@
 
             <div class="sd-sticky-actions sd-actions">
                 <x-ds.button type="submit" variant="primary">Save details</x-ds.button>
+                <span class="sd-dirty" data-dirty-status role="status" hidden>Unsaved changes</span>
                 <a class="ds-btn ds-btn--link" href="{{ route('seller.products.stock-history', $product) }}">Stock history</a>
             </div>
         </form>
@@ -92,8 +93,9 @@
                     @foreach ($imgs as $i => $img)
                         <li class="sd-photo">
                             <div class="sd-photo__frame"><img src="{{ $img->url() }}" alt="Photo {{ $i + 1 }} of {{ $product->name }}" loading="lazy">@if ($i === 0)<x-ds.badge tone="ink" class="sd-photo__tag">Cover</x-ds.badge>@endif</div>
-                            <div class="sd-cluster">
-                                @if ($i !== 0)<form method="POST" action="{{ route('seller.products.images.cover', [$product, $img]) }}">@csrf @method('PATCH')<button class="ds-btn ds-btn--quiet ds-btn--sm" type="submit">Make cover</button></form>@endif
+                            <div class="sd-photo__actions">
+                                @if ($i !== 0)<form method="POST" action="{{ route('seller.products.images.cover', [$product, $img]) }}">@csrf @method('PATCH')<button class="ds-btn ds-btn--quiet ds-btn--sm" type="submit">Make cover</button></form>
+                                @else<span class="sd-photo__iscover">Cover photo</span>@endif
                                 <button type="button" class="ds-btn ds-btn--danger ds-btn--sm" data-dialog-open="rm-photo-{{ $img->id }}">Remove</button>
                             </div>
                             <x-ds.confirm-dialog id="rm-photo-{{ $img->id }}" title="Remove this photo?" :action="route('seller.products.images.destroy', [$product, $img])" method="DELETE" confirmLabel="Remove photo">The photo is deleted from the listing and cannot be brought back.</x-ds.confirm-dialog>
@@ -127,7 +129,7 @@
                 @elseif ($definitions->isEmpty())
                     <p class="sd-muted">{{ $product->category->name }} does not ask for any specifications.</p>
                 @else
-                    <form method="POST" action="{{ route('seller.products.attributes', $product) }}" class="sd-stack" novalidate>
+                    <form method="POST" action="{{ route('seller.products.attributes', $product) }}" class="sd-stack" novalidate data-dirty-form>
                         @csrf @method('PATCH')
                         <div class="sd-fields sd-fields--two">
                             @foreach ($definitions as $key => $d)
@@ -141,7 +143,7 @@
                                 @endif
                             @endforeach
                         </div>
-                        <div><x-ds.button type="submit" variant="quiet">Save specifications</x-ds.button></div>
+                        <div class="sd-actions"><x-ds.button type="submit" variant="quiet">Save specifications</x-ds.button><span class="sd-dirty" data-dirty-status role="status" hidden>Unsaved changes</span></div>
                     </form>
                 @endif
             </div>
@@ -150,7 +152,7 @@
         <section class="sd-form__section" id="variants" aria-labelledby="p-variants" style="border-top: 1px solid var(--line);">
             <div class="sd-form__intro"><h2 id="p-variants">Options and variants</h2><p>For things that come in sizes, colours or packs. Each combination gets its own price, stock and SKU.</p></div>
             <div class="sd-fields">
-                <form method="POST" action="{{ route('seller.products.options', $product) }}" class="sd-stack" novalidate>
+                <form method="POST" action="{{ route('seller.products.options', $product) }}" class="sd-stack" novalidate data-dirty-form>
                     @csrf
                     <x-seller.errors :only="['options']" />
                     <p class="sd-muted sd-measure">Name an option and list its values with commas, for example Size: S, M, L. Up to {{ \App\Services\Catalogue\ProductVariants::MAX_OPTIONS }} options. Leave all empty for a product with one price.</p>
@@ -162,12 +164,13 @@
                     @endforeach
                     <div class="sd-actions">
                         <x-ds.button type="submit" variant="quiet">Save options</x-ds.button>
+                        <span class="sd-dirty" data-dirty-status role="status" hidden>Unsaved changes</span>
                         @if ($options->isNotEmpty())<p class="sd-quiet">Removing a value switches off its combinations. Empty every row and save to go back to one price.</p>@endif
                     </div>
                 </form>
 
                 @if (! $simple)
-                    <form method="POST" action="{{ route('seller.products.variants', $product) }}" class="sd-stack" novalidate>
+                    <form method="POST" action="{{ route('seller.products.variants', $product) }}" class="sd-stack" novalidate data-dirty-form>
                         @csrf
                         <h3 class="sd-h3">Combinations</h3>
                         <p class="sd-muted sd-measure">A combination with no price is not sold. The price shown on the listing is the cheapest one that is switched on.</p>
@@ -199,7 +202,7 @@
                             @endforeach
                             </tbody>
                         </table>
-                        <div><x-ds.button type="submit" variant="primary">Save combinations</x-ds.button></div>
+                        <div class="sd-actions"><x-ds.button type="submit" variant="primary">Save combinations</x-ds.button><span class="sd-dirty" data-dirty-status role="status" hidden>Unsaved changes</span></div>
                     </form>
                 @endif
             </div>
