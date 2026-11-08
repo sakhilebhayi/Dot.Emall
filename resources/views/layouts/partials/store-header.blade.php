@@ -30,6 +30,7 @@
             </x-ds.search-field>
         </div>
         <div class="ds-header__actions">
+            <button type="button" class="ds-icon-btn ds-header__searchbtn" data-search-reveal aria-label="Search"><x-ds.icon name="search" :size="22" /></button>
             <x-ds.theme-toggle class="ds-header__hide-sm" />
             @if ($user)
                 <x-ds.dropdown :label="\Illuminate\Support\Str::of($user->name)->before(' ')" id="account-menu" icon="user" bare>

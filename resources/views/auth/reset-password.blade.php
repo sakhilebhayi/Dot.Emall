@@ -7,7 +7,7 @@
         @csrf
         <input type="hidden" name="token" value="{{ $request->route('token') }}">
         <x-ds.input name="email" label="Email" type="email" :value="old('email', $request->email)" required autofocus autocomplete="username" />
-        <x-ds.input name="password" label="New password" type="password" required autocomplete="new-password" />
+        <x-ds.input name="password" label="New password" type="password" required autocomplete="new-password" :reveal="true" />
         <x-ds.input name="password_confirmation" label="Confirm new password" type="password" required autocomplete="new-password" />
         <x-ds.button type="submit">Save new password</x-ds.button>
     </form>

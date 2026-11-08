@@ -522,3 +522,6 @@ if (app()->environment('local', 'testing')) {
 if (! Features::enabled(Features::registration())) {
     Route::redirect('/register', '/login')->name('register');
 }
+
+// Last of all: an address nothing answers is a 404 inside the web group, so the error page can read the session (NotFoundController).
+Route::fallback(\App\Http\Controllers\NotFoundController::class);

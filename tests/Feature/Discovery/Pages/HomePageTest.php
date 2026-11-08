@@ -4,10 +4,10 @@ namespace Tests\Feature\Discovery\Pages;
 
 use App\Models\User;
 use App\Services\Catalogue\CategoryTree;
+use App\Services\Discovery\Collections;
 use App\Services\Discovery\RecentlyViewed;
 use App\Services\Discovery\RecommendationSet;
 use App\Services\Discovery\RecommendedItem;
-use App\Services\Discovery\Collections;
 use App\Services\Discovery\Track;
 use App\Support\Actor;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -41,7 +41,8 @@ class HomePageTest extends TestCase
 
     public function test_the_sell_path_goes_to_sell_start(): void
     {
-        $this->get('/')->assertOk()->assertSee(route('sell.start'), false)->assertSee('Start selling');
+        // The home page no longer carries its own sell band (R-43 polish #23): the header's "Sell on Emall" link and the footer column lead to the same page.
+        $this->get('/')->assertOk()->assertSee(route('sell.start'), false)->assertSee('Sell on Emall')->assertDontSee('Start selling');
     }
 
     public function test_a_guest_gets_discovery_with_no_sign_in_and_every_block_says_where_it_comes_from(): void
@@ -95,12 +96,12 @@ class HomePageTest extends TestCase
         $this->catalogue->storeRegions[$store->id] = 'Gauteng';
         $this->reindex();
 
-        $this->get('/')->assertOk()->assertDontSee('Sellers in Gauteng')->assertSee('See sellers near you');
+        $this->get('/')->assertOk()->assertDontSee('Sellers in Gauteng')->assertSee('Choose your province')->assertDontSee('See sellers near you');
 
         $this->from('/')->post(route('region.update'), ['province' => 'Gauteng', 'return' => '/'])->assertRedirect('/')->assertSessionHas('shopper.region', 'Gauteng')->assertCookie('emall_region');
 
         $page = $this->get('/')->assertOk();
-        $page->assertSee('Sellers in Gauteng')->assertSee('Delivering to')->assertDontSee('See sellers near you');
+        $page->assertSee('Sellers in Gauteng')->assertSee('Delivering to')->assertDontSee('Choose your province');
     }
 
     public function test_the_region_form_accepts_only_a_province_and_a_local_return_path(): void

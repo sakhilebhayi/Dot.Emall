@@ -10,6 +10,14 @@
 .ds-hero__photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .ds-hero__label { width: min(100%, 22rem); justify-self: start; }
 .ds-hero__label--solo { justify-self: center; }
+/* Phones (R-43 polish #7, D-185): the total card comes straight after the headline, then the one line saying why it was picked, then a short photograph. Wide screens keep the photograph large with the card laid over it. */
+@media (max-width: 55.99rem) {
+    .ds-hero { padding-block-end: var(--s-5); }
+    .ds-hero__grid { gap: var(--s-5); }
+    .ds-hero__label { order: 1; width: 100%; }
+    .disc-hero-basis { order: 2; }
+    .ds-hero__photo { order: 3; aspect-ratio: 16 / 10; max-height: 13rem; }
+}
 @media (min-width: 56rem) {
     .ds-hero__grid { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: var(--s-8); }
     .ds-hero__feature { grid-template-columns: minmax(0, 1fr); }
@@ -30,3 +38,26 @@
 .ds-sell { display: grid; gap: var(--s-4); padding: var(--s-6) 0 var(--s-2); margin-top: var(--s-6); border-top: 2px solid var(--ink); }
 .ds-sell p { color: var(--ink-2); max-width: var(--measure); margin-top: var(--s-2); }
 @media (min-width: 48rem) { .ds-sell { grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: var(--s-7); } }
+
+/* The ask row (D-186): one line to say what you need, popular searches beside it on wide screens. */
+.home-ask { background: var(--sunken); padding-block: var(--s-4); }
+.home-ask__row { display: grid; gap: var(--s-4); align-items: end; }
+.home-ask__form { display: grid; gap: var(--s-2); }
+.home-ask__label { font-weight: 650; color: var(--ink); }
+.home-ask__field { display: flex; flex-wrap: wrap; gap: var(--s-2); }
+.home-ask__field .ds-input { flex: 1 1 14rem; }
+.home-ask__popular { display: grid; gap: var(--s-2); }
+.home-ask__popular p { margin: 0; }
+@media (min-width: 64rem) { .home-ask__row { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: var(--s-7); } }
+/* Where a figure comes from, set under the content it describes instead of as a grey subtitle under every heading. */
+.home-basis { margin-block-start: var(--s-3); font-size: var(--text-sm); color: var(--ink-3); max-width: var(--measure); }
+/* The side-headed block: the heading and its provenance sit beside the list. */
+.home-side { display: grid; gap: var(--s-4) var(--s-7); padding-block: var(--s-6); border-top: var(--perf); margin-block-start: var(--s-3); }
+.home-side__head { display: grid; gap: var(--s-2); align-content: start; }
+.home-side__head h2 { font-size: var(--text-xl); }
+.home-side__head p { max-width: 26rem; }
+.home-side .disc-ranked { grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 64rem) {
+    .home-side { grid-template-columns: minmax(0, 4fr) minmax(0, 8fr); }
+    .home-side__head { position: sticky; inset-block-start: calc(var(--header-h) + var(--s-6)); align-self: start; }
+}

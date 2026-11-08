@@ -1,1 +1,1 @@
-<x-error-layout :code="403" heading="You don't have access to this" message="This page belongs to a different account, needs a role you do not have, or needs you to sign in first. If you think that is wrong, ask whoever owns it." />
+<x-error-layout :code="403" :rich="true" heading="You don't have access to this" message="This page belongs to a different account, needs a role you do not have, or needs you to sign in first. If you think that is wrong, ask whoever owns it." />
