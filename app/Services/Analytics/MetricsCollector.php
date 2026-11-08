@@ -7,12 +7,14 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\Store;
+use App\Services\Metrics\CommerceMetrics;
 use App\Services\SellerDashboard;
 use App\Support\Shop;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * The numbers Dot.Emall publishes to Dot.Analytics: pure read-only aggregate queries, scoped
@@ -57,6 +59,9 @@ class MetricsCollector
 {
     /** @var list<string> */
     public const KEYS = ['orders_7d', 'revenue_7d_cents', 'low_stock_products', 'currency'];
+
+    /** Added only when config('analytics.commerce_metrics') is on (see engagement()). @var list<string> */
+    public const COMMERCE_KEYS = ['product_views_7d', 'add_to_cart_7d', 'wishlist_adds_7d'];
 
     public function __construct(private readonly CompanyDirectory $directory) {}
 
@@ -126,7 +131,31 @@ class MetricsCollector
             $metrics['currency'] = $money['currency'];
         }
 
-        return $metrics;
+        return $metrics + $this->engagement($sellerIds, $from, $to);
+    }
+
+    /**
+     * Aggregate engagement counts (product views, add to cart, wishlist adds in the same seven days), published ONLY
+     * when ANALYTICS_COMMERCE_METRICS is on, because Dot.Analytics must be told to accept the extra keys first. They
+     * are counts of events on the company's own stores: no actor, product or row leaves here.
+     *
+     * @param  array<int, int>  $sellerIds
+     * @return array<string, int>
+     */
+    private function engagement(array $sellerIds, CarbonInterface $from, CarbonInterface $to): array
+    {
+        if (! config('analytics.commerce_metrics') || ! Schema::hasTable('commerce_events')) {
+            return [];
+        }
+
+        $stores = Store::query()->whereIn('owner_id', $sellerIds)->pluck('id')->all();
+        $counts = app(CommerceMetrics::class)->storeEngagement($stores, $from, $to);
+
+        return [
+            'product_views_7d' => $counts['product_views'],
+            'add_to_cart_7d' => $counts['add_to_cart'],
+            'wishlist_adds_7d' => $counts['wishlist_adds'],
+        ];
     }
 
     /**
