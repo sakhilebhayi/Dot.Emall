@@ -40,7 +40,8 @@ class StorefrontCurrencyTest extends TestCase
 
         $this->get(route('products.index'))->assertOk()->assertSee('R1,234.56')->assertDontSee('$1,234.56');
         $this->get(route('products.show', $listing))->assertOk()
-            ->assertSee('R1,234.56')->assertSee('R1,999.99')
+            // The seller-typed compare price is no longer printed as a "was" price (R-43: a reference price shows only from real price history).
+            ->assertSee('R1,234.56')->assertDontSee('R1,999.99')
             ->assertDontSee('$1,234.56')->assertDontSee('$1,999.99');
     }
 
