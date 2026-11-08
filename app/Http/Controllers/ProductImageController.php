@@ -24,6 +24,13 @@ class ProductImageController extends Controller
 
         $added = $images->add($product, $request->file('images'));
 
+        // The drop zone sends the pictures itself (to show progress) and asks for JSON; a plain form post gets the redirect.
+        if ($request->wantsJson()) {
+            $request->session()->flash('status', $added->count().' '.($added->count() === 1 ? 'photo' : 'photos').' added.');
+
+            return response()->json(['redirect' => route('seller.products.edit', $product).'#photos']);
+        }
+
         return redirect()->route('seller.products.edit', $product)
             ->with('status', $added->count().' '.($added->count() === 1 ? 'photo' : 'photos').' added.');
     }

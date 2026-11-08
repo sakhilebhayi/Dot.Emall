@@ -3,6 +3,8 @@
  * events, so it keeps working after Livewire morphs the page. Each block says which component it serves (DESIGN.md lists the attributes).
  */
 
+import './seller.js';
+
 const root = document.documentElement;
 const $$ = (sel, ctx = document) => Array.from(ctx.querySelectorAll(sel));
 
