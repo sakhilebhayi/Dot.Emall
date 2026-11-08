@@ -154,7 +154,7 @@ class ProductPage
 
         return [
             'crumbs' => $crumbs,
-            'specs' => $product->attributeValues->map(fn ($a) => ['label' => $a->label, 'value' => $a->value])->all(),
+            'specs' => $product->attributeValues->map(fn ($a) => ['label' => $a->label, 'value' => trim($a->value.($a->unit ? ' '.$a->unit : ''))])->all(),
             'brand' => $product->brand?->name,
             'trust' => StoreTrust::for($store),
             'storeRating' => app(StoreRatings::class)->summary($store),

@@ -10,6 +10,8 @@
     $settled = $order->requires_payment && $order->payment_status->isSettled();
     $cancelled = $order->status === OrderStatus::Cancelled;
     $money = fn (int $c) => $order->money($c);
+    // "Will pack your order" is only true while some line still waits to be packed; after that it is stale copy (R-43 buyer QA).
+    $stillToPack = $order->items->contains(fn ($line) => in_array($line->status, [OrderStatus::Pending, OrderStatus::Processing], true));
 @endphp
 @if (! $order->requires_payment)
     <x-ds.alert tone="info" title="No payment was taken">This order was placed while card payment was not switched on, so it is pending and unpaid. The seller can see it.</x-ds.alert>
@@ -17,7 +19,7 @@
     <x-ds.alert tone="pos" title="{{ $outcome === 'paid' ? 'Payment received. Your order is confirmed.' : 'Payment received' }}">
         {{ $order->paid_at ? 'Paid '.$order->paid_at->format('j M Y, H:i').'.' : '' }}
         @if ($payment['channel']) Paid by {{ str_replace('_', ' ', $payment['channel']) }}.@endif
-        The seller has been told and will pack your order. @if ($mode === 'guest')A confirmation is on its way to {{ $order->guest_email }}.@endif
+        @if ($stillToPack)The seller has been told and will pack your order.@endif @if ($mode === 'guest' && $stillToPack)A confirmation is on its way to {{ $order->guest_email }}.@endif
     </x-ds.alert>
 @elseif ($cancelled)
     <x-ds.alert tone="info" title="This order was cancelled. Nothing is due.">It was not paid in time, or it was cancelled before payment. The items went back on sale and nothing was charged. @if ($mode === 'account')<a href="{{ route('cart.index') }}">Go to your cart</a> to order again.@endif</x-ds.alert>
