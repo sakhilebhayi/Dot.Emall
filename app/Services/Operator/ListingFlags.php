@@ -94,8 +94,16 @@ class ListingFlags
             return collect();
         }
 
-        $prices = DB::table('products')->whereIn('category_id', $categories)->where('status', 'approved')->whereNull('deleted_at')
-            ->get(['id', 'category_id', 'price'])->groupBy('category_id');
+        // One pass: each category's approved prices sorted once, with where every listing sits in that order. The median of a
+        // listing's OTHER listings is then read straight off the sorted list (skipping its own place), not rebuilt per listing.
+        $sorted = [];
+        $place = [];
+
+        foreach (DB::table('products')->whereIn('category_id', $categories)->where('status', 'approved')->whereNull('deleted_at')
+            ->orderBy('category_id')->orderBy('price')->orderBy('id')->get(['id', 'category_id', 'price']) as $row) {
+            $sorted[$row->category_id][] = (float) $row->price;
+            $place[$row->category_id][$row->id] = count($sorted[$row->category_id]) - 1;
+        }
 
         $out = collect();
 
@@ -104,19 +112,21 @@ class ListingFlags
                 continue;
             }
 
-            $peers = ($prices[$product->category_id] ?? collect())->where('id', '!=', $product->id)->pluck('price')->map(fn ($p) => (float) $p)->sort()->values();
+            $prices = $sorted[$product->category_id] ?? [];
+            $own = $place[$product->category_id][$product->id] ?? null;
+            $peerCount = count($prices) - ($own === null ? 0 : 1);
 
-            if ($peers->count() < $c['min_peers']) {
+            if ($peerCount < $c['min_peers']) {
                 continue;
             }
 
-            $median = $this->median($peers->all());
+            $median = $this->medianWithout($prices, $own);
             $price = (float) $product->price;
 
             if ($median > 0 && $price < $median * $c['low_ratio']) {
-                $out->push($this->flag($product, 'price_anomaly', sprintf('%s is %s of the category median of %s (%d other listings). Unusually cheap goods are a counterfeit signal; it may also be a pricing slip.', Shop::amount($price), $this->percent($price / $median), Shop::amount($median), $peers->count())));
+                $out->push($this->flag($product, 'price_anomaly', sprintf('%s is %s of the category median of %s (%d other listings). Unusually cheap goods are a counterfeit signal; it may also be a pricing slip.', Shop::amount($price), $this->percent($price / $median), Shop::amount($median), $peerCount)));
             } elseif ($median > 0 && $price > $median * $c['high_ratio']) {
-                $out->push($this->flag($product, 'price_anomaly', sprintf('%s is %s times the category median of %s (%d other listings). It may be a typing slip, or a different class of product.', Shop::amount($price), rtrim(rtrim(number_format($price / $median, 1), '0'), '.'), Shop::amount($median), $peers->count())));
+                $out->push($this->flag($product, 'price_anomaly', sprintf('%s is %s times the category median of %s (%d other listings). It may be a typing slip, or a different class of product.', Shop::amount($price), rtrim(rtrim(number_format($price / $median, 1), '0'), '.'), Shop::amount($median), $peerCount)));
             }
         }
 
@@ -173,13 +183,18 @@ class ListingFlags
         return ['product' => $product, 'rule' => $rule, 'rule_label' => self::RULES[$rule], 'detail' => $detail];
     }
 
-    /** @param  list<float>  $sorted */
-    private function median(array $sorted): float
+    /**
+     * The median of a sorted list with the entry at index $skip left out (null: leave nothing out), without copying the list.
+     *
+     * @param  list<float>  $sorted
+     */
+    private function medianWithout(array $sorted, ?int $skip): float
     {
-        $n = count($sorted);
+        $n = count($sorted) - ($skip === null ? 0 : 1);
+        $at = fn (int $k): float => $sorted[$skip !== null && $k >= $skip ? $k + 1 : $k];
         $mid = intdiv($n, 2);
 
-        return $n % 2 ? $sorted[$mid] : ($sorted[$mid - 1] + $sorted[$mid]) / 2;
+        return $n % 2 ? $at($mid) : ($at($mid - 1) + $at($mid)) / 2;
     }
 
     private function percent(float $ratio): string

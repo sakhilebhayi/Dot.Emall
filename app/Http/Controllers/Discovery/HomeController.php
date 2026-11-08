@@ -6,8 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Product;
 use App\Models\Store;
 use App\Services\Catalogue\CategoryTree;
-use App\Services\Discovery\HomeSection;
 use App\Services\Discovery\Homepage;
+use App\Services\Discovery\HomeSection;
 use App\Services\Discovery\RecommendedItem;
 use App\Support\Actor;
 use App\Support\ShopperRegion;
@@ -83,7 +83,7 @@ class HomeController extends Controller
         Product::query()->browsable()->whereIn('category_id', array_keys($rootOf))->where('stock', '>', 0)->whereHas('images')
             ->with('images')->orderByDesc('rating_count')->orderByDesc('id')->limit(120)->get()
             ->each(function (Product $p) use (&$byCategory, $rootOf) {
-                $byCategory[$rootOf[$p->category_id]] ??= $p->images->first()->url();
+                $byCategory[$rootOf[$p->category_id]] ??= $p->images->first()->cardUrl();
             });
 
         return array_map(fn (array $r) => [

@@ -60,7 +60,7 @@
         @else
             <div class="ds-grid">
                 @foreach ($wishlist as $w)
-                    @if ($w->product)<x-ds.product-card :href="route('products.show', $w->product)" :title="$w->product->name" :image="$w->product->images->first()?->url()" :store="$w->product->store?->name" :amount="$w->product->price" :stock="$w->product->stock" ratio="1 / 1" />@endif
+                    @if ($w->product)<x-ds.product-card :href="route('products.show', $w->product)" :title="$w->product->name" :image="$w->product->images->first()?->cardUrl()" :store="$w->product->store?->name" :amount="$w->product->price" :stock="$w->product->stock" ratio="1 / 1" />@endif
                 @endforeach
             </div>
         @endif

@@ -92,7 +92,7 @@
             <div class="ds-grid">
                 @foreach ($result->items as $hit)
                     @php($p = $hit->product)
-                    <x-ds.product-card :href="route('products.show', ['product' => $p, 'src' => 'search'])" :title="$p->name" :image="$p->images->first()?->url()" :amount="$p->price" :rating-value="$p->rating_average ?? 0" :rating-count="$p->rating_count ?? 0" :stock="$p->stock">
+                    <x-ds.product-card :href="route('products.show', ['product' => $p, 'src' => 'search'])" :title="$p->name" :image="$p->images->first()?->cardUrl()" :amount="$p->price" :rating-value="$p->rating_average ?? 0" :rating-count="$p->rating_count ?? 0" :stock="$p->stock">
                         <x-slot:wishlist><x-wish-toggle :product="$p" /></x-slot:wishlist>
                     </x-ds.product-card>
                 @endforeach

@@ -12,7 +12,7 @@
     </div>
     @if ($shots->isNotEmpty())
         <ul class="disc-mosaic disc-mosaic--{{ $shots->count() }}" aria-hidden="true">
-            @foreach ($shots as $p)<li><img src="{{ $p->images->first()->url() }}" alt="" width="240" height="240" loading="lazy" decoding="async"></li>@endforeach
+            @foreach ($shots as $p)<li><img src="{{ $p->images->first()->cardUrl() }}" alt="" width="240" height="240" loading="lazy" decoding="async"></li>@endforeach
         </ul>
     @endif
 </article>

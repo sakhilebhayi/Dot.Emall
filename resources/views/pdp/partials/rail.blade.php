@@ -13,7 +13,7 @@
         @foreach ($set->items as $item)
             @php($p = $item->product)
             <li class="pdp-rail__item">
-                <x-ds.product-card :href="route('products.show', ['product' => $p, 'src' => 'recommendation'])" :title="$p->name" :image="$p->images->first()?->url()" :store="$p->store->name" :amount="$p->price"
+                <x-ds.product-card :href="route('products.show', ['product' => $p, 'src' => 'recommendation'])" :title="$p->name" :image="$p->images->first()?->cardUrl()" :store="$p->store->name" :amount="$p->price"
                     :rating-value="$p->rating_average ?? 0" :rating-count="$p->rating_count ?? 0" :stock="$p->stock" ratio="1 / 1">
                     <x-slot:wishlist><x-wish-toggle :product="$p" /></x-slot:wishlist>
                 </x-ds.product-card>

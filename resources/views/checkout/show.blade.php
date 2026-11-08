@@ -144,7 +144,7 @@
                         <div class="co-review">
                             <h3>From {{ $g['store_name'] }}</h3>
                             @foreach ($g['lines'] as $line)
-                                <x-ds.cart-line :title="$line->product->name" :href="route('products.show', $line->product)" :image="$line->product->images->first()?->url()" :option="$line->variant->label()" :unit-cents="$line->unitCents()" :quantity="$line->quantity" :line-cents="$line->totalCents()" />
+                                <x-ds.cart-line :title="$line->product->name" :href="route('products.show', $line->product)" :image="$line->product->images->first()?->cardUrl()" :option="$line->variant->label()" :unit-cents="$line->unitCents()" :quantity="$line->quantity" :line-cents="$line->totalCents()" />
                             @endforeach
                             <dl class="co-parcel__sum">
                                 <div><dt>Delivery, {{ $g['selected']?->name }}</dt><dd>{{ $g['delivery_cents'] === 0 ? 'Free' : Shop::money($g['delivery_cents']) }}</dd></div>

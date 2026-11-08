@@ -33,6 +33,8 @@ final class SearchRequest
         public int $page = 1,
         public int $perPage = 24,
         public bool $understand = true,
+        /** False when the caller only wants the matching products (a collection, a digest): the facet counts cost about a dozen queries and are skipped. */
+        public bool $facets = true,
     ) {
         $this->text = trim(mb_substr($this->text, 0, (int) config('discovery.search.max_query_length', 100)));
         $this->sort = in_array($this->sort, self::SORTS, true) ? $this->sort : 'relevance';
@@ -121,7 +123,7 @@ final class SearchRequest
         $array = $this->toArray();
         ksort($array);
 
-        return sha1(json_encode([$array, $this->perPage, $this->understand]));
+        return sha1(json_encode([$array, $this->perPage, $this->understand, $this->facets]));
     }
 
     public function with(array $changes): self

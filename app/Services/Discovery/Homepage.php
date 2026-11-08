@@ -240,13 +240,14 @@ class Homepage
 
         $stores = DB::table('stores')->whereIn('id', $rows->pluck('id'))->where('is_active', true)->get(['id', 'name', 'slug', 'logo_path'])->keyBy('id');
         $items = [];
+        $ratings = $this->ratings->summaries($stores->keys());
 
         foreach ($rows as $row) {
             if (! isset($stores[$row->id])) {
                 continue;
             }
 
-            $rating = $this->ratings->summary((int) $row->id);
+            $rating = $ratings[(int) $row->id];
             $basis = ((int) $row->orders)." orders in the last {$days} days";
 
             if ($rating['shown']) {

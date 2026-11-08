@@ -75,7 +75,7 @@ class CollectionController extends Controller
             return response()->json(['ok' => false, 'message' => $e->errors()['rule'][0] ?? 'That rule is not valid.'], 422);
         }
 
-        $result = $engine->search(SearchRequest::fromArray(['literal' => '1', 'sort' => 'newest'] + $rule)->with(['perPage' => 12, 'page' => 1]));
+        $result = $engine->search(SearchRequest::fromArray(['literal' => '1', 'sort' => 'newest'] + $rule)->with(['perPage' => 12, 'page' => 1, 'facets' => false]));
 
         return response()->json([
             'ok' => true,

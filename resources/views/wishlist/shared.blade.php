@@ -9,7 +9,7 @@
     @else
         <div class="ds-grid">
             @foreach ($products as $p)
-                <x-ds.product-card :href="route('products.show', $p)" :title="$p->name" :image="$p->images->first()?->url()" :store="$p->store->name" :amount="$p->price" :rating-value="$p->rating_average ?? 0" :rating-count="$p->rating_count ?? 0" :stock="$p->stock">
+                <x-ds.product-card :href="route('products.show', $p)" :title="$p->name" :image="$p->images->first()?->cardUrl()" :store="$p->store->name" :amount="$p->price" :rating-value="$p->rating_average ?? 0" :rating-count="$p->rating_count ?? 0" :stock="$p->stock">
                     <x-slot:wishlist><x-wish-toggle :product="$p" /></x-slot:wishlist>
                 </x-ds.product-card>
             @endforeach

@@ -114,7 +114,7 @@
                         @php($p = $item->product)
                         <li>
                             <span class="disc-ranked__n ds-code" aria-hidden="true">{{ str_pad((string) $loop->iteration, 2, '0', STR_PAD_LEFT) }}</span>
-                            @if ($p->images->isNotEmpty())<img src="{{ $p->images->first()->url() }}" alt="" width="96" height="96" loading="lazy" decoding="async">@else<span class="disc-ranked__noimg"></span>@endif
+                            @if ($p->images->isNotEmpty())<img src="{{ $p->images->first()->cardUrl() }}" alt="" width="96" height="96" loading="lazy" decoding="async">@else<span class="disc-ranked__noimg"></span>@endif
                             <div class="disc-ranked__text">
                                 <a href="{{ route('products.show', $p) }}">{{ $p->name }}</a>
                                 <span class="disc-muted">{{ $item->basis }}</span>
