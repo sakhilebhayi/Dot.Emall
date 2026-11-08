@@ -54,8 +54,10 @@ class DashboardTest extends TestCase
         $response = $this->actingAs($seller)->get(route('seller.dashboard'));
 
         $response->assertOk();
-        $response->assertSee('1 listing low on stock.');
+        $response->assertSee('Product at or below your low-stock level');
+        $response->assertSee('Low Stock Widget (2 left)');
         $response->assertSee('5.0'); // average rating from the single 5-star review
+        $response->assertSee('from 1 review');
     }
 
     public function test_dashboard_lists_the_sellers_recent_orders(): void

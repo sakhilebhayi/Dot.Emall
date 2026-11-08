@@ -60,7 +60,8 @@ class OrderPlacedListenerTest extends TestCase
         $this->assertStringContainsString('1 item worth R180.00', $data['message']);
         $this->assertStringNotContainsString('7,977', $data['message']);
         $this->assertStringNotContainsString('7,777', $data['message']);
-        $this->assertSame(route('orders.show', $order), $data['url']);
+        // The link opens the seller's own parcel on the seller desk (the buyer's order page is not the seller's page).
+        $this->assertSame(route('seller.orders.show', $order->groups()->where('store_id', $a->store->id)->firstOrFail()), $data['url']);
     }
 
     public function test_no_notification_is_sent_when_checkout_fails(): void

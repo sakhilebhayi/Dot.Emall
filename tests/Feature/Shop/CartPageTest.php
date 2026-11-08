@@ -4,8 +4,11 @@ namespace Tests\Feature\Shop;
 
 use App\Models\CartItem;
 use App\Models\PromoCode;
+use App\Models\ShippingMethod;
 use App\Models\Wishlist;
 use App\Services\Cart\CartManager;
+use App\Support\Shell;
+use Illuminate\Auth\Events\Login;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Concerns\BuildsCommerce;
 use Tests\Concerns\BuildsMarketplace;
@@ -46,12 +49,12 @@ class CartPageTest extends TestCase
         $product = $this->makeListing($this->makeSeller(), ['stock' => 9]);
         $this->post(route('cart.store'), ['product_id' => $product->id, 'quantity' => 3]);
 
-        $this->assertSame(3, \App\Support\Shell::cartCount());
+        $this->assertSame(3, Shell::cartCount());
 
         $buyer = $this->makeBuyer();
         $this->addToCart($buyer, $product, 2);
         $this->actingAs($buyer);
-        $this->assertSame(2, \App\Support\Shell::cartCount());
+        $this->assertSame(2, Shell::cartCount());
     }
 
     public function test_quantity_changes_obey_stock_with_a_clear_message_and_a_remove_works(): void
@@ -130,6 +133,20 @@ class CartPageTest extends TestCase
         $this->get(route('cart.index'))->assertDontSee('is applied')->assertSee('R200.00');
     }
 
+    public function test_the_sellers_promo_conditions_note_is_printed_where_the_code_applies(): void
+    {
+        $seller = $this->makeSeller(['name' => 'Terms Stores']);
+        $this->withDelivery($seller);
+        $product = $this->makeListing($seller, ['price' => 200, 'stock' => 9]);
+        PromoCode::factory()->create(['store_id' => $seller->store->id, 'code' => 'TERMS10', 'discount_type' => 'percent', 'discount_value' => 10, 'conditions' => 'One per household, not with other offers']);
+        $this->addToCart(null, $product);
+
+        $this->post(route('cart.promo'), ['promo_code' => 'TERMS10'])->assertSessionHasNoErrors();
+
+        $this->get(route('cart.index'))->assertSee("The seller's terms: One per household, not with other offers.", false);
+        $this->get(route('checkout.show'))->assertSee("Seller's terms: One per household, not with other offers", false);
+    }
+
     public function test_delivery_prices_follow_the_place_and_the_chosen_method(): void
     {
         $seller = $this->makeSeller(['name' => 'Two Method Stores']);
@@ -156,7 +173,7 @@ class CartPageTest extends TestCase
     public function test_free_delivery_progress_is_stated_with_the_real_remainder(): void
     {
         $seller = $this->makeSeller();
-        \App\Models\ShippingMethod::factory()->freeOver(500, 70)->create(['store_id' => $seller->store->id, 'name' => 'Free over R500']);
+        ShippingMethod::factory()->freeOver(500, 70)->create(['store_id' => $seller->store->id, 'name' => 'Free over R500']);
         $this->addToCart(null, $this->makeListing($seller, ['price' => 300, 'stock' => 9]));
 
         $this->get(route('cart.index'))->assertSee('Spend R200.00 more with this seller for free delivery');
@@ -201,7 +218,7 @@ class CartPageTest extends TestCase
         $this->addToCart(null, $product, 2);
         $buyer = $this->makeBuyer();
 
-        event(new \Illuminate\Auth\Events\Login('web', $buyer, false));
+        event(new Login('web', $buyer, false));
 
         $this->assertSame(2, CartItem::withoutGlobalScopes()->where('user_id', $buyer->id)->sum('quantity'));
         $this->assertSame(0, app(CartManager::class)->count(null));
@@ -210,7 +227,7 @@ class CartPageTest extends TestCase
     public function test_collection_is_never_the_silent_default_when_the_seller_also_delivers(): void
     {
         $seller = $this->makeSeller(['name' => 'Collect Or Deliver']);
-        \App\Models\ShippingMethod::factory()->collection()->create(['store_id' => $seller->store->id]);
+        ShippingMethod::factory()->collection()->create(['store_id' => $seller->store->id]);
         $this->withDelivery($seller, ['name' => 'Courier to your door', 'price' => 75]);
         $this->addToCart(null, $this->makeListing($seller, ['price' => 100, 'stock' => 5]));
 

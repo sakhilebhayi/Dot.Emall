@@ -56,7 +56,7 @@
                     </x-ds.table>
                 </details>
             @endif
-            @if ($sales['other_currency_lines'])<p class="sd-quiet">{{ $pl($sales['other_currency_lines'], 'item') }} sold in another currency {{ $sales['other_currency_lines'] === 1 ? 'is' : 'are' }} not counted here.</p>@endif
+            @if ($sales['other_currencies'])<p class="sd-quiet">Also sold in {{ collect($sales['other_currencies'])->map(fn ($o, $code) => Shop::money($o['cents'], $code).' ('.$pl($o['orders'], 'order').')')->implode('; ') }}. Currencies are never added together, so these are not in the figures here.</p>@endif
         </section>
 
         <section aria-labelledby="a-traffic" class="sd-stack">

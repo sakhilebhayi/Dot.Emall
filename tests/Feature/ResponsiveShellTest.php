@@ -73,7 +73,10 @@ class ResponsiveShellTest extends TestCase
         $this->placeOrder($buyer, [[$this->makeListing($seller, ['name' => 'Scrolling Table Copper Whisk']), 1]]);
 
         $this->assertScrollsHorizontally($this->assertResponsiveShell($this->actingAs($buyer)->get(route('orders.index'))), 'Your orders');
-        $this->assertScrollsHorizontally($this->assertResponsiveShell($this->actingAs($seller)->get(route('seller.orders.index')), 'desk-menu'), 'Orders to fulfil');
+        // The seller's orders page (W6) is a list of parcels, not a table: it wraps at any width and has nothing to scroll sideways.
+        $list = $this->assertResponsiveShell($this->actingAs($seller)->get(route('seller.orders.index')), 'desk-menu');
+        $this->assertSame(0, $list->query('//main//table')->length, 'the parcel list is not a table');
+        $this->assertSame(1, $list->query('//main//ul[contains(@class, "sd-list")]//a[contains(@href, "/sell/orders/")][contains(., "Order ")]')->length, 'the parcel is listed with a link to its page');
         $this->assertScrollsHorizontally($this->assertResponsiveShell($this->actingAs($seller)->get(route('seller.dashboard')), 'desk-menu'), 'Recent orders');
     }
 

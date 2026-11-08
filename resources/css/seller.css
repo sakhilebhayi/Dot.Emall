@@ -209,3 +209,6 @@ details[open] > .sd-summary .sd-summary__edit .ds-icon { transform: rotate(180de
 
 /* The kit's figure rule, with the space above its text written as a plain padding (the inset between the rule and the label is the same). */
 .sd-page .ds-stat { padding-top: var(--s-3); }
+
+/* A table that sits under its own section heading keeps its caption for assistive technology (it names the scroll region) but does not print it twice. */
+.sd-caption-hidden caption { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }

@@ -254,16 +254,9 @@ Route::get('/help/selling', [HelpController::class, 'sellers'])->name('help.sell
 // --- end w5 ---
 
 // --- integration ---
-// Pure aliases of pages that already exist, so the shell's navigation resolves (DESIGN.md, "Route names feature work must
-// register"). A feature agent that builds the real page for one of these names deletes its line here and registers the real
-// route. Nothing is registered here that is not an existing controller action: no aliases, limiters or bindings (those live in providers).
-
-Route::middleware([
-    'auth:sanctum',
-    config('jetstream.auth_session'),
-    'verified',
-])->group(function () {
-});
+// The aliases the integration pass registered (search, account.home, seller.dashboard, sell.start) were all replaced by their real pages
+// (W3, W5, W6) and their lines are gone. Nothing is registered here now: a name that is still pending (stores.index, stores.show,
+// wishlist.index, account.alerts) belongs to the product-page workstream (W4) and is registered by it.
 // --- end integration ---
 
 // --- w3 ---

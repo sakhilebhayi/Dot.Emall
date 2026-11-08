@@ -14,6 +14,7 @@ use App\Services\CheckoutService;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Tests\Concerns\PurgesCommittedUsers;
 use Tests\TestCase;
 
 /**
@@ -23,6 +24,8 @@ use Tests\TestCase;
  */
 class ParallelVariantPostgresTest extends TestCase
 {
+    use PurgesCommittedUsers;
+
     /** @var array<int, int> */
     private array $userIds = [];
 
@@ -46,8 +49,7 @@ class ParallelVariantPostgresTest extends TestCase
     protected function tearDown(): void
     {
         if (DB::connection()->getDriverName() === 'pgsql' && Schema::hasTable('products')) {
-            DB::table('notifications')->whereIn('notifiable_id', $this->userIds)->delete();
-            DB::table('users')->whereIn('id', $this->userIds)->delete();
+            $this->purgeCommittedUsers($this->userIds);
         }
 
         parent::tearDown();

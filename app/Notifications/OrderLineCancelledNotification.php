@@ -23,7 +23,7 @@ class OrderLineCancelledNotification extends EmallNotification
             'message' => "The buyer cancelled {$this->orderItem->quantity} × \"{$this->orderItem->displayName()}\" on order {$this->orderItem->order->reference()}. Do not ship it.",
             'order_id' => $this->orderItem->order_id,
             'order_item_id' => $this->orderItem->id,
-            'url' => route('orders.show', $this->orderItem->order_id),
+            'url' => $this->orderItem->group ? route('seller.orders.show', $this->orderItem->group) : route('orders.show', $this->orderItem->order_id),
         ];
     }
 }

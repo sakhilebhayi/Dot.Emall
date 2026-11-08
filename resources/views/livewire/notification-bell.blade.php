@@ -1,8 +1,9 @@
 {{-- The notification bell (Livewire). A disclosure: the button toggles a panel of the latest ten notices. Opens with Enter or Space, closes with Esc or a click outside. --}}
+@php($badge = $this->unreadCount > 99 ? '99+' : (string) $this->unreadCount)
 <div class="ds-dropdown" x-data @click.outside="$wire.open = false" @keydown.escape.window="$wire.open = false" style="display: inline-block;">
-    <button wire:click="toggle" type="button" class="ds-icon-btn" aria-label="Notifications{{ $this->unreadCount > 0 ? ', '.$this->unreadCount.' unread' : '' }}" aria-haspopup="true" aria-expanded="{{ $open ? 'true' : 'false' }}">
+    <button wire:click="toggle" type="button" class="ds-icon-btn" aria-label="Notifications{{ $this->unreadCount > 0 ? ', '.$badge.' unread' : '' }}" aria-haspopup="true" aria-expanded="{{ $open ? 'true' : 'false' }}">
         <x-ds.icon name="bell" :size="22" />
-        @if ($this->unreadCount > 0)<span class="ds-count" style="position: absolute; inset-block-start: 0.2rem; inset-inline-end: 0.1rem;" aria-hidden="true">{{ $this->unreadCount > 9 ? '9+' : $this->unreadCount }}</span>@endif
+        @if ($this->unreadCount > 0)<span class="ds-count" style="position: absolute; inset-block-start: 0.2rem; inset-inline-end: 0.1rem;" aria-hidden="true">{{ $badge }}</span>@endif
     </button>
 
     @if ($open)

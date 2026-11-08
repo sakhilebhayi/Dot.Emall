@@ -2,6 +2,7 @@
 
 namespace Tests\Support;
 
+use App\Enums\OrderStatus;
 use App\Models\Address;
 use App\Models\Brand;
 use App\Models\CartItem;
@@ -16,7 +17,11 @@ use App\Models\StoreCategory;
 use App\Models\User;
 use App\Services\CheckoutService;
 use App\Services\Guests\GuestOrderAccess;
+use App\Services\OrderLifecycle;
+use App\Services\Returns\ReturnPhotos;
+use App\Services\Returns\ReturnService;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 /**
@@ -45,7 +50,6 @@ final class SignedInSmoke
         'operator/reports/{type}/{id}' => 'opened as /operator/reports/product/{id}: the {type} segment is a word, which the pattern matcher does not collapse',
         'account/returns/{return}' => 'needs a delivered line inside its return window; covered by ReturnFlowTest',
         'sell/analytics/export/{what}' => 'CSV downloads; both kinds are opened above under their literal addresses (export/orders, export/products)',
-        'sell/returns/{return}/photos/{index}' => 'streams a photo the buyer attached; return photos have no upload path yet (D-25), covered by SellerReturnsTest',
     ];
 
     /** @var array<string, mixed> */
@@ -53,6 +57,9 @@ final class SignedInSmoke
 
     /** @var array<string, string> */
     private array $storefront = [];
+
+    /** @var array<int, string> files this run wrote to the private disk, removed again by forget() */
+    private array $files = [];
 
     /**
      * Create the data. Returns the people, keyed 'seller', 'buyer', 'newcomer', 'operator'.
@@ -75,10 +82,10 @@ final class SignedInSmoke
         $line = $order->items()->first();
 
         // Ship and deliver it, then let the buyer ask to return it, so the seller desk has a parcel with a shipment and a return to open.
-        $lifecycle = app(\App\Services\OrderLifecycle::class);
-        $lifecycle->advanceItem($line, \App\Enums\OrderStatus::Shipped, $seller, null, 'seller');
-        $lifecycle->advanceItem($line->fresh(), \App\Enums\OrderStatus::Delivered, $seller, null, 'seller');
-        $return = app(\App\Services\Returns\ReturnService::class)->request($line->fresh(), $buyer, 'faulty', 'Smoke return');
+        $lifecycle = app(OrderLifecycle::class);
+        $lifecycle->advanceItem($line, OrderStatus::Shipped, $seller, null, 'seller');
+        $lifecycle->advanceItem($line->fresh(), OrderStatus::Delivered, $seller, null, 'seller');
+        $return = app(ReturnService::class)->request($line->fresh(), $buyer, 'faulty', 'Smoke return');
         $group = $line->fresh()->group;
 
         CartItem::withoutGlobalScopes()->create(['user_id' => $buyer->id, 'product_id' => $live->id, 'quantity' => 2]);
@@ -92,6 +99,12 @@ final class SignedInSmoke
         $collection = Collection::query()->create(['title' => 'Smoke collection', 'slug' => 'smoke-collection', 'type' => 'manual', 'visibility' => 'draft']);
         $return = (new ReturnRequest)->forceFill(['order_item_id' => $line->id, 'order_id' => $order->id, 'requester_id' => $buyer->id, 'seller_id' => $seller->id, 'reason_category' => 'faulty', 'status' => 'escalated', 'refund_cents' => 12000, 'escalated_at' => now(), 'escalation_reason' => 'buyer_disputed_decline', 'respond_by' => now()->addDays(10)]);
         $return->save();
+
+        // A photo the buyer attached (written where the buyer's upload writes it: private disk, returns/{order id}/), so both the buyer's and the seller's way of opening it are exercised.
+        $photo = 'returns/'.$order->id.'/smoke-'.Str::random(8).'.jpg';
+        Storage::disk(ReturnPhotos::DISK)->put($photo, base64_decode('/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA='));
+        $this->files[] = $photo;
+        $return->forceFill(['photo_paths' => [$photo]])->save();
 
         $address = Address::create(['user_id' => $buyer->id, 'recipient_name' => 'Smoke Buyer', 'line1' => '1 Smoke Street', 'city' => 'Testville', 'province' => 'Gauteng', 'postal_code' => '2000', 'country' => 'ZA', 'is_default_shipping' => true]);
         $item = $order->items()->first();
@@ -110,6 +123,16 @@ final class SignedInSmoke
         $lists->add($buyer, $live);
         $lists->enableSharing($lists->defaultFor($buyer));
         $this->storefront = ['wishToken' => (string) $lists->defaultFor($buyer)->share_token];
+    }
+
+    /** Removes what seed() wrote outside the database. */
+    public function forget(): void
+    {
+        foreach ($this->files as $file) {
+            Storage::disk(ReturnPhotos::DISK)->delete($file);
+        }
+
+        $this->files = [];
     }
 
     /**
@@ -213,6 +236,10 @@ final class SignedInSmoke
             ['who' => 'seller', 'uri' => "/sell/orders/{$group}/slip"],
             ['who' => 'seller', 'uri' => '/sell/returns'],
             ['who' => 'seller', 'uri' => "/sell/returns/{$return}"],
+            ['who' => 'seller', 'uri' => "/sell/returns/{$return}/photos/0"],
+            ['who' => 'seller', 'uri' => "/sell/returns/{$return}/photos/1", 'expect' => 404],
+            ['who' => 'buyer', 'uri' => "/return-photos/{$return}/0"],
+            ['who' => 'newcomer', 'uri' => "/return-photos/{$return}/0", 'expect' => 404],
             ['who' => 'seller', 'uri' => '/sell/analytics'],
             ['who' => 'seller', 'uri' => '/sell/analytics?period=7'],
             ['who' => 'seller', 'uri' => '/sell/analytics/export/orders'],

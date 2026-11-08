@@ -4,7 +4,6 @@ namespace Tests\Feature\Shop;
 
 use App\Models\Address;
 use App\Models\NotificationPreference;
-use App\Models\User;
 use App\Services\Notifications\NotificationPreferences;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Concerns\BuildsCommerce;
@@ -149,7 +148,7 @@ class AccountAndHelpTest extends TestCase
         $this->actingAs($buyer)->get(route('account.privacy'))->assertOk()->assertSee('Go to account deletion')->assertDontSee('You cannot delete your account yet');
 
         $this->placeOrder($buyer, [[$this->makeListing($seller, ['stock' => 5]), 1]]);
-        $this->actingAs($buyer)->get(route('account.privacy'))->assertSee('You cannot delete your account yet')->assertSee('orders on their way');
+        $this->actingAs($buyer)->get(route('account.privacy'))->assertSee('You cannot delete your account yet')->assertSee('has not reached you yet');
     }
 
     // ---- help -------------------------------------------------------------------------------------------------------------

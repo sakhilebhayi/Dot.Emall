@@ -8,12 +8,12 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
-/** Your data: see what is kept, download it as JSON, and delete the account under the existing rules (refused while orders or refunds are open). */
+/** Your data: see what is kept, download it as JSON, and close the account (refused while orders, returns, refunds or held earnings are open; otherwise the person is anonymised and the shop's records stay). */
 class PrivacyController extends Controller
 {
     public function show(Request $request, DeleteUser $deleter): View
     {
-        return view('account.privacy', ['blocker' => $deleter->blockedReason($request->user())]);
+        return view('account.privacy', ['blockers' => $deleter->blockers($request->user())]);
     }
 
     public function export(Request $request, DataExport $export): JsonResponse

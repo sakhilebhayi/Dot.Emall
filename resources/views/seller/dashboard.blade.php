@@ -76,7 +76,16 @@
                         </div>
                     @endif
                 </div>
-                @if ($sales['other_currency_lines'])<p class="sd-quiet">{{ $plural($sales['other_currency_lines'], 'item') }} sold in another currency {{ $sales['other_currency_lines'] === 1 ? 'is' : 'are' }} not counted here.</p>@endif
+                @if ($sales['other_currencies'])
+                    <div class="sd-stack sd-stack--tight">
+                        <p class="sd-quiet">Sold in other currencies in the same period. Each currency is its own figure: they are never added to the one above.</p>
+                        <dl class="sd-defs">
+                            @foreach ($sales['other_currencies'] as $code => $other)
+                                <dt>{{ $code }}</dt><dd><strong class="sd-num">{{ Shop::money($other['cents'], $code) }}</strong> from {{ $plural($other['orders'], 'order') }}.</dd>
+                            @endforeach
+                        </dl>
+                    </div>
+                @endif
                 <p><a class="ds-btn ds-btn--link" href="{{ route('seller.analytics', ['period' => $window['days']]) }}">Open analytics</a></p>
             </section>
 
@@ -95,6 +104,32 @@
             </aside>
         </div>
 
+        <section aria-labelledby="d-recent">
+            <div class="sd-cluster" style="justify-content: space-between; margin-block-end: var(--s-3);">
+                <h2 id="d-recent" class="sd-h2">Recent orders</h2>
+                <a class="ds-btn ds-btn--link" href="{{ route('seller.orders.index') }}">All orders</a>
+            </div>
+            @if ($recent->isEmpty())
+                <p class="sd-muted">No orders for your store yet. A parcel appears here the moment a buyer places an order.</p>
+            @else
+                <x-ds.table caption="Recent orders" class="sd-caption-hidden">
+                    <x-slot:head>
+                        <tr><th scope="col">Placed</th><th scope="col">Order</th><th scope="col">Ship to</th><th scope="col" class="is-num">Items</th><th scope="col">Status</th><th scope="col" class="is-num">Your items</th></tr>
+                    </x-slot:head>
+                    @foreach ($recent as $row)
+                        <tr>
+                            <td data-label="Placed">{{ $row['order']->created_at->format('j M Y') }}</td>
+                            <td data-label="Order"><a href="{{ route('seller.orders.show', $row['group']) }}">{{ $row['order']->reference() }}</a></td>
+                            <td data-label="Ship to">{{ $row['buyerName'] ?? 'Not shown after dispatch' }}</td>
+                            <td data-label="Items" class="is-num">{{ $row['lineCount'] }}</td>
+                            <td data-label="Status">@if ($row['awaitingPayment'])<x-ds.status state="awaiting_payment" />@else<x-ds.status :state="$row['status']->value" />@endif</td>
+                            <td data-label="Your items" class="is-num"><strong>{{ $row['order']->money($row['netCents']) }}</strong></td>
+                        </tr>
+                    @endforeach
+                </x-ds.table>
+            @endif
+        </section>
+
         <section aria-labelledby="d-perf">
             <h2 id="d-perf" class="sd-h2" style="margin-block-end: var(--s-3);">How you are doing</h2>
             <dl class="sd-defs">
@@ -106,6 +141,8 @@
                 </dd>
                 <dt>Time from payment to shipped</dt>
                 <dd>@if ($fulfilment['median_hours'] !== null)<strong>{{ $hours($fulfilment['median_hours']) }}</strong> (middle value of {{ $plural($fulfilment['shipped'], 'shipped parcel') }}).@else No data yet.@endif</dd>
+                <dt>Average rating</dt>
+                <dd>@if ($reviews['average'] !== null)<strong class="sd-num">{{ number_format($reviews['average'], 1) }}</strong> out of 5 from {{ $plural($reviews['count'], 'review') }} on your products.@else No data yet: none of your products has a review. @endif</dd>
                 <dt>Answering questions</dt>
                 <dd>@if ($responses['questions']['hours'] !== null)<strong>{{ $hours($responses['questions']['hours']) }}</strong> to a first answer (middle value of {{ $plural($responses['questions']['sample'], 'question') }}).@else No data yet: you have not answered a question.@endif</dd>
                 <dt>Replying to reviews</dt>

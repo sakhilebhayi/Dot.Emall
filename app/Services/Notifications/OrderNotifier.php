@@ -81,6 +81,7 @@ class OrderNotifier
         $this->toSeller($return->seller_id, 'return_requested', $return->order_id, [
             'item' => $return->item->displayName(), 'order_item_id' => $return->order_item_id,
             'reason_label' => $return->reason_category->label(), 'respond_by' => $return->respond_by?->format('j M'),
+            'url' => route('seller.returns.show', $return),
         ]);
     }
 
@@ -97,7 +98,7 @@ class OrderNotifier
         $data = ['item' => $return->item->displayName(), 'order_item_id' => $return->order_item_id, 'escalation' => $return->escalation_reason];
 
         $this->toBuyer($return->order, 'return_escalated', $data);
-        $this->toSeller($return->seller_id, 'return_escalated', $return->order_id, $data);
+        $this->toSeller($return->seller_id, 'return_escalated', $return->order_id, $data + ['url' => route('seller.returns.show', $return)]);
     }
 
     /**
@@ -105,7 +106,7 @@ class OrderNotifier
      */
     public function ledgerReleased(int $sellerId, int $orderId, int $netCents): void
     {
-        $this->toSeller($sellerId, 'ledger_released', $orderId, ['net_cents' => $netCents, 'url' => route('dashboard')]);
+        $this->toSeller($sellerId, 'ledger_released', $orderId, ['net_cents' => $netCents, 'url' => route('seller.ledger')]);
     }
 
     public function lowStock(ProductVariant $variant, int $stock): void

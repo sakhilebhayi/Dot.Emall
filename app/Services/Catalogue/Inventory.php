@@ -67,6 +67,9 @@ class Inventory
     public function setStock(ProductVariant $variant, int $typed, ?int $seen, ?int $actorId, string $reason = 'seller_edit'): int
     {
         return DB::transaction(function () use ($variant, $typed, $seen, $actorId, $reason) {
+            // The product row first, then the variant: the order checkout takes them in (products, then variants, by id). The other
+            // way round, a restock racing with a sale deadlocks on PostgreSQL (the product total is written at the end of this transaction).
+            DB::table('products')->where('id', $variant->product_id)->lockForUpdate()->value('id');
             $current = ProductVariant::query()->lockForUpdate()->findOrFail($variant->id);
             $before = (int) $current->stock;
 

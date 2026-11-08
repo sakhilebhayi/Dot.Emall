@@ -61,6 +61,8 @@ foreach ($smoke->pages() as $page) {
     printf("%-9s %-46s %d%s\n", $page['who'], $page['uri'], $status, $ok ? '' : "   <-- FAIL (expected {$expected})");
 }
 
+$smoke->forget();
+
 // What only the cached boot can lose: the `operator` alias and the named limiters. The operator pages above prove the
 // alias (a missing one is a 500 for the operator, a 403 for everyone else); these prove the limiters.
 $app['session.store']->flush();

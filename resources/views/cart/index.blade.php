@@ -155,7 +155,7 @@
 
                 <x-ds.panel title="Promo code" class="co-panel">
                     @if ($promo)
-                        <p><span class="ds-code">{{ $promo->code }}</span> is applied. {{ \App\Services\Checkout\CartPage::describePromo($quote) }}.@if ($promo->expires_at) Valid until {{ $promo->expires_at->format('j M Y') }}.@endif @if ($promo->max_uses !== null) Limited to {{ $promo->max_uses }} uses in total, {{ max(0, $promo->max_uses - $promo->used_count) }} left.@endif</p>
+                        <p><span class="ds-code">{{ $promo->code }}</span> is applied. {{ \App\Services\Checkout\CartPage::describePromo($quote) }}.@if (filled($promo->conditions)) The seller's terms: {{ $promo->conditions }}@if (! str_ends_with(trim((string) $promo->conditions), '.')).@endif @endif @if ($promo->expires_at) Valid until {{ $promo->expires_at->format('j M Y') }}.@endif @if ($promo->max_uses !== null) Limited to {{ $promo->max_uses }} uses in total, {{ max(0, $promo->max_uses - $promo->used_count) }} left.@endif</p>
                         <form method="POST" action="{{ route('cart.promo.clear') }}">@csrf @method('DELETE')<x-ds.button type="submit" variant="quiet" size="sm">Remove code</x-ds.button></form>
                     @else
                         <form method="POST" action="{{ route('cart.promo') }}" class="co-inline">
