@@ -31,9 +31,10 @@ class NotificationsTest extends TestCase
     use BuildsPayments;
     use RefreshDatabase;
 
+    /** Oldest first. The relation is already ordered newest first, so the order is replaced, not appended to. */
     private function typesFor(User $user): array
     {
-        return $user->fresh()->notifications()->orderBy('created_at')->get()->map(fn ($n) => $n->data['type'])->all();
+        return $user->fresh()->notifications()->reorder('created_at')->get()->map(fn ($n) => $n->data['type'])->all();
     }
 
     public function test_transactional_notices_use_the_app_and_e_mail_and_cannot_be_switched_off(): void
@@ -106,11 +107,15 @@ class NotificationsTest extends TestCase
         $this->assertSame(['order_placed'], $this->typesFor($buyer));
         $this->assertSame([], $this->typesFor($seller), 'sellers hear nothing until the order is paid');
 
+        // Notices are stored with a one-second timestamp: move the clock between events so "oldest first" is a fact, not a coin toss.
+        $this->travel(1)->seconds();
         $this->payOrder($order);
         $this->assertSame(['order_placed', 'order_paid'], $this->typesFor($buyer));
         $this->assertSame(['new_order'], $this->typesFor($seller));
 
+        $this->travel(1)->seconds();
         app(ShipmentService::class)->ship($order->groups()->first(), $seller, ['carrier_key' => 'dsv', 'tracking_number' => 'DSV-5566']);
+        $this->travel(1)->seconds();
         app(OrderLifecycle::class)->advanceItem($order->items()->first(), OrderStatus::Delivered, $seller);
 
         $this->assertSame(['order_placed', 'order_paid', 'order_shipped', 'order_delivered'], $this->typesFor($buyer));

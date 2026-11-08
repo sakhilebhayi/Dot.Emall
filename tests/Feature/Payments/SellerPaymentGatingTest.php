@@ -160,7 +160,7 @@ class SellerPaymentGatingTest extends TestCase
 
         $this->actingAs($this->seller)->get(route('seller.dashboard'))
             ->assertOk()
-            ->assertSee('Payout is not available yet')
-            ->assertSee('earned, not paid out');
+            ->assertSee('there are no automatic payouts yet')
+            ->assertSee('Held, waiting out the return window');
     }
 }

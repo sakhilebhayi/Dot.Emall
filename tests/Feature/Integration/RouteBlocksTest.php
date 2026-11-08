@@ -47,7 +47,8 @@ class RouteBlocksTest extends TestCase
         $this->get('/dashboard')->assertRedirect(route('seller.dashboard'));
         $this->get('/sell/dashboard')->assertOk()->assertSee('Seller desk')->assertSee('Alias Stores');
         $this->get('/account')->assertOk()->assertSee('<title>Your account | Dot.Emall</title>', false)->assertSee('Open your seller desk');
-        $this->get('/sell/start')->assertRedirect($this->get('/sell')->headers->get('Location')); // a seller who already has a store is sent where /sell sends them
+        // A seller who already has a store reads the same public page, and it says so and points at their store (W6 made it public for everyone).
+        $this->get('/sell/start')->assertOk()->assertSee('You already have a store')->assertSee('Alias Stores is on Emall')->assertSee(route('seller.store.status'), false);
 
         $this->actingAs(User::factory()->withPersonalTeam()->create())->get('/sell/start')->assertOk();
     }

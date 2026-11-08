@@ -25,6 +25,8 @@ class DashboardController extends SellerController
             'previous' => $analytics->sales($store, $window['prevFrom'], $window['prevTo']),
             'fulfilment' => $analytics->fulfilment($store, $window['from'], $window['to']),
             'balance' => $ledger->balance($request->user()),
+            'recent' => $desk->recentParcels($store),
+            'reviews' => $desk->reviewSummary($store),
             'responses' => $desk->responseTimes($store),
             'trust' => StoreTrust::for($store),
         ]);

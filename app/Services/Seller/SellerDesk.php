@@ -10,6 +10,7 @@ use App\Models\ProductAnswer;
 use App\Models\ProductQuestion;
 use App\Models\ReturnRequest;
 use App\Models\Review;
+use App\Models\OrderItem;
 use App\Models\Store;
 use App\Models\User;
 use App\Services\Catalogue\Inventory;
@@ -72,6 +73,51 @@ class SellerDesk
             'pendingListings' => $pending,
             'total' => $toShip + $returns + $low->count() + $questions + $reviews + $rejected->count(),
         ];
+    }
+
+    /**
+     * The newest parcels of this store for the dashboard: the seller's own slice of each order and nothing else. The buyer is
+     * named only while something of theirs is still to pack or send (the same rule as the orders page); no address is read.
+     *
+     * @return \Illuminate\Support\Collection<int, array{group: OrderGroup, order: \App\Models\Order, status: OrderStatus, awaitingPayment: bool, lineCount: int, netCents: int, buyerName: ?string}>
+     */
+    public function recentParcels(Store $store, int $limit = 6): \Illuminate\Support\Collection
+    {
+        return OrderGroup::query()->where('store_id', $store->id)
+            ->with(['order', 'items'])
+            ->whereHas('items', fn ($q) => $q->where('status', '!=', OrderStatus::Cancelled->value))
+            ->orderByDesc('id')->limit($limit)->get()
+            ->map(function (OrderGroup $group) {
+                $live = $group->items->reject(fn (OrderItem $l) => $l->isCancelled());
+                $needsShipping = $group->order->isFulfillable() && $live->contains(fn (OrderItem $l) => $l->status->needsShipping());
+
+                return [
+                    'group' => $group,
+                    'order' => $group->order,
+                    'status' => OrderStatus::derive($group->items->pluck('status')),
+                    'awaitingPayment' => $group->order->isAwaitingPayment(),
+                    'lineCount' => $live->count(),
+                    'netCents' => (int) $live->sum(fn (OrderItem $l) => $l->netCents()),
+                    'buyerName' => $needsShipping ? ($group->order->shipping_name ?: $group->order->user?->name) : null,
+                ];
+            })->values();
+    }
+
+    /**
+     * The average of the published reviews on this store's products, with the number behind it. Unlike the shopper-facing
+     * store rating there is no minimum: the seller sees their own two reviews as two reviews. Null average when there are none.
+     *
+     * @return array{average: ?float, count: int}
+     */
+    public function reviewSummary(Store $store): array
+    {
+        $row = Review::query()->published()
+            ->whereIn('product_id', Product::withTrashed()->where('store_id', $store->id)->select('id'))
+            ->selectRaw('COUNT(*) as n, AVG(rating) as avg_rating')->first();
+
+        $n = (int) ($row->n ?? 0);
+
+        return ['average' => $n > 0 ? round((float) $row->avg_rating, 1) : null, 'count' => $n];
     }
 
     /**

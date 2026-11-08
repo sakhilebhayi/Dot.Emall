@@ -55,7 +55,7 @@ class SellerAnalytics
     }
 
     /**
-     * @return array{sales_cents: int, orders: int, units: int, aov_cents: ?int, has_data: bool, other_currency_lines: int}
+     * @return array{sales_cents: int, orders: int, units: int, aov_cents: ?int, has_data: bool, other_currency_lines: int, other_currencies: array<string, array{cents: int, orders: int}>}
      */
     public function sales(Store $store, Carbon $from, Carbon $to): array
     {
@@ -66,7 +66,16 @@ class SellerAnalytics
         $orders = (int) $row->orders;
         $cents = (int) round((float) $row->cents);
 
-        $other = $this->counted->lines()->where('oi.store_id', $store->id)->whereBetween('o.created_at', [$from, $to])->where('o.currency', '!=', Shop::currency())->count();
+        // Sales in any other currency are never added to the figure above (rand and euro do not add up): each currency is its own row.
+        $otherRows = $this->counted->lines()->where('oi.store_id', $store->id)->whereBetween('o.created_at', [$from, $to])->where('o.currency', '!=', Shop::currency())
+            ->groupBy('o.currency')->orderBy('o.currency')
+            ->selectRaw('o.currency as currency, COUNT(*) as lines, COUNT(DISTINCT oi.order_id) as orders, COALESCE(SUM(CASE WHEN ROUND(oi.total * 100) > ROUND(oi.discount_amount * 100) THEN ROUND(oi.total * 100) - ROUND(oi.discount_amount * 100) ELSE 0 END), 0) as cents')
+            ->get();
+        $other = (int) $otherRows->sum('lines');
+        $otherCurrencies = [];
+        foreach ($otherRows as $r) {
+            $otherCurrencies[Shop::isCode($r->currency) ? $r->currency : Shop::currency()] = ['cents' => (int) round((float) $r->cents), 'orders' => (int) $r->orders];
+        }
 
         return [
             'sales_cents' => $cents,
@@ -75,6 +84,7 @@ class SellerAnalytics
             'aov_cents' => $orders > 0 ? (int) round($cents / $orders) : null,
             'has_data' => $orders > 0,
             'other_currency_lines' => $other,
+            'other_currencies' => $otherCurrencies,
         ];
     }
 
