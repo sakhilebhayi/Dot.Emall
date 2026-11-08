@@ -2,7 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\Guests\GuestLinkResender;
 use App\Services\Ledger\SellerFees;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 /**
@@ -38,5 +41,21 @@ class HelpController extends Controller
     public function sellers(): View
     {
         return view('help.sellers', ['fees' => SellerFees::text(null)]);
+    }
+
+    /** The page for a guest who lost the order e-mail or whose link expired. */
+    public function orderLink(): View
+    {
+        return view('help.order-link');
+    }
+
+    /** Always the same answer, so the form says nothing about who has shopped here. */
+    public function sendOrderLink(Request $request, GuestLinkResender $resender): RedirectResponse
+    {
+        $data = $request->validate(['email' => ['required', 'email:rfc', 'max:190']]);
+
+        $resender->send($data['email']);
+
+        return redirect()->route('help.order-link')->with('status', 'If that address was used to place an order here as a guest, the link has just been sent to it. It can take a few minutes. Check your spam folder too.');
     }
 }

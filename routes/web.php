@@ -251,6 +251,8 @@ Route::get('/help/delivery', [HelpController::class, 'delivery'])->name('help.de
 Route::get('/help/returns', [HelpController::class, 'returns'])->name('help.returns');
 Route::get('/help/contact', [HelpController::class, 'contact'])->name('help.contact');
 Route::get('/help/selling', [HelpController::class, 'sellers'])->name('help.sellers');
+Route::get('/help/order-link', [HelpController::class, 'orderLink'])->name('help.order-link');
+Route::post('/help/order-link', [HelpController::class, 'sendOrderLink'])->middleware('throttle:guest-link')->name('help.order-link.send');
 // --- end w5 ---
 
 // --- integration ---

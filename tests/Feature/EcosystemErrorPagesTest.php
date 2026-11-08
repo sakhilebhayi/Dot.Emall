@@ -24,6 +24,8 @@ class EcosystemErrorPagesTest extends TestCase
             '404 not found' => [404, "We couldn't find that page"],
             '403 forbidden' => [403, "You don't have access to this"],
             '419 page expired' => [419, 'Your session timed out'],
+            '405 method not allowed' => [405, 'That address does not work that way'],
+            '413 too large' => [413, 'That upload is too big'],
             '429 too many requests' => [429, 'Slow down a little'],
             '500 server error' => [500, 'Something went wrong on our end'],
             '503 unavailable' => [503, "We'll be right back"],

@@ -27,6 +27,12 @@ class EmallServiceProvider extends ServiceProvider
             ];
         });
 
+        // Asking for a lost order link again: few per address and per person, so it cannot be used to flood someone's inbox.
+        RateLimiter::for('guest-link', fn (Request $request) => [
+            Limit::perHour(6)->by('guest-link:ip:'.$request->ip()),
+            Limit::perHour(3)->by('guest-link:email:'.sha1(mb_strtolower(trim((string) $request->input('email'))))),
+        ]);
+
         // Guest cart writes (a session-only cart is cheap but not free).
         RateLimiter::for('guest-cart', fn (Request $request) => Limit::perMinute(60)->by('guest-cart:'.$request->ip()));
     }

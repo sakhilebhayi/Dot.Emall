@@ -13,7 +13,7 @@ use Illuminate\Notifications\AnonymousNotifiable;
  *
  * kinds: order_placed, order_paid, payment_failed, item_packing, order_shipped, order_ready_for_collection,
  *        order_delivered, order_collected, order_refunded, return_requested, return_approved,
- *        return_declined, return_received, return_refunded, return_escalated, ledger_released, low_stock
+ *        return_declined, return_received, return_refunded, return_escalated, ledger_released, low_stock, order_link
  */
 class CommerceNotification extends EmallNotification
 {
@@ -65,6 +65,7 @@ class CommerceNotification extends EmallNotification
             'order_placed' => ["We have your order {$ref}", $order?->isAwaitingPayment()
                 ? "Thanks. Order {$ref} is saved and waiting for payment. Stock is held for you for a short while; if it is not paid it is released and the order is cancelled."
                 : "Thanks. Order {$ref} has been placed.", 'View your order'],
+            'order_link' => ["Your link to order {$ref}", "You asked for the link to order {$ref} again. The button opens the order without an account. Anyone who has this e-mail can use it, so keep it private. If you did not ask, you can ignore this message.", 'View your order'],
             'order_paid' => ["Payment received for {$ref}", "We received your payment of {$money((int) ($this->data['amount_cents'] ?? $order?->totalCents() ?? 0))} for order {$ref}. The seller can now pack it.", 'View your order'],
             'payment_failed' => ["Payment did not go through for {$ref}", "Your payment for order {$ref} was not completed. Nothing was taken. You can try again from the order page while it is still held for you.", 'Try payment again'],
             'item_packing' => ["The seller is packing {$item}", "\"{$item}\" from order {$ref} is being packed by the seller.", 'View your order'],
