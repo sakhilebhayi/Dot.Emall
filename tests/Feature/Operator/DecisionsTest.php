@@ -7,14 +7,19 @@ use App\Enums\ReturnStatus;
 use App\Enums\StoreStatus;
 use App\Models\ContentReport;
 use App\Models\OperatorAuditEntry;
+use App\Models\Payment;
+use App\Models\Product;
+use App\Models\ProductQuestion;
 use App\Models\Refund;
 use App\Models\Review;
 use App\Notifications\OperatorDecisionNotification;
 use App\Services\Community\ContentReports;
 use App\Services\Operator\OperatorDecisions;
+use App\Services\Operator\OperatorReports;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Validation\ValidationException;
 use LogicException;
 use Tests\Concerns\BuildsOperatorWorld;
 use Tests\TestCase;
@@ -152,7 +157,7 @@ class DecisionsTest extends TestCase
         $this->assertSame('hidden', $w['question']->fresh()->status);
         $this->assertSame('It links to another site.', $this->audit('question.remove')->reason);
 
-        $other = \App\Models\ProductQuestion::factory()->held()->create(['product_id' => $w['live']->id, 'user_id' => $this->makeBuyer()->id]);
+        $other = ProductQuestion::factory()->held()->create(['product_id' => $w['live']->id, 'user_id' => $this->makeBuyer()->id]);
         $this->actingAs($w['operator'])->post(route('operator.moderation.questions.release', $other))->assertRedirect();
         $this->assertSame('published', $other->fresh()->status);
     }
@@ -211,7 +216,7 @@ class DecisionsTest extends TestCase
     {
         $w = $this->operatorWorld();
 
-        $this->expectException(\Illuminate\Validation\ValidationException::class);
+        $this->expectException(ValidationException::class);
         app(ContentReports::class)->report($w['seller'], 'store', $w['seller']->store->id, 'other');
     }
 
@@ -223,15 +228,15 @@ class DecisionsTest extends TestCase
 
         foreach (range(1, 2) as $i) {
             $review = Review::factory()->create(['product_id' => $w['live']->id, 'user_id' => $author->id === $w['buyer']->id ? $this->makeBuyer()->id : $author->id, 'rating' => 5, 'body' => "Spam {$i}"]);
-            \App\Models\Product::factory()->create(['store_id' => $w['seller']->store->id]); // another listing so the unique review per product holds
-            $other = \App\Models\Product::factory()->create(['store_id' => $w['seller']->store->id]);
+            Product::factory()->create(['store_id' => $w['seller']->store->id]); // another listing so the unique review per product holds
+            $other = Product::factory()->create(['store_id' => $w['seller']->store->id]);
             $review->forceFill(['product_id' => $other->id])->save();
             ContentReport::query()->create(['reportable_type' => 'review', 'reportable_id' => $review->id, 'reporter_id' => $w['reporter']->id, 'reason' => 'spam']);
             $decisions->resolveReport($w['operator'], 'review', $review->id, 'remove', 'Spam, see the report.');
         }
 
         $this->actingAs($w['operator'])->get(route('operator.reports', ['view' => 'repeat']))->assertOk()->assertSee($author->name)->assertSee('Repeat offenders');
-        $this->assertSame(1, app(\App\Services\Operator\OperatorReports::class)->repeatOffenders()->count());
+        $this->assertSame(1, app(OperatorReports::class)->repeatOffenders()->count());
     }
 
     // ---- returns --------------------------------------------------------------------------------------------------------
@@ -285,7 +290,7 @@ class DecisionsTest extends TestCase
     public function test_payment_review_and_refund_actions_are_audited(): void
     {
         $w = $this->operatorWorld();
-        $payment = \App\Models\Payment::query()->first();
+        $payment = Payment::query()->first();
         $refund = Refund::query()->create(['payment_id' => $payment->id, 'order_id' => $payment->order_id, 'amount_cents' => 500, 'currency' => 'ZAR', 'status' => RefundStatus::Failed, 'kind' => 'cancellation']);
 
         $this->actingAs($w['operator'])->post(route('operator.payments.review', $payment), ['note' => 'Refunded in the Paystack dashboard.'])->assertRedirect(route('operator.payments.index'));

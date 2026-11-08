@@ -3,13 +3,17 @@
 namespace Tests\Feature\Operator;
 
 use App\Enums\StoreStatus;
+use App\Models\ContentReport;
 use App\Models\ListingFlagDismissal;
+use App\Models\OperatorAuditEntry;
 use App\Models\Order;
-use App\Models\Product;
+use App\Models\Payment;
+use App\Models\PaymentEvent;
+use App\Models\ProductQuestion;
 use App\Models\ReconcileRun;
 use App\Models\ScheduledTaskRun;
-use App\Models\Store;
 use App\Models\StoreCategory;
+use App\Services\Metrics\Metric;
 use App\Services\Operator\ListingFlags;
 use App\Services\Operator\NeedsAPerson;
 use App\Services\Operator\OperatorMetrics;
@@ -86,7 +90,7 @@ class QueuesAndAidsTest extends TestCase
 
         for ($i = 0; $i < 12; $i++) {
             $this->makeListing($w['seller'], ['status' => 'pending_approval']);
-            \App\Models\ProductQuestion::factory()->held()->create(['product_id' => $w['live']->id, 'user_id' => $this->makeBuyer()->id]);
+            ProductQuestion::factory()->held()->create(['product_id' => $w['live']->id, 'user_id' => $this->makeBuyer()->id]);
         }
 
         $this->assertSame($few, $count(), 'the home page must not issue more queries as the queues grow');
@@ -126,7 +130,7 @@ class QueuesAndAidsTest extends TestCase
     public function test_reports_filter_by_status_type_and_reason_and_show_counts_of_people(): void
     {
         $w = $this->operatorWorld();
-        \App\Models\ContentReport::query()->create(['reportable_type' => 'review', 'reportable_id' => $w['reported']->id, 'reporter_id' => $this->makeBuyer()->id, 'reason' => 'spam']);
+        ContentReport::query()->create(['reportable_type' => 'review', 'reportable_id' => $w['reported']->id, 'reporter_id' => $this->makeBuyer()->id, 'reason' => 'spam']);
         $this->actingAs($w['operator']);
 
         $this->get(route('operator.reports'))->assertOk()->assertSee('2 people')->assertSee('2 reports')->assertSee('fake')->assertSee('Best shop, buy from my cousin');
@@ -149,12 +153,12 @@ class QueuesAndAidsTest extends TestCase
     public function test_payments_desk_flags_an_order_paid_twice_and_lists_events(): void
     {
         $w = $this->operatorWorld();
-        $first = \App\Models\Payment::query()->first();
+        $first = Payment::query()->first();
         $dup = $first->replicate();
         $dup->reference = 'DUP-'.$first->reference;
         $dup->provider_transaction_id = null;
         $dup->save();
-        \App\Models\PaymentEvent::query()->create(['source' => 'webhook', 'event' => 'charge.success', 'reference' => $dup->reference, 'outcome' => 'duplicate', 'payment_id' => $dup->id, 'order_id' => $first->order_id]);
+        PaymentEvent::query()->create(['source' => 'webhook', 'event' => 'charge.success', 'reference' => $dup->reference, 'outcome' => 'duplicate', 'payment_id' => $dup->id, 'order_id' => $first->order_id]);
 
         $this->actingAs($w['operator'])->get(route('operator.payments.index'))->assertOk()->assertSee('Paid more than once')->assertSee('2 payments');
         $this->get(route('operator.payments.events', ['outcome' => 'duplicate']))->assertOk()->assertSee($dup->reference);
@@ -210,8 +214,9 @@ class QueuesAndAidsTest extends TestCase
 
         $flags = app(ListingFlags::class)->all('new_store_value');
 
-        $this->assertCount(5, $flags);
+        $this->assertCount(1, $flags, 'one flag for the store, not one per listing');
         $this->assertStringContainsString('Fresh Imports', $flags->first()['detail']);
+        $this->assertStringContainsString('has 5 listings', $flags->first()['detail']);
         $this->assertCount(0, $flags->filter(fn ($f) => $f['product']->store_id === $w['seller']->store->id));
     }
 
@@ -228,7 +233,7 @@ class QueuesAndAidsTest extends TestCase
 
         $this->assertSame(1, ListingFlagDismissal::query()->count());
         $this->assertFalse(app(ListingFlags::class)->all('prohibited_term')->contains(fn ($f) => $f['product']->id === $w['pending']->id));
-        $this->assertSame('It is an electric kettle, allowed.', \App\Models\OperatorAuditEntry::query()->where('action', 'listing.flag_dismiss')->first()->reason);
+        $this->assertSame('It is an electric kettle, allowed.', OperatorAuditEntry::query()->where('action', 'listing.flag_dismiss')->first()->reason);
         $this->assertSame('pending_approval', $w['pending']->fresh()->status, 'a flag never changes a listing by itself');
     }
 
@@ -330,6 +335,24 @@ class QueuesAndAidsTest extends TestCase
         $this->assertCount(0, DB::getQueryLog(), 'the second call within a minute reads the cache');
     }
 
+    public function test_the_cached_report_survives_a_cache_that_serialises(): void
+    {
+        // The real caches (file, database) serialise, and Laravel 13 refuses to rebuild classes from them: cache plain data only.
+        config(['cache.stores.array.serialize' => true, 'cache.serializable_classes' => false]);
+        Cache::forgetDriver('array');
+        Cache::flush();
+        $this->operatorWorld();
+        $metrics = app(OperatorMetrics::class);
+
+        $cold = $metrics->report('30d');
+        $warm = $metrics->report('30d');
+
+        $this->assertInstanceOf(Metric::class, $warm['metrics'][0]);
+        $this->assertEquals(collect($cold['metrics'])->map->toArray()->all(), collect($warm['metrics'])->map->toArray()->all());
+        $this->actingAs($this->makeOperator())->get(route('operator.metrics'))->assertOk()->assertSee('Gross merchandise value');
+        $this->actingAs($this->makeOperator())->get(route('operator.metrics'))->assertOk()->assertSee('Gross merchandise value');
+    }
+
     public function test_the_csv_export_is_operator_only_and_carries_definitions_not_personal_data(): void
     {
         Cache::flush();
@@ -361,7 +384,7 @@ class QueuesAndAidsTest extends TestCase
         $this->assertSame('operator', $run->trigger);
         $this->assertSame(1, $run->checked);
         $this->assertSame(0, $run->mismatch_count);
-        $this->assertNotNull(\App\Models\OperatorAuditEntry::query()->where('action', 'reconcile.run')->first());
+        $this->assertNotNull(OperatorAuditEntry::query()->where('action', 'reconcile.run')->first());
         $this->get(route('operator.ledger.index'))->assertSee('Everything agreed');
 
         Order::query()->update(['total' => DB::raw('total + 5')]);
@@ -409,7 +432,7 @@ class QueuesAndAidsTest extends TestCase
     {
         $operator = $this->makeOperator();
         DB::table('failed_jobs')->insert(['uuid' => 'abc', 'connection' => 'database', 'queue' => 'default', 'payload' => '{}', 'exception' => 'boom', 'failed_at' => now()]);
-        \App\Models\PaymentEvent::query()->create(['source' => 'webhook', 'event' => 'charge.success', 'outcome' => 'unmatched', 'reason' => 'unknown_reference']);
+        PaymentEvent::query()->create(['source' => 'webhook', 'event' => 'charge.success', 'outcome' => 'unmatched', 'reason' => 'unknown_reference']);
 
         $page = $this->actingAs($operator)->get(route('operator.health'))->assertOk();
         $page->assertSee('Failed jobs')->assertSee('Needs attention')->assertSee('Payment events with no matching payment');

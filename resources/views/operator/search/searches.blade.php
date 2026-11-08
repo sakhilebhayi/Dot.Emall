@@ -24,7 +24,7 @@
                                 <td data-label="Times" class="is-num">{{ $row['searches'] }}</td>
                                 <td data-label="People" class="is-num">{{ $row['people'] }}</td>
                                 <td data-label="Last"><x-op.age :at="$row['last_at']" /> ago</td>
-                                <td data-label="Actions"><x-ds.button variant="quiet" size="sm" :href="route('operator.search.synonyms', ['term' => $row['query']])" aria-label="Create a synonym for {{ $row['query'] }}">Create synonym</x-ds.button></td>
+                                <td data-label="Actions"><x-ds.button variant="quiet" size="sm" :href="route('operator.search.synonyms', ['term' => $row['query']])" aria-label="Create synonym for {{ $row['query'] }}">Create synonym</x-ds.button></td>
                             </tr>
                         @endforeach
                     </x-ds.table>

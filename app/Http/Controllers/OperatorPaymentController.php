@@ -4,14 +4,15 @@ namespace App\Http\Controllers;
 
 use App\Enums\PaymentAttemptStatus;
 use App\Enums\RefundStatus;
+use App\Http\Controllers\Operator\Concerns\AnswersDecisions;
 use App\Models\Payment;
 use App\Models\PaymentEvent;
 use App\Models\Refund;
-use App\Http\Controllers\Operator\Concerns\AnswersDecisions;
 use App\Services\Operator\OperatorDecisions;
 use App\Services\Paystack\PaystackConfig;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\View\View;
 
 /**
@@ -80,7 +81,7 @@ class OperatorPaymentController extends Controller
     /**
      * Orders with more than one successful payment: the duplicate-payment indicator. Each extra successful charge is money the buyer paid twice.
      *
-     * @return \Illuminate\Support\Collection<int, object{order_id: int, payments: int, total_cents: int}>
+     * @return Collection<int, object{order_id: int, payments: int, total_cents: int}>
      */
     private function paidTwice()
     {

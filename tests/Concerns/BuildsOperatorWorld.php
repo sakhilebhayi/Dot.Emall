@@ -3,11 +3,8 @@
 namespace Tests\Concerns;
 
 use App\Models\ContentReport;
-use App\Models\Product;
 use App\Models\ProductQuestion;
-use App\Models\ReturnRequest;
 use App\Models\Review;
-use App\Models\Store;
 use App\Models\User;
 use App\Services\Returns\ReturnService;
 

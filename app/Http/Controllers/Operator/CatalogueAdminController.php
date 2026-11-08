@@ -12,6 +12,7 @@ use App\Services\Operator\FeaturedStores;
 use App\Services\Operator\OperatorAudit;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
@@ -57,7 +58,7 @@ class CatalogueAdminController extends Controller
             'is_active' => ['nullable', 'boolean'],
         ]);
 
-        return $this->attempt('category', fn () => \Illuminate\Support\Facades\DB::transaction(function () use ($data, $category, $tree, $audit, $request) {
+        return $this->attempt('category', fn () => DB::transaction(function () use ($data, $category, $tree, $audit, $request) {
             $parentId = $data['parent_id'] ?? null;
             $before = $category->only(['name', 'slug', 'is_active', 'parent_id']);
 

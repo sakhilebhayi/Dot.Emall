@@ -2,6 +2,12 @@
 
 namespace Tests\Feature\Operator;
 
+use App\Models\Collection;
+use App\Models\OperatorAuditEntry;
+use App\Models\Payment;
+use App\Models\Refund;
+use App\Models\SearchSynonym;
+use App\Models\StoreCategory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Route;
 use Tests\Concerns\BuildsOperatorWorld;
@@ -19,12 +25,12 @@ class AuthorizationTest extends TestCase
     /** @return list<array{0: string, 1: string}> method and URL for every operator route, parameters filled with real ids */
     private function routes(array $w): array
     {
-        $category = \App\Models\StoreCategory::query()->create(['name' => 'Kettles', 'slug' => 'kettles']);
-        $collection = \App\Models\Collection::factory()->create();
-        $synonym = \App\Models\SearchSynonym::query()->create(['group_key' => 'g', 'term' => 'kettle']);
+        $category = StoreCategory::query()->create(['name' => 'Kettles', 'slug' => 'kettles']);
+        $collection = Collection::factory()->create();
+        $synonym = SearchSynonym::query()->create(['group_key' => 'g', 'term' => 'kettle']);
         $attribute = $category->attributeDefinitions()->create(['key' => 'power', 'label' => 'Power', 'type' => 'text']);
-        $payment = \App\Models\Payment::query()->first();
-        $refund = \App\Models\Refund::query()->create(['payment_id' => $payment->id, 'order_id' => $payment->order_id, 'amount_cents' => 1000, 'currency' => 'ZAR', 'status' => 'refund_pending', 'kind' => 'cancellation']);
+        $payment = Payment::query()->first();
+        $refund = Refund::query()->create(['payment_id' => $payment->id, 'order_id' => $payment->order_id, 'amount_cents' => 1000, 'currency' => 'ZAR', 'status' => 'refund_pending', 'kind' => 'cancellation']);
         $store = $w['seller']->store;
 
         $fill = [
@@ -92,7 +98,7 @@ class AuthorizationTest extends TestCase
 
         $this->assertSame('pending_approval', $w['pending']->fresh()->status);
         $this->assertSame('escalated', $w['return']->fresh()->status->value);
-        $this->assertSame(0, \App\Models\OperatorAuditEntry::query()->count());
+        $this->assertSame(0, OperatorAuditEntry::query()->count());
     }
 
     public function test_an_operator_opens_every_page_without_error(): void

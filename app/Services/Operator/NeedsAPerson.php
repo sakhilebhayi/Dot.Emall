@@ -6,13 +6,10 @@ use App\Enums\PaymentAttemptStatus;
 use App\Enums\RefundStatus;
 use App\Enums\ReturnStatus;
 use App\Enums\StoreStatus;
-use App\Models\ContentReport;
-use App\Models\Payment;
 use App\Models\ProductQuestion;
-use App\Models\Refund;
-use App\Models\ReturnRequest;
 use App\Models\Review;
 use Carbon\CarbonInterface;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -76,7 +73,7 @@ class NeedsAPerson
      * @param  array<string, string>  $params
      * @param  list<string>|null  $distinct
      */
-    private function row(string $key, string $label, \Illuminate\Database\Query\Builder $query, string $ageColumn, string $route, string $note, array $params = [], ?array $distinct = null): array
+    private function row(string $key, string $label, Builder $query, string $ageColumn, string $route, string $note, array $params = [], ?array $distinct = null): array
     {
         $count = $distinct
             ? (int) DB::query()->fromSub((clone $query)->select($distinct)->distinct(), 'd')->count()

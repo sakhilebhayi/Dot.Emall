@@ -6,11 +6,12 @@ use App\Models\Collection;
 use App\Models\FeaturedStore;
 use App\Models\OperatorAccessEntry;
 use App\Models\OperatorAuditEntry;
+use App\Models\Product;
 use App\Models\SearchSynonym;
-use App\Models\Store;
 use App\Models\StoreCategory;
 use App\Models\User;
 use App\Services\Discovery\Collections;
+use App\Services\Discovery\SearchLog;
 use App\Services\Operator\FeaturedStores;
 use App\Services\Search\SearchEngine;
 use App\Services\Search\SearchIndexer;
@@ -75,7 +76,7 @@ class MerchandisingAndPeopleTest extends TestCase
         $this->delete(route('operator.collections.destroy', $c))->assertRedirect(route('operator.collections.index'));
         $this->assertSame(0, Collection::query()->count());
         $this->assertNotNull($this->audit('collection.delete'));
-        $this->assertTrue(\App\Models\Product::query()->whereKey($w['live']->id)->exists(), 'deleting a collection never deletes listings');
+        $this->assertTrue(Product::query()->whereKey($w['live']->id)->exists(), 'deleting a collection never deletes listings');
         $this->travelBack();
     }
 
@@ -167,7 +168,7 @@ class MerchandisingAndPeopleTest extends TestCase
         $page = $this->actingAs($w['operator'])->get(route('operator.search.queries'))->assertOk();
         $page->assertSee('jacuzzi')->assertSee('Found nothing')->assertSee('Create synonym');
         $page->assertSee(route('operator.search.synonyms', ['term' => 'jacuzzi']), false);
-        $this->assertSame(['jacuzzi'], app(\App\Services\Discovery\SearchLog::class)->zeroResults()->pluck('query')->all());
+        $this->assertSame(['jacuzzi'], app(SearchLog::class)->zeroResults()->pluck('query')->all());
         $this->get(route('operator.search.synonyms', ['term' => 'jacuzzi']))->assertSee('jacuzzi');
     }
 

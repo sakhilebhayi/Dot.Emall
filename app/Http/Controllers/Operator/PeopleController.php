@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Operator;
 
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Operator\Concerns\AnswersDecisions;
+use App\Models\OperatorAccessEntry;
 use App\Models\Order;
 use App\Models\Store;
 use App\Models\User;
@@ -34,7 +35,7 @@ class PeopleController extends Controller
             'purpose' => $purpose,
             'purposes' => SupportLookup::PURPOSES,
             'results' => $q !== '' ? $lookup->search($type, $q) : null,
-            'accesses' => \App\Models\OperatorAccessEntry::query()->orderByDesc('id')->limit(8)->get(),
+            'accesses' => OperatorAccessEntry::query()->orderByDesc('id')->limit(8)->get(),
         ]);
     }
 

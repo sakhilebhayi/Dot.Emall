@@ -31,7 +31,7 @@
                 <x-ds.field label="Find a listing to add" id="find-product"><input id="find-product" type="search" class="ds-input" autocomplete="off" placeholder="Start typing a listing name"></x-ds.field>
                 <div data-find-results aria-live="polite"></div>
             </div>
-            <x-ds.textarea label="Listing numbers, in the order shoppers see them" name="product_ids" id="product-ids" :value="old('product_ids', implode("\n", $productIds))" rows="4" hint="One per line. Adding from the search above fills this in. A listing that is not buyable right now is skipped when shoppers view the collection." />
+            <x-ds.textarea label="Listing numbers, in the order shoppers see them" name="product_ids" id="product-ids" :value="old('product_ids', implode(PHP_EOL, $productIds))" rows="4" hint="One per line. Adding from the search above fills this in. A listing that is not buyable right now is skipped when shoppers view the collection." />
         </section>
 
         <section class="op-block" aria-labelledby="rule-h" @if ($type !== 'dynamic') hidden @endif data-when-type="dynamic">

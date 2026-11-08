@@ -58,7 +58,8 @@ class OperatorAccess
         }
 
         DB::transaction(function () use ($target, $by, $reason) {
-            if (User::query()->where('is_platform_operator', true)->lockForUpdate()->count() <= 1) {
+            // Lock the operator rows (PostgreSQL refuses FOR UPDATE with an aggregate, so the ids are read and counted here).
+            if (User::query()->where('is_platform_operator', true)->lockForUpdate()->pluck('id')->count() <= 1) {
                 throw ValidationException::withMessages(['reason' => 'The last operator cannot be removed.']);
             }
 

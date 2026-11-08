@@ -1,15 +1,20 @@
 {{-- The seller's trust ladder as recorded data. Variable: $trust (App\Services\Stores\StoreTrust::for). Claimed numbers are labelled claimed; nothing here is verified by us. --}}
 <ul class="op-ladder" aria-label="What is known about this seller">
     @foreach ($trust['ladder'] as $rung)
-        @php($icon = ['yes' => 'check-circle', 'claimed' => 'info', 'no' => 'minus-circle'][$rung['state']] ?? 'info')
+        @php $icon = ['yes' => 'check-circle', 'claimed' => 'info', 'no' => 'minus-circle'][$rung['state']] ?? 'info'; @endphp
         <li data-state="{{ $rung['state'] }}">
             <x-ds.icon :name="$icon" :size="18" />
             <span>
                 {{ $rung['label'] }}
-                <small>
-                    @if ($rung['state'] === 'yes')Recorded by {{ $rung['source'] }}@elseif ($rung['state'] === 'claimed')Claimed by the seller, not checked@else Not provided @endif
-                    @if (! empty($rung['detail']) && $rung['state'] !== 'claimed') · {{ $rung['detail'] }} @elseif ($rung['state'] === 'claimed' && ! empty($rung['detail'])) · {{ \Illuminate\Support\Str::before($rung['detail'], ' (') }} @endif
-                </small>
+                @php
+                    $how = match ($rung['state']) {
+                        'yes' => 'Recorded by '.$rung['source'],
+                        'claimed' => 'Claimed by the seller, not checked',
+                        default => 'Not provided',
+                    };
+                    $detail = $rung['state'] === 'claimed' ? \Illuminate\Support\Str::before((string) ($rung['detail'] ?? ''), ' (') : ($rung['detail'] ?? '');
+                @endphp
+                <small>{{ $how }}{{ filled($detail) ? ' · '.$detail : '' }}</small>
             </span>
         </li>
     @endforeach

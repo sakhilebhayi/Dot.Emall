@@ -42,7 +42,14 @@
 .op-thumbs { display: flex; flex-wrap: wrap; gap: var(--s-2); }
 .op-thumbs img { width: 6rem; height: 6rem; object-fit: cover; border-radius: var(--r-photo); background: var(--photo-ground); }
 .op-code { font-family: var(--font-code); font-size: var(--text-xs); overflow-wrap: anywhere; }
-.op-num { font-variant-numeric: tabular-nums lining-nums; }
+.op-num { font-variant-numeric: lining-nums; }
+/* The shell sets tabular figures on every table, which also widens the punctuation of running text in a cell. Prose in an operator table stays proportional; figures (.is-num) stay tabular. */
+.ds-ctx-operator main table { font-variant-numeric: lining-nums; }
+.ds-ctx-operator main table .is-num, .ds-ctx-operator main table .op-code { font-variant-numeric: tabular-nums lining-nums; }
+/* The section heading names a table; its caption stays for assistive technology only. */
+.op-block .ds-table caption { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.op-block[hidden], [data-when-type][hidden] { display: none; }
+.op-block > details > summary { justify-self: start; }
 
 /* ---- Filters: chips that are links (the page is a real GET, so a filter is shareable), plus one search field. -------------------- */
 .op-filters { display: flex; flex-wrap: wrap; align-items: end; gap: var(--s-3) var(--s-4); padding-block: var(--s-3) var(--s-4); }
@@ -96,21 +103,29 @@
 .op-chart__bar { fill: var(--brand); }
 .op-chart__base { stroke: var(--ink); stroke-width: 1; }
 .op-chart__grid { stroke: var(--line); stroke-width: 1; }
-.op-chart__text { fill: var(--ink-3); font-size: 11px; font-family: var(--font-text); font-variant-numeric: tabular-nums lining-nums; }
+.op-chart__text { fill: var(--ink-3); font-size: 13px; font-family: var(--font-text); font-variant-numeric: tabular-nums lining-nums; }
 .op-chart__hit:hover + .op-chart__bar, .op-chart__hit:focus + .op-chart__bar { fill: var(--brand-hover); }
 .op-chart-figure { margin: 0; display: grid; gap: var(--s-2); }
 .op-chart-figure figcaption { font-weight: 700; }
 .op-chart-figure details summary { cursor: pointer; color: var(--brand); font-size: var(--text-sm); min-height: var(--tap); display: flex; align-items: center; }
 
-/* ---- Metric rows: label, the figure, the evidence behind it, and the definition printed under it. ---------------------------------- */
+/* ---- Metric rows: the label, then the figure with the evidence behind it, then the definition in words. ------------------------------- */
 .op-metrics { list-style: none; margin: 0; padding: 0; border-top: 2px solid var(--ink); }
 .op-metric { display: grid; gap: var(--s-1) var(--s-5); padding-block: var(--s-4); border-bottom: 1px solid var(--line); grid-template-columns: minmax(0, 1fr); }
 .op-metric__label { font-weight: 700; }
-.op-metric__value { font-size: var(--text-xl); font-weight: 750; line-height: 1.1; font-variant-numeric: tabular-nums lining-nums; }
+.op-metric__main { display: grid; gap: var(--s-1); min-width: 0; }
+.op-metric__main p { margin: 0; }
+.op-metric__figure { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--s-1) var(--s-3); }
+.op-metric__value { font-size: var(--text-xl); font-weight: 750; line-height: 1.1; font-variant-numeric: lining-nums; }
 .op-metric__value[data-empty] { font-size: var(--text-md); font-weight: 600; color: var(--ink-3); }
 .op-metric__basis { color: var(--ink-3); font-size: var(--text-sm); }
 .op-metric__def { color: var(--ink-2); font-size: var(--text-sm); max-width: var(--measure); }
-@media (min-width: 48rem) { .op-metric { grid-template-columns: 13rem 11rem minmax(0, 1fr); align-items: baseline; } .op-metric__def, .op-metric__basis { grid-column: 3; } .op-metric__label, .op-metric__value { grid-row: 1; } .op-metric__basis { grid-row: 1; } .op-metric__def { grid-row: 2; } }
+@media (min-width: 48rem) { .op-metric { grid-template-columns: 11rem minmax(0, 1fr); align-items: baseline; } }
+
+/* ---- Charts: two small honest charts side by side above the figures. ---------------------------------------------------------------- */
+.op-charts { display: grid; gap: var(--s-5) var(--s-6); grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 48rem) { .op-charts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.op-charts > .op-block, .op-charts .op-chart-figure + .op-chart-figure { border-top: 0; padding-block-start: 0; }
 
 /* ---- Collection rule builder and live preview ------------------------------------------------------------------------------------- */
 .op-form-grid { display: grid; gap: var(--s-4); grid-template-columns: minmax(0, 1fr); }

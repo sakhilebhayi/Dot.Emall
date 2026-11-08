@@ -2,6 +2,7 @@
 
 namespace App\Services\Operator;
 
+use App\Enums\RefundStatus;
 use App\Models\ContentReport;
 use App\Models\ListingFlagDismissal;
 use App\Models\Payment;
@@ -345,8 +346,8 @@ class OperatorDecisions
     {
         $this->operator($operator);
 
-        if ($refund->status === \App\Enums\RefundStatus::Failed) {
-            $refund->forceFill(['status' => \App\Enums\RefundStatus::Pending, 'provider_refund_id' => null])->save();
+        if ($refund->status === RefundStatus::Failed) {
+            $refund->forceFill(['status' => RefundStatus::Pending, 'provider_refund_id' => null])->save();
         }
 
         $refund = $this->refunds->submit($refund);

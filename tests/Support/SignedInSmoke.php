@@ -4,9 +4,12 @@ namespace Tests\Support;
 
 use App\Models\Brand;
 use App\Models\CartItem;
+use App\Models\Collection;
+use App\Models\ContentReport;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\ProductVariant;
+use App\Models\ReturnRequest;
 use App\Models\Store;
 use App\Models\StoreCategory;
 use App\Models\User;
@@ -71,9 +74,9 @@ final class SignedInSmoke
         $guestLink = (string) parse_url((string) app(GuestOrderAccess::class)->url($guestOrder), PHP_URL_PATH);
 
         // Something in every operator queue, so those pages draw rows and not only their empty states.
-        $report = \App\Models\ContentReport::query()->create(['reportable_type' => 'product', 'reportable_id' => $live->id, 'reporter_id' => $newcomer->id, 'reason' => 'fake', 'details' => 'Looks like a copy']);
-        $collection = \App\Models\Collection::query()->create(['title' => 'Smoke collection', 'slug' => 'smoke-collection', 'type' => 'manual', 'visibility' => 'draft']);
-        $return = (new \App\Models\ReturnRequest)->forceFill(['order_item_id' => $line->id, 'order_id' => $order->id, 'requester_id' => $buyer->id, 'seller_id' => $seller->id, 'reason_category' => 'faulty', 'status' => 'escalated', 'refund_cents' => 12000, 'escalated_at' => now(), 'escalation_reason' => 'buyer_disputed_decline', 'respond_by' => now()->addDays(10)]);
+        $report = ContentReport::query()->create(['reportable_type' => 'product', 'reportable_id' => $live->id, 'reporter_id' => $newcomer->id, 'reason' => 'fake', 'details' => 'Looks like a copy']);
+        $collection = Collection::query()->create(['title' => 'Smoke collection', 'slug' => 'smoke-collection', 'type' => 'manual', 'visibility' => 'draft']);
+        $return = (new ReturnRequest)->forceFill(['order_item_id' => $line->id, 'order_id' => $order->id, 'requester_id' => $buyer->id, 'seller_id' => $seller->id, 'reason_category' => 'faulty', 'status' => 'escalated', 'refund_cents' => 12000, 'escalated_at' => now(), 'escalation_reason' => 'buyer_disputed_decline', 'respond_by' => now()->addDays(10)]);
         $return->save();
 
         $this->world = compact('store', 'live', 'pending', 'order', 'line', 'seller', 'buyer', 'newcomer', 'operator', 'category', 'guestLink', 'report', 'collection', 'return');

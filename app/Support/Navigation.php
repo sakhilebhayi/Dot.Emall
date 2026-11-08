@@ -50,7 +50,7 @@ final class Navigation
             ['label' => 'Listings', 'route' => 'operator.products.index', 'icon' => 'box', 'match' => ['operator.products.*', 'operator.flags.*']],
             ['label' => 'Stores', 'route' => 'operator.stores.index', 'icon' => 'store', 'match' => ['operator.stores.*']],
             ['label' => 'Reports', 'route' => 'operator.reports', 'icon' => 'flag', 'match' => ['operator.reports*']],
-            ['label' => 'Reviews and questions', 'route' => 'operator.moderation.index', 'icon' => 'message', 'match' => ['operator.moderation.*']],
+            ['label' => 'Reviews and Q&A', 'route' => 'operator.moderation.index', 'icon' => 'message', 'match' => ['operator.moderation.*']],
             ['label' => 'Returns', 'route' => 'operator.returns.index', 'icon' => 'return', 'match' => ['operator.returns.*']],
             ['label' => 'Payments', 'route' => 'operator.payments.index', 'icon' => 'card', 'match' => ['operator.payments.*', 'operator.refunds.*']],
             ['label' => 'Ledger', 'route' => 'operator.ledger.index', 'icon' => 'receipt', 'match' => ['operator.ledger.*']],

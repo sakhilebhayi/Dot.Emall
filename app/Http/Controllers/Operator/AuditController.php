@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Operator;
 
 use App\Http\Controllers\Controller;
+use App\Models\OperatorAccessEntry;
 use App\Models\User;
 use App\Services\Operator\OperatorAudit;
 use Illuminate\Http\Request;
@@ -21,7 +22,7 @@ class AuditController extends Controller
             'action' => $action,
             'entries' => $tab === 'decisions'
                 ? $audit->query($action, $request->integer('actor') ?: null)->paginate(30)->withQueryString()
-                : \App\Models\OperatorAccessEntry::query()->orderByDesc('id')->paginate(30)->withQueryString(),
+                : OperatorAccessEntry::query()->orderByDesc('id')->paginate(30)->withQueryString(),
             'actions' => OperatorAudit::ACTIONS,
             'actors' => User::query()->where('is_platform_operator', true)->orderBy('name')->get(['id', 'name']),
         ]);

@@ -157,8 +157,14 @@ class ListingFlags
             ->where('price', '>=', Money::fromCents($c['high_value_cents']))->whereIn('status', ['pending_approval', 'approved'])
             ->groupBy('store_id')->selectRaw('store_id, count(*) as n')->pluck('n', 'store_id');
 
+        // One flag per store, not one per listing: the representative is the store's lowest-numbered high-value listing, so a dismissal sticks.
         return $young->filter(fn (Product $p) => (float) $p->price >= $c['high_value_cents'] / 100 && ($counts[$p->store_id] ?? 0) >= $c['high_value_count'])
-            ->map(fn (Product $p) => $this->flag($p, 'new_store_value', sprintf('%s opened %s ago and has %d listings priced at %s or more. New stores with expensive stock are where identity abuse and counterfeits start; most are honest. Check the store\'s details first.', $p->store->name, $p->store->created_at->diffForHumans(null, true), $counts[$p->store_id], Shop::money($c['high_value_cents']))))
+            ->groupBy('store_id')
+            ->map(function (Collection $products) use ($c, $counts) {
+                $p = $products->sortBy('id')->first();
+
+                return $this->flag($p, 'new_store_value', sprintf('%s opened %s ago and has %d listings priced at %s or more (%s is the first of them). New stores with expensive stock are where identity abuse and counterfeits start; most are honest. Check the store\'s details first, then its listings.', $p->store->name, $p->store->created_at->diffForHumans(null, true), $counts[$p->store_id], Shop::money($c['high_value_cents']), $p->name));
+            })
             ->values();
     }
 

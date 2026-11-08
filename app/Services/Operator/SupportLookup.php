@@ -4,6 +4,7 @@ namespace App\Services\Operator;
 
 use App\Models\ContentReport;
 use App\Models\Order;
+use App\Models\OrderItem;
 use App\Models\Payment;
 use App\Models\Refund;
 use App\Models\ReturnRequest;
@@ -89,7 +90,7 @@ class SupportLookup
             'store' => $store,
             'trust' => $this->trust->for($store),
             'listings' => $store->products()->selectRaw('status, count(*) as n')->groupBy('status')->pluck('n', 'status')->all(),
-            'orders' => Order::query()->whereIn('id', \App\Models\OrderItem::query()->where('store_id', $store->id)->select('order_id'))->orderByDesc('id')->limit(15)->get(),
+            'orders' => Order::query()->whereIn('id', OrderItem::query()->where('store_id', $store->id)->select('order_id'))->orderByDesc('id')->limit(15)->get(),
             'returns' => ReturnRequest::query()->where('seller_id', $store->owner_id)->orderByDesc('id')->limit(15)->get(),
             'reports' => ContentReport::query()->whereIn('reportable_type', ['store'])->where('reportable_id', $store->id)->orderByDesc('id')->limit(15)->get(),
             'balance' => $this->ledger->balance($store->owner_id),

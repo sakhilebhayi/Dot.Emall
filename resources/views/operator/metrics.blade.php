@@ -14,7 +14,7 @@
     // One small bar chart as inline SVG: zero baseline, thin bars, a gridline at the top value, first and last day labelled. Only drawn when there is something to draw.
     $bars = function (array $rows, string $field, callable $fmt, string $name) {
         $max = max(1, collect($rows)->max($field));
-        $w = 640; $h = 150; $left = 44; $top = 14; $bottom = 24; $n = max(1, count($rows));
+        $w = 640; $h = 160; $left = 84; $top = 14; $bottom = 24; $n = max(1, count($rows));
         $step = ($w - $left) / $n; $bw = max(2, min(14, $step * 0.62));
         return compact('max', 'w', 'h', 'left', 'top', 'bottom', 'n', 'step', 'bw', 'fmt', 'name', 'rows', 'field');
     };
@@ -32,27 +32,7 @@
     <x-op.chips label="Period" :items="collect($periods)->map(fn ($label, $key) => ['label' => $label, 'href' => route('operator.metrics', ['period' => $key]), 'current' => $report['period'] === $key])->values()->all()" />
     <p class="op-muted">{{ $periodLabel }}. Figures refresh at most once a minute.</p>
 
-    <div class="op-split op-split--wide-aside">
-        <div class="ds-stack">
-            @foreach ($groups as $title => $keys)
-                <section class="op-block" aria-labelledby="g-{{ \Illuminate\Support\Str::slug($title) }}">
-                    <h2 id="g-{{ \Illuminate\Support\Str::slug($title) }}">{{ $title }}</h2>
-                    <ul class="op-metrics">
-                        @foreach ($keys as $key)
-                            @php $m = $byKey[$key]; @endphp
-                            <li class="op-metric">
-                                <span class="op-metric__label">{{ $m->label }}</span>
-                                <span class="op-metric__value" {{ $m->hasData() ? '' : 'data-empty' }}>{{ OperatorMetrics::display($m) }}</span>
-                                <span class="op-metric__basis">@if ($m->hasData() && $m->numerator !== null){{ number_format($m->numerator) }} of {{ number_format($m->denominator) }}@elseif (! $m->hasData() && $m->note){{ $m->note }}@endif</span>
-                                <span class="op-metric__def">{{ $m->definition }}@if ($m->hasData() && $m->note) {{ $m->note }}@endif</span>
-                            </li>
-                        @endforeach
-                    </ul>
-                </section>
-            @endforeach
-        </div>
-
-        <aside class="op-side" aria-label="Charts">
+    <section class="op-block op-charts" aria-label="Charts">
             @if ($chartOrders === 0)
                 <section class="op-block"><h2>Orders per day</h2><p class="op-muted">No data yet. No order was counted between {{ $periodLabel }}, so there is nothing to draw.</p></section>
             @else
@@ -87,6 +67,30 @@
                     </figure>
                 @endforeach
             @endif
+    </section>
+
+    <div class="op-split op-split--wide-aside">
+        <div class="ds-stack">
+            @foreach ($groups as $title => $keys)
+                <section class="op-block" aria-labelledby="g-{{ \Illuminate\Support\Str::slug($title) }}">
+                    <h2 id="g-{{ \Illuminate\Support\Str::slug($title) }}">{{ $title }}</h2>
+                    <ul class="op-metrics">
+                        @foreach ($keys as $key)
+                            @php $m = $byKey[$key]; @endphp
+                            <li class="op-metric">
+                                <span class="op-metric__label">{{ $m->label }}</span>
+                                <div class="op-metric__main">
+                                    <p class="op-metric__figure"><span class="op-metric__value" {{ $m->hasData() ? '' : 'data-empty' }}>{{ OperatorMetrics::display($m) }}</span> <span class="op-metric__basis">@if ($m->hasData() && $m->numerator !== null){{ number_format($m->numerator) }} of {{ number_format($m->denominator) }}@elseif (! $m->hasData() && $m->note){{ $m->note }}@endif</span></p>
+                                    <p class="op-metric__def">{{ $m->definition }}@if ($m->hasData() && $m->note) {{ $m->note }}@endif @if ($m->key === 'search_to_product' && $m->hasData() && $m->value > 1) More than 100% means people opened several results per search. @endif</p>
+                                </div>
+                            </li>
+                        @endforeach
+                    </ul>
+                </section>
+            @endforeach
+        </div>
+
+        <aside class="op-side" aria-label="How to read this">
             <section class="op-block">
                 <h2>Where "counted" comes from</h2>
                 <p class="op-muted">A counted order is paid (or delivered where payment was never required) and holds at least one line that is not cancelled. A session is one person on one day: events carry a keyed hash, never a user id. Dot.Analytics receives only its own per-company snapshot (orders in 7 days, revenue in 7 days, low stock, and with a switch on, views, adds to cart and wishlist adds). This page publishes nothing.</p>

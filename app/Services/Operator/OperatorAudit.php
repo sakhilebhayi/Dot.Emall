@@ -2,8 +2,18 @@
 
 namespace App\Services\Operator;
 
+use App\Models\Collection;
 use App\Models\OperatorAccessEntry;
 use App\Models\OperatorAuditEntry;
+use App\Models\Payment;
+use App\Models\Product;
+use App\Models\ProductAnswer;
+use App\Models\ProductQuestion;
+use App\Models\Refund;
+use App\Models\ReturnRequest;
+use App\Models\Review;
+use App\Models\Store;
+use App\Models\StoreCategory;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -115,26 +125,26 @@ class OperatorAudit
         }
 
         $type = match (true) {
-            $subject instanceof \App\Models\Product => 'product',
-            $subject instanceof \App\Models\Store => 'store',
-            $subject instanceof \App\Models\Review => 'review',
-            $subject instanceof \App\Models\ProductQuestion => 'question',
-            $subject instanceof \App\Models\ProductAnswer => 'answer',
-            $subject instanceof \App\Models\ReturnRequest => 'return',
-            $subject instanceof \App\Models\Payment => 'payment',
-            $subject instanceof \App\Models\Refund => 'refund',
-            $subject instanceof \App\Models\User => 'user',
-            $subject instanceof \App\Models\Collection => 'collection',
-            $subject instanceof \App\Models\StoreCategory => 'category',
+            $subject instanceof Product => 'product',
+            $subject instanceof Store => 'store',
+            $subject instanceof Review => 'review',
+            $subject instanceof ProductQuestion => 'question',
+            $subject instanceof ProductAnswer => 'answer',
+            $subject instanceof ReturnRequest => 'return',
+            $subject instanceof Payment => 'payment',
+            $subject instanceof Refund => 'refund',
+            $subject instanceof User => 'user',
+            $subject instanceof Collection => 'collection',
+            $subject instanceof StoreCategory => 'category',
             default => strtolower(class_basename($subject)),
         };
 
         $label = match (true) {
-            $subject instanceof \App\Models\Product, $subject instanceof \App\Models\Store, $subject instanceof \App\Models\StoreCategory => $subject->name,
-            $subject instanceof \App\Models\Collection => $subject->title,
-            $subject instanceof \App\Models\User => $subject->name,
-            $subject instanceof \App\Models\Payment => $subject->reference,
-            $subject instanceof \App\Models\ReturnRequest => 'Return #'.$subject->id,
+            $subject instanceof Product, $subject instanceof Store, $subject instanceof StoreCategory => $subject->name,
+            $subject instanceof Collection => $subject->title,
+            $subject instanceof User => $subject->name,
+            $subject instanceof Payment => $subject->reference,
+            $subject instanceof ReturnRequest => 'Return #'.$subject->id,
             default => ucfirst($type).' #'.$subject->getKey(),
         };
 

@@ -57,15 +57,28 @@ class OperatorMetrics
         $period = $this->normalise($period);
         $w = $this->window($period);
 
-        return Cache::remember('operator.metrics.v1.'.$period.'.'.$w['to']->format('Ymd'), 60, function () use ($period, $w) {
+        // Plain arrays in the cache, never objects: the cache refuses to rebuild classes (config cache.serializable_classes is false),
+        // and a cached Metric would come back as an incomplete object.
+        $state = Cache::remember('operator.metrics.v2.'.$period.'.'.$w['to']->format('Ymd'), 60, function () use ($w) {
             return [
-                'period' => $period,
-                'from' => $w['from'],
-                'to' => $w['to'],
-                'metrics' => [...$this->commerce->all($w['from'], $w['to']), ...$this->extra($w['from'], $w['to'])],
+                'metrics' => array_map(fn (Metric $m) => $this->state($m), [...$this->commerce->all($w['from'], $w['to']), ...$this->extra($w['from'], $w['to'])]),
                 'series' => $this->series($w['from'], $w['to']),
             ];
         });
+
+        return [
+            'period' => $period,
+            'from' => $w['from'],
+            'to' => $w['to'],
+            'metrics' => array_map(fn (array $row) => new Metric(...$row), $state['metrics']),
+            'series' => $state['series'],
+        ];
+    }
+
+    /** @return array<string, mixed> the Metric's constructor arguments, as plain data */
+    private function state(Metric $m): array
+    {
+        return ['key' => $m->key, 'label' => $m->label, 'definition' => $m->definition, 'unit' => $m->unit, 'value' => $m->value, 'status' => $m->status, 'numerator' => $m->numerator, 'denominator' => $m->denominator, 'note' => $m->note];
     }
 
     /** @return list<Metric> */

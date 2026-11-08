@@ -10,7 +10,6 @@ use App\Models\Review;
 use App\Models\Store;
 use App\Models\User;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
 
 /**
  * Reports on reviews, questions, answers, listings and stores, for the operator: grouped by the thing reported, with every reason and

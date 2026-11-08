@@ -15,6 +15,7 @@ use App\Support\Shop;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
@@ -137,7 +138,7 @@ class CollectionController extends Controller
     /** @return array<string, mixed> */
     private function formData(Collection $collection): array
     {
-        $ids = $collection->exists ? \Illuminate\Support\Facades\DB::table('collection_products')->where('collection_id', $collection->id)->orderBy('position')->pluck('product_id')->all() : [];
+        $ids = $collection->exists ? DB::table('collection_products')->where('collection_id', $collection->id)->orderBy('position')->pluck('product_id')->all() : [];
 
         return [
             'collection' => $collection,
