@@ -107,4 +107,10 @@ Remaining from jury 2 (not fixed): #1 the demo product art is one illustration k
 
 ## 9. Deployment
 
+Merged as PR #33 (squash, `15585d0`) and deployed on 2026-11-08 (workflow run 42506577887, green: manifest check, frontend build, code deploy, cron lines, live smoke, folder probe).
+- Migrations: 70 ran on the host, including `2026_11_11_000001` (RESTRICT user keys on money records) and `2026_11_12_000001/000002` (hot-path indexes, thumbnail column).
+- Live checks afterwards (curl): `/`, `/products`, `/search?q=kettle`, `/stores`, `/up`, `/login`, `/cookies` answer 200; `/orders`, `/sell`, `/operator` redirect a guest to `/login`; `/dev/login/...`, `/dev/kit` and unknown paths answer 404; `/cart` answers 200 for a guest (guest cart is by design); CSS (166 KB) and the self-hosted font answer 200; HSTS, CSP (nonce, report-only handling as configured), nosniff, frame, referrer and permissions headers present.
+- **The live shop is empty**: no categories and no listings yet. Run `php artisan emall:seed-categories` on the host (the deploy does not), then sellers can list. Other owner steps are in section 6.
+- Not checked live: a real InfoDot sign-in end to end, a real payment, real e-mail, the `.htaccess` gzip/caching block on the host, the scheduler running (cron lines were installed by the deploy; a first run was not observed).
+
 CI on PR #33: GitGuardian reports 4 "generic password" findings, all the throwaway PostgreSQL service-container password in `.github/workflows/ci.yml` (a CI-only database that exists for the job's lifetime); judged a false positive, not a secret.
