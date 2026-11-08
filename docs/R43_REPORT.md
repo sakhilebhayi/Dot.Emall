@@ -33,8 +33,8 @@ Legend: **Working** (existed and verified), **Improved**, **New**, **Partial**, 
 
 ## 3. Test results (this branch, final merged state)
 
-- SQLite: 1,656 tests, 1,614 passed, 42 skipped (the PostgreSQL-only tests), 0 failed.
-- PostgreSQL 16 (throwaway database, clean environment, `phpunit.pgsql.xml`): 1,656 tests, 0 failed, 7 skipped.
+- SQLite: 1,660 tests, 1,618 passed, 42 skipped (the PostgreSQL-only tests), 0 failed.
+- PostgreSQL 16 (throwaway database, clean environment, `phpunit.pgsql.xml`): 1,660 tests, 0 failed, 7 skipped.
 - Signed-in smoke with route, config and event caches on: 153 pages, 0 failed, 0 unlisted authenticated routes.
 - Pint: whole repo clean. Local copy of the deploy workflow's manifest check: ok.
 - Note for the next person: exporting `EMALL_E2E_FAKE_PAYSTACK`, `CACHE_STORE` or `SESSION_DRIVER` into the shell before the PostgreSQL run makes it fail (91 failures seen once); run it from a clean environment.
@@ -99,8 +99,12 @@ Not verified (no run was made):
 
 ## 8. Second jury
 
-(filled in below when the second jury reports)
+A fresh outside juror (screenshots only, no source or earlier report) scored: Design 7.0, Usability 7.5, Creativity 6.5, Content 7.0, Trust/honesty 8.5, Mobile 7.5; weighted **7.05** (jury 1: 6.6). Reading of the identity: a receipt-first South African marketplace where every price is a "ticket"; distinct from Amazon and Takealot in behaviour and voice, less so in looks. Strongest: trust/honesty, seller and operator desks, order timeline. It could not run Lighthouse or axe, so accessibility and performance are only partly judged.
+
+Fixed after jury 2 (round 2, `R43_POLISH_round2.md`): team entries removed from account menus (Jetstream routes and SSO team sync untouched); search no longer apologises for an exact match and hides "Clear filters" when nothing is applied; store page 2-up on phones (10,713 px to 6,123 px); sticky total and checkout bar on the phone cart; empty states carry their own glyph; first-viewport images eager; home blocks share the row.
+
+Remaining from jury 2 (not fixed): #1 the demo product art is one illustration kit with the same backdrop on many items (demo-seed art only; real sellers upload photos); #9 hero ticket "Not known yet" dead end; #10 CTA arrow nudge/press state; #12 narrow review column; #13 order-line thumbnails; #14 category intro length; #15 checkout stepper does not follow the page. Round 2 looked only at dark mode at 375 and 1440 for most changes; light mode and 390 width were not re-checked, the new sticky cart bar has no dedicated test, and keyboard focus on it was not verified. Round 2 invoked `impeccable` only.
 
 ## 9. Deployment
 
-(filled in after the deploy)
+CI on PR #33: GitGuardian reports 4 "generic password" findings, all the throwaway PostgreSQL service-container password in `.github/workflows/ci.yml` (a CI-only database that exists for the job's lifetime); judged a false positive, not a secret.
