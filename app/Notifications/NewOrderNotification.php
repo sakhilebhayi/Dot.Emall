@@ -36,7 +36,8 @@ class NewOrderNotification extends EmallNotification
                 : ' (unpaid).'),
             'order_id' => $this->order->id,
             'store_id' => $this->store->id,
-            'url' => route('orders.show', $this->order),
+            // The seller's own parcel on the seller desk, not the buyer's order page.
+            'url' => ($group = $this->order->groups()->where('store_id', $this->store->id)->first()) ? route('seller.orders.show', $group) : route('orders.show', $this->order),
         ];
     }
 }

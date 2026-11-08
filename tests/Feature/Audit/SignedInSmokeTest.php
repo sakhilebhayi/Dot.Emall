@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Audit;
 
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Support\SignedInSmoke;
 use Tests\TestCase;
@@ -20,6 +21,16 @@ class SignedInSmokeTest extends TestCase
         $smoke = new SignedInSmoke;
         $people = $smoke->seed();
 
+        try {
+            $this->openEveryPage($smoke, $people);
+        } finally {
+            $smoke->forget();
+        }
+    }
+
+    /** @param array<string, User> $people */
+    private function openEveryPage(SignedInSmoke $smoke, array $people): void
+    {
         foreach ($smoke->pages() as $page) {
             // A new browser per page: nothing left over from the previous person in the (array) session.
             $this->app['session.store']->flush();

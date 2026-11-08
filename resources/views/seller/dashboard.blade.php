@@ -112,7 +112,7 @@
             @if ($recent->isEmpty())
                 <p class="sd-muted">No orders for your store yet. A parcel appears here the moment a buyer places an order.</p>
             @else
-                <x-ds.table caption="Recent orders">
+                <x-ds.table caption="Recent orders" class="sd-caption-hidden">
                     <x-slot:head>
                         <tr><th scope="col">Placed</th><th scope="col">Order</th><th scope="col">Ship to</th><th scope="col" class="is-num">Items</th><th scope="col">Status</th><th scope="col" class="is-num">Your items</th></tr>
                     </x-slot:head>

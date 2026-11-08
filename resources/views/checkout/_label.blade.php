@@ -19,7 +19,7 @@
         @if ($quote->discountCents > 0)
             <div class="ds-label__row">
                 <dt>Discount @if ($quote->promo)<span class="ds-code">{{ $quote->promo->code }}</span>@endif</dt>
-                <dd>{{ Shop::money(-$quote->discountCents) }}@if ($discountReason)<small>{{ $discountReason }}</small>@endif</dd>
+                <dd>{{ Shop::money(-$quote->discountCents) }}@if ($discountReason)<small>{{ $discountReason }}</small>@endif@if ($quote->promo && filled($quote->promo->conditions))<small>Seller's terms: {{ $quote->promo->conditions }}</small>@endif</dd>
             </div>
         @endif
         @foreach ($quote->groups as $g)
