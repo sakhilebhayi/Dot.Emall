@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Seller;
 
 use App\Enums\ShippingMethodType;
+use App\Http\Controllers\SellerProductController;
 use App\Models\ShippingMethod;
 use App\Models\ShippingMethodRegion;
 use App\Services\Addresses\AddressRules;
@@ -32,7 +33,7 @@ class ShippingController extends SellerController
         $preview = $request->validate([
             'province' => ['nullable', Rule::in(AddressRules::PROVINCES)],
             'postal_code' => ['nullable', 'regex:/^[0-9]{4}$/'],
-            'basket' => 'nullable|numeric|min:0|max:'.\App\Http\Controllers\SellerProductController::MAX_PRICE,
+            'basket' => 'nullable|numeric|min:0|max:'.SellerProductController::MAX_PRICE,
         ]);
 
         $province = $preview['province'] ?? 'Gauteng';
@@ -95,7 +96,7 @@ class ShippingController extends SellerController
             'province' => ['nullable', Rule::in(AddressRules::PROVINCES)],
             'postal_from' => ['nullable', 'regex:/^[0-9]{4}$/', 'required_with:postal_to'],
             'postal_to' => ['nullable', 'regex:/^[0-9]{4}$/', 'required_with:postal_from'],
-            'price' => 'nullable|numeric|decimal:0,2|min:0|max:'.\App\Http\Controllers\SellerProductController::MAX_PRICE,
+            'price' => 'nullable|numeric|decimal:0,2|min:0|max:'.SellerProductController::MAX_PRICE,
         ], [
             'postal_from.regex' => 'A postal code has four digits.',
             'postal_to.regex' => 'A postal code has four digits.',
@@ -141,8 +142,8 @@ class ShippingController extends SellerController
         $data = $request->validate([
             'name' => 'required|string|max:80',
             'type' => ['required', Rule::enum(ShippingMethodType::class)],
-            'price' => 'nullable|numeric|decimal:0,2|min:0|max:'.\App\Http\Controllers\SellerProductController::MAX_PRICE,
-            'free_over' => 'nullable|numeric|decimal:0,2|min:0.01|max:'.\App\Http\Controllers\SellerProductController::MAX_PRICE,
+            'price' => 'nullable|numeric|decimal:0,2|min:0|max:'.SellerProductController::MAX_PRICE,
+            'free_over' => 'nullable|numeric|decimal:0,2|min:0.01|max:'.SellerProductController::MAX_PRICE,
             'handling_days' => 'required|integer|min:0|max:30',
             'window_min_days' => 'required|integer|min:0|max:60',
             'window_max_days' => 'required|integer|min:0|max:90|gte:window_min_days',

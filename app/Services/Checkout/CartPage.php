@@ -4,12 +4,12 @@ namespace App\Services\Checkout;
 
 use App\Models\Product;
 use App\Models\User;
+use App\Services\Addresses\AddressRules;
 use App\Services\Cart\CartLine;
 use App\Services\Cart\CartManager;
 use App\Services\Cart\CartQuote;
 use App\Services\Cart\QuoteResult;
 use App\Services\Discovery\Recommender;
-use App\Services\Shipping\Region;
 use App\Support\Actor;
 use App\Support\Shop;
 use Illuminate\Http\Request;
@@ -55,7 +55,7 @@ class CartPage
             'estimate' => $this->draft->get('region', []),
             'promoNotice' => $promoNotice,
             'changes' => $changes,
-            'provinces' => \App\Services\Addresses\AddressRules::PROVINCES,
+            'provinces' => AddressRules::PROVINCES,
             'parcelCount' => count($result->groups),
             'signedIn' => $user !== null,
             'suggestions' => $lines->isEmpty() ? $this->suggestions($request) : collect(),

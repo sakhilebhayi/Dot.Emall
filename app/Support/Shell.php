@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Models\CartItem;
 use Illuminate\Support\Facades\Route;
 use Throwable;
 
@@ -74,8 +75,8 @@ final class Shell
             }
 
             $user = request()->user();
-            if ($user && class_exists(\App\Models\CartItem::class)) {
-                return (int) \App\Models\CartItem::query()->where('user_id', $user->id)->sum('quantity');
+            if ($user && class_exists(CartItem::class)) {
+                return (int) CartItem::query()->where('user_id', $user->id)->sum('quantity');
             }
         } catch (Throwable) {
             // The shell must render with the database down.

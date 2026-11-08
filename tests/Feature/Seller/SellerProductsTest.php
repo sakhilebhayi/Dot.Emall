@@ -8,11 +8,13 @@ use App\Models\ProductImage;
 use App\Models\ProductVariant;
 use App\Models\StockMovement;
 use App\Models\StoreCategory;
+use App\Models\StoreCommissionOverride;
 use App\Services\Catalogue\CategoryTree;
 use App\Services\Seller\FeePreview;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Tests\Concerns\BuildsCommerce;
 use Tests\Concerns\BuildsMarketplace;
 use Tests\Concerns\BuildsPayments;
@@ -30,7 +32,7 @@ class SellerProductsTest extends TestCase
 
     private function category(string $name, ?StoreCategory $parent = null): StoreCategory
     {
-        return StoreCategory::query()->create(['name' => $name, 'slug' => \Illuminate\Support\Str::slug($name), 'parent_id' => $parent?->id]);
+        return StoreCategory::query()->create(['name' => $name, 'slug' => Str::slug($name), 'parent_id' => $parent?->id]);
     }
 
     public function test_the_fee_preview_is_the_ledgers_arithmetic_rounded_to_whole_cents(): void
@@ -52,7 +54,7 @@ class SellerProductsTest extends TestCase
         $this->assertSame(0, $fees->for($seller->store, '-5')['receive_cents']);
 
         // A per-store override wins, exactly as the ledger would apply it.
-        \App\Models\StoreCommissionOverride::query()->create(['store_id' => $seller->store->id, 'percent' => 10]);
+        StoreCommissionOverride::query()->create(['store_id' => $seller->store->id, 'percent' => 10]);
         $this->assertSame(1000, $fees->for($seller->store, '100')['fee_cents']);
     }
 
@@ -237,7 +239,7 @@ class SellerProductsTest extends TestCase
         $this->assertCount(6, $names([]));
         $this->assertSame(['Bravo Low Toaster'], $names(['stock' => 'low']));
         $this->assertSame(['Charlie Gone Blender'], $names(['stock' => 'out']));
-        $this->assertCount(5, $names(['stock' => 'in']) + [0, 0, 0, 0, 0]) ;
+        $this->assertCount(5, $names(['stock' => 'in']) + [0, 0, 0, 0, 0]);
         $this->assertSame(['Delta Pending Fryer'], $names(['status' => 'pending_approval']));
         $this->assertSame(['Echo Rejected Mixer'], $names(['status' => 'rejected']));
         $this->assertSame(['Foxtrot Off Grill'], $names(['status' => 'off']));

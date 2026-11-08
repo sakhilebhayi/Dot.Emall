@@ -2,10 +2,10 @@
 
 namespace App\Services\Seller;
 
-use App\Models\PromoCode;
 use App\Models\Order;
-use App\Support\Shop;
+use App\Models\PromoCode;
 use App\Support\Money;
+use App\Support\Shop;
 
 /**
  * The conditions a promo code can carry beyond "active, not expired, uses left" (W6, D-100): a minimum spend on the store's

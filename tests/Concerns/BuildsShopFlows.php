@@ -5,6 +5,8 @@ namespace Tests\Concerns;
 use App\Models\Product;
 use App\Models\User;
 use App\Services\Cart\CartManager;
+use App\Services\Cart\CartQuote;
+use App\Services\Checkout\CheckoutDraft;
 use Illuminate\Support\Str;
 
 /** Helpers for the W5 page tests: a guest or signed-in cart, a South African address, and the form a checkout posts. */
@@ -38,8 +40,8 @@ trait BuildsShopFlows
     /** What the cart quotes for these lines with the server's own arithmetic, so a test posts the number the page showed. */
     protected function quoteCents(?User $user): int
     {
-        $draft = app(\App\Services\Checkout\CheckoutDraft::class);
+        $draft = app(CheckoutDraft::class);
 
-        return app(\App\Services\Cart\CartQuote::class)->quote(app(CartManager::class)->lines($user), $draft->region($user), $draft->promo(), $draft->methods())->totalCents;
+        return app(CartQuote::class)->quote(app(CartManager::class)->lines($user), $draft->region($user), $draft->promo(), $draft->methods())->totalCents;
     }
 }

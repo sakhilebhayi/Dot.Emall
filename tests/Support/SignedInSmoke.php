@@ -16,6 +16,7 @@ use App\Models\Store;
 use App\Models\StoreCategory;
 use App\Models\User;
 use App\Services\CheckoutService;
+use App\Services\Discovery\Wishlists;
 use App\Services\Guests\GuestOrderAccess;
 use App\Services\OrderLifecycle;
 use App\Services\Returns\ReturnPhotos;
@@ -119,7 +120,7 @@ final class SignedInSmoke
     /** R-43 W4: one saved product on a shared wishlist, so the share page, the wishlist and the alerts page have something to open. */
     private function seedStorefront(User $buyer, Product $live): void
     {
-        $lists = app(\App\Services\Discovery\Wishlists::class);
+        $lists = app(Wishlists::class);
         $lists->add($buyer, $live);
         $lists->enableSharing($lists->defaultFor($buyer));
         $this->storefront = ['wishToken' => (string) $lists->defaultFor($buyer)->share_token];

@@ -6,8 +6,11 @@ use App\Enums\OrderStatus;
 use App\Models\LedgerEntry;
 use App\Models\SellerOrderNote;
 use App\Models\ShippingMethod;
+use App\Services\CheckoutService;
 use App\Services\Guests\GuestOrderAccess;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
 use Tests\Concerns\BuildsCommerce;
 use Tests\Concerns\BuildsMarketplace;
 use Tests\Concerns\BuildsPayments;
@@ -176,7 +179,7 @@ class SellerParcelsTest extends TestCase
     {
         [$seller, $product] = $this->shippingSeller();
         [$order, $group, $line] = $this->paidParcel($product);
-        $this->fakeHttp(['api.paystack.co/refund' => \Illuminate\Support\Facades\Http::response(['status' => true, 'message' => 'queued', 'data' => ['id' => 7001, 'status' => 'pending']], 200)]);
+        $this->fakeHttp(['api.paystack.co/refund' => Http::response(['status' => true, 'message' => 'queued', 'data' => ['id' => 7001, 'status' => 'pending']], 200)]);
         $stockBefore = $product->fresh()->stock;
 
         $this->actingAs($seller)->post(route('seller.orders.cancel', $group), ['item_ids' => [$line->id]])->assertSessionHasErrors(['reason']);
@@ -234,7 +237,7 @@ class SellerParcelsTest extends TestCase
     {
         [$seller, $product] = $this->shippingSeller();
         $variant = $product->variants()->first();
-        $order = app(\App\Services\CheckoutService::class)->placeAsGuest('guest.buyer@example.test', [['variant_id' => $variant->id, 'quantity' => 1]], ['shipping_address' => '3 Guest Lane, Durban', 'shipping_name' => 'Gerda Guest'], (string) \Illuminate\Support\Str::uuid());
+        $order = app(CheckoutService::class)->placeAsGuest('guest.buyer@example.test', [['variant_id' => $variant->id, 'quantity' => 1]], ['shipping_address' => '3 Guest Lane, Durban', 'shipping_name' => 'Gerda Guest'], (string) Str::uuid());
         $group = $order->items()->first()->group;
 
         $this->actingAs($seller)->get(route('seller.orders.index'))->assertOk()->assertSee($order->reference())->assertSee('Gerda Guest')->assertDontSee('guest.buyer@example.test');

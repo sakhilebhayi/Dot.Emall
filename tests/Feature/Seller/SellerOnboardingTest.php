@@ -3,9 +3,10 @@
 namespace Tests\Feature\Seller;
 
 use App\Enums\StoreStatus;
+use App\Models\Product;
+use App\Models\ShippingMethod;
 use App\Models\Store;
 use App\Models\Team;
-use App\Models\User;
 use App\Services\Stores\StoreOnboarding;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -93,7 +94,7 @@ class SellerOnboardingTest extends TestCase
 
         $store = $user->store;
         $store->update(['description' => 'Now described', 'contact_email' => 'x@y.test', 'region' => 'Gauteng', 'shipping_policy' => 'We post on weekdays.', 'return_policy' => 'Seven days.', 'logo_path' => 'store-media/1/logo-x.png']);
-        \App\Models\ShippingMethod::factory()->create(['store_id' => $store->id]);
+        ShippingMethod::factory()->create(['store_id' => $store->id]);
         $list = collect($this->actingAs($user->fresh())->get(route('seller.store.status'))->viewData('checklist'))->keyBy('key');
         foreach (['identity', 'logo', 'contact_email', 'region', 'shipping_policy', 'return_policy', 'shipping_methods'] as $key) {
             $this->assertTrue($list[$key]['done'], $key.' is done now');
@@ -116,7 +117,7 @@ class SellerOnboardingTest extends TestCase
         $this->assertSame(StoreStatus::Draft, $store->fresh()->status);
 
         $store->update(['contact_email' => 'a@b.test', 'region' => 'Gauteng', 'shipping_policy' => 'Posted weekly.', 'return_policy' => 'Seven days.']);
-        \App\Models\ShippingMethod::factory()->create(['store_id' => $store->id]);
+        ShippingMethod::factory()->create(['store_id' => $store->id]);
         $this->post(route('seller.store.submit'))->assertRedirect(route('seller.store.status'))->assertSessionHasNoErrors();
         $this->assertSame(StoreStatus::PendingReview, $store->fresh()->status);
         $this->get(route('seller.store.status'))->assertSee('Waiting for review')->assertDontSee('Send my store for review');
@@ -228,7 +229,7 @@ class SellerOnboardingTest extends TestCase
 
         $this->patch(route('seller.store.update'), ['name' => $seller->store->name, 'is_active' => '1']);
         $this->assertTrue($seller->store()->first()->is_active);
-        $this->assertSame(1, \App\Models\Product::query()->browsable()->whereKey($product->id)->count());
+        $this->assertSame(1, Product::query()->browsable()->whereKey($product->id)->count());
     }
 
     public function test_an_infodot_company_can_be_linked_only_if_it_is_the_owners_own_company_from_infodot(): void

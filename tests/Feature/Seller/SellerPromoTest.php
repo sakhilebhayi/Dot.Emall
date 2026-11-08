@@ -2,7 +2,6 @@
 
 namespace Tests\Feature\Seller;
 
-use App\Models\CartItem;
 use App\Models\PromoCode;
 use App\Services\Cart\CartManager;
 use App\Services\Cart\CartQuote;

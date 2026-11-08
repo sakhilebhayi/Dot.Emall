@@ -7,6 +7,7 @@ use App\Models\PromoCode;
 use App\Models\Store;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -83,7 +84,7 @@ class PromoCodeController extends Controller
             'discount_value' => $validated['discount_value'],
             'max_uses' => $validated['max_uses'] ?? null,
             // A date means the end of that day, so "expires on the 30th" still works all day on the 30th.
-            'expires_at' => filled($validated['expires_at'] ?? null) ? \Illuminate\Support\Carbon::parse($validated['expires_at'])->endOfDay() : null,
+            'expires_at' => filled($validated['expires_at'] ?? null) ? Carbon::parse($validated['expires_at'])->endOfDay() : null,
             'free_shipping' => (bool) ($validated['free_shipping'] ?? false),
             'min_spend' => $validated['min_spend'] ?? null,
             'per_user_limit' => $validated['per_user_limit'] ?? null,

@@ -8,8 +8,10 @@ use App\Models\OrderGroup;
 use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\ReturnRequest;
+use App\Models\Shipment;
 use App\Models\User;
 use App\Services\Returns\ReturnService;
+use App\Services\Shipping\ShipmentService;
 
 /**
  * Fixtures for the seller desk tests (R-43 W6): a seller with a delivery method, a PAID parcel (real checkout, real payment path,
@@ -45,9 +47,9 @@ trait BuildsSellerDesk
     }
 
     /** Ships the parcel through the real ShipmentService (a shipment with a carrier and a tracking number). */
-    protected function shipParcel(OrderGroup $group, array $data = []): \App\Models\Shipment
+    protected function shipParcel(OrderGroup $group, array $data = []): Shipment
     {
-        return app(\App\Services\Shipping\ShipmentService::class)->ship($group->fresh(), \App\Models\User::find($group->seller_id), array_merge(['carrier_key' => 'courier_guy', 'tracking_number' => 'TCG123456'], $data));
+        return app(ShipmentService::class)->ship($group->fresh(), User::find($group->seller_id), array_merge(['carrier_key' => 'courier_guy', 'tracking_number' => 'TCG123456'], $data));
     }
 
     /** Ships and delivers every line of the order through the state machine, as its seller. */

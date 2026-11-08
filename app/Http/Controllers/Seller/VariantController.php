@@ -118,6 +118,7 @@ class VariantController extends Controller
                 foreach ($validator->errors()->messages() as $field => $messages) {
                     $errors["rows.{$i}.{$field}"] = $messages[0];
                 }
+
                 continue;
             }
 

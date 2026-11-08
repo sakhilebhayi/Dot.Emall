@@ -5,7 +5,9 @@ namespace App\Services\Seller;
 use App\Enums\OrderStatus as S;
 use App\Models\OrderGroup;
 use App\Models\Store;
+use App\Services\Shipping\BusinessDays;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Carbon;
 
 /**
  * A seller's parcels (one seller's share of an order) sorted into the tabs of the orders page. A parcel is in exactly one tab,
@@ -54,7 +56,7 @@ class SellerParcels
     }
 
     /** The day a parcel should be posted by: handling time in working days from payment (or the order, when payment was never required). */
-    public function shipBy(OrderGroup $group): ?\Illuminate\Support\Carbon
+    public function shipBy(OrderGroup $group): ?Carbon
     {
         $order = $group->order;
 
@@ -62,6 +64,6 @@ class SellerParcels
             return null;
         }
 
-        return \App\Services\Shipping\BusinessDays::add(\Illuminate\Support\Carbon::parse($order->paid_at ?? $order->created_at), (int) $group->handling_days);
+        return BusinessDays::add(Carbon::parse($order->paid_at ?? $order->created_at), (int) $group->handling_days);
     }
 }

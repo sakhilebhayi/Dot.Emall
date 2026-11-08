@@ -6,6 +6,7 @@ use App\Models\LedgerEntry;
 use App\Services\Ledger\LedgerService;
 use App\Services\Seller\SellerExports;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -29,7 +30,7 @@ class LedgerController extends SellerController
             'entries' => $entries,
             'status' => $status,
             'balance' => $ledger->balance($request->user()),
-            'next' => $next ? \Illuminate\Support\Carbon::parse($next) : null,
+            'next' => $next ? Carbon::parse($next) : null,
             'releaseDays' => (int) config('emall.commission.release_after_days', 7),
             'percent' => $ledger->commissionPercent($store->id),
         ]);

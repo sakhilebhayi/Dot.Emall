@@ -4,8 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\ResolvesBuyerOrder;
 use App\Models\Order;
-use App\Services\Orders\OrderPage;
 use App\Services\OrderAccess;
+use App\Services\Orders\OrderPage;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 

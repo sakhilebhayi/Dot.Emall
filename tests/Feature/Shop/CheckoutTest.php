@@ -7,11 +7,14 @@ use App\Models\Order;
 use App\Models\Payment;
 use App\Models\PromoCode;
 use App\Models\ShippingMethod;
+use App\Providers\CheckoutServiceProvider;
 use App\Services\Cart\CartManager;
 use App\Services\Guests\GuestOrderAccess;
+use App\Services\Paystack\FakePaystackClient;
+use App\Services\Paystack\PaystackClient;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request as HttpRequest;
-use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
 use Tests\Concerns\BuildsCommerce;
 use Tests\Concerns\BuildsMarketplace;
@@ -238,15 +241,15 @@ class CheckoutTest extends TestCase
     public function test_the_fake_gateway_is_never_bound_outside_local_and_testing(): void
     {
         config(['emall.e2e_fake_paystack' => true]);
-        $this->assertTrue(\App\Providers\CheckoutServiceProvider::fakeGatewayAllowed(), 'allowed under the testing environment with the flag on');
+        $this->assertTrue(CheckoutServiceProvider::fakeGatewayAllowed(), 'allowed under the testing environment with the flag on');
 
         $this->app['env'] = 'production';
-        $this->assertFalse(\App\Providers\CheckoutServiceProvider::fakeGatewayAllowed(), 'never in production, whatever the flag says');
+        $this->assertFalse(CheckoutServiceProvider::fakeGatewayAllowed(), 'never in production, whatever the flag says');
 
         $this->app['env'] = 'testing';
         config(['emall.e2e_fake_paystack' => false]);
-        $this->assertFalse(\App\Providers\CheckoutServiceProvider::fakeGatewayAllowed(), 'off without the flag');
-        $this->assertNotInstanceOf(\App\Services\Paystack\FakePaystackClient::class, app(\App\Services\Paystack\PaystackClient::class));
-        $this->assertFalse(\Illuminate\Support\Facades\Route::has('dev.fake-paystack'), 'the fake page route does not exist without the flag');
+        $this->assertFalse(CheckoutServiceProvider::fakeGatewayAllowed(), 'off without the flag');
+        $this->assertNotInstanceOf(FakePaystackClient::class, app(PaystackClient::class));
+        $this->assertFalse(Route::has('dev.fake-paystack'), 'the fake page route does not exist without the flag');
     }
 }

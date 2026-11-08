@@ -2,9 +2,11 @@
 
 namespace Tests\Feature\Seller;
 
+use App\Enums\OrderStatus;
+use App\Enums\ReturnStatus;
 use App\Models\PromoCode;
-use App\Models\ReturnRequest;
 use App\Models\ShippingMethod;
+use App\Services\Community\ProductQuestions;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Concerns\BuildsCommerce;
 use Tests\Concerns\BuildsMarketplace;
@@ -72,7 +74,7 @@ class SellerAccessTest extends TestCase
         $b = $this->makeSeller(['name' => 'Bravo Wares']);
         [$order, $group, $line, $buyer] = $this->paidParcel($product);
         $shipment = $this->shipParcel($group);
-        $order = $this->advanceAll($order->fresh(), \App\Enums\OrderStatus::Delivered);
+        $order = $this->advanceAll($order->fresh(), OrderStatus::Delivered);
         $return = $this->returnFor($line, $buyer);
 
         $this->actingAs($b);
@@ -82,7 +84,7 @@ class SellerAccessTest extends TestCase
         foreach ([route('seller.orders.pack', $group), route('seller.orders.ship', $group), route('seller.orders.deliver', $group), route('seller.orders.cancel', $group), route('seller.orders.note', $group), route('seller.returns.approve', $return), route('seller.returns.decline', $return), route('seller.returns.receive', $return)] as $url) {
             $this->post($url, ['reason' => 'nope nope', 'body' => 'x', 'item_ids' => [$line->id]])->assertNotFound();
         }
-        $this->assertSame(\App\Enums\ReturnStatus::Requested, $return->fresh()->status);
+        $this->assertSame(ReturnStatus::Requested, $return->fresh()->status);
 
         $this->post(route('seller.shipments.events.store', $shipment), ['description' => 'Hacked'])->assertNotFound();
         $this->patch(route('seller.shipments.update', $shipment), ['tracking_number' => 'HACK12345'])->assertNotFound();
@@ -151,7 +153,7 @@ class SellerAccessTest extends TestCase
         [$a, $product] = $this->shippingSeller();
         $b = $this->makeSeller();
         $asker = $this->makeBuyer();
-        $question = app(\App\Services\Community\ProductQuestions::class)->ask($asker, $product, 'Does this kettle switch itself off?');
+        $question = app(ProductQuestions::class)->ask($asker, $product, 'Does this kettle switch itself off?');
 
         $this->actingAs($b)->post(route('seller.questions.answer', $question), ['body' => 'Yes it does.'])->assertNotFound();
         $this->assertSame(0, $question->fresh()->answers_count);

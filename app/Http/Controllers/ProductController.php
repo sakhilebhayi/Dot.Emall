@@ -2,13 +2,16 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Discovery\SearchController;
 use App\Models\Product;
-use App\Models\Review;
-use App\Services\Catalogue\CategoryTree;
-use App\Services\ReviewService;
+use App\Services\Community\ProductQuestions;
+use App\Services\Discovery\RecentlyViewed;
+use App\Services\Discovery\Recommender;
+use App\Services\Storefront\ProductPage;
+use App\Services\Storefront\ProductReviews;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Gate;
+use Illuminate\Http\Response;
 use Illuminate\View\View;
 
 /**
@@ -29,7 +32,7 @@ class ProductController extends Controller
      */
     public function index(Request $request): View
     {
-        return app(\App\Http\Controllers\Discovery\SearchController::class)->index($request);
+        return app(SearchController::class)->index($request);
     }
 
     /**
@@ -49,16 +52,16 @@ class ProductController extends Controller
      * Product detail page. The page itself is built by ProductPageController and the Storefront services (R-43 W4); this stays
      * as the target of the products.show route so the route table and every link keep working.
      */
-    public function show(Request $request, Product $product): View|\Illuminate\Http\Response
+    public function show(Request $request, Product $product): View|Response
     {
         return app(ProductPageController::class)->show(
             $request,
             $product,
-            app(\App\Services\Storefront\ProductPage::class),
-            app(\App\Services\Storefront\ProductReviews::class),
-            app(\App\Services\Community\ProductQuestions::class),
-            app(\App\Services\Discovery\Recommender::class),
-            app(\App\Services\Discovery\RecentlyViewed::class),
+            app(ProductPage::class),
+            app(ProductReviews::class),
+            app(ProductQuestions::class),
+            app(Recommender::class),
+            app(RecentlyViewed::class),
         );
     }
 }

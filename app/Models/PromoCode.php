@@ -2,11 +2,13 @@
 
 namespace App\Models;
 
+use App\Services\Seller\PromoRules;
 use App\Support\Money;
 use Database\Factories\PromoCodeFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class PromoCode extends Model
 {
@@ -37,10 +39,10 @@ class PromoCode extends Model
      */
     public function refusalFor(int $itemsCents, ?int $userId = null, ?string $guestEmail = null): ?string
     {
-        return app(\App\Services\Seller\PromoRules::class)->refusal($this, $itemsCents, $userId, $guestEmail);
+        return app(PromoRules::class)->refusal($this, $itemsCents, $userId, $guestEmail);
     }
 
-    public function orders(): \Illuminate\Database\Eloquent\Relations\HasMany
+    public function orders(): HasMany
     {
         return $this->hasMany(Order::class, 'promo_code_id');
     }

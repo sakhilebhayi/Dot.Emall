@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Seller;
 
 use App\Models\ContentReport;
 use App\Models\Product;
-use App\Models\ProductAnswer;
 use App\Models\ProductQuestion;
 use App\Models\Review;
 use App\Services\Community\ProductQuestions;

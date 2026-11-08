@@ -3,6 +3,7 @@
 namespace Tests\Unit;
 
 use App\Support\Shell;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -88,7 +89,7 @@ class DesignTokensTest extends TestCase
     }
 
     /** @dataProvider pairs */
-    #[\PHPUnit\Framework\Attributes\DataProvider('pairs')]
+    #[DataProvider('pairs')]
     public function test_each_pair_meets_aa_in_both_themes(string $fg, string $bg, float $min): void
     {
         foreach ([0 => 'light', 1 => 'dark'] as $i => $theme) {

@@ -6,9 +6,10 @@ use App\Http\Controllers\AssistantController;
 use App\Http\Controllers\Auth\EcosystemAuthController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\CheckoutController;
-use App\Http\Controllers\DevFakePaystackController;
 use App\Http\Controllers\CspReportController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DeliveryRegionController;
+use App\Http\Controllers\DevFakePaystackController;
 use App\Http\Controllers\Discovery\AssistantPageController;
 use App\Http\Controllers\Discovery\CategoryController;
 use App\Http\Controllers\Discovery\CollectionController;
@@ -18,30 +19,47 @@ use App\Http\Controllers\Discovery\RegionController;
 use App\Http\Controllers\Discovery\SavedSearchController;
 use App\Http\Controllers\Discovery\SearchController as DiscoverySearchController;
 use App\Http\Controllers\GuestOrderAccessController;
-use App\Http\Controllers\HealthController;
 use App\Http\Controllers\GuestOrderController;
+use App\Http\Controllers\HealthController;
 use App\Http\Controllers\HelpController;
+use App\Http\Controllers\NotFoundController;
 use App\Http\Controllers\NotificationPreferenceController;
-use App\Http\Controllers\OrderActionsController;
-use App\Http\Controllers\PrivacyController;
-use App\Http\Controllers\ReturnController;
-use App\Http\Controllers\ReturnPhotoController;
+use App\Http\Controllers\Operator\AuditController;
+use App\Http\Controllers\Operator\CatalogueAdminController;
+use App\Http\Controllers\Operator\ContentModerationController;
+use App\Http\Controllers\Operator\FlagController;
+use App\Http\Controllers\Operator\LedgerController;
+use App\Http\Controllers\Operator\MetricsController;
+use App\Http\Controllers\Operator\PeopleController;
+use App\Http\Controllers\Operator\SearchTuningController;
+use App\Http\Controllers\Operator\StoreReviewController;
 use App\Http\Controllers\OperatorPaymentController;
+use App\Http\Controllers\OrderActionsController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\OrderItemCancellationController;
 use App\Http\Controllers\OrderPaymentController;
 use App\Http\Controllers\PaystackWebhookController;
+use App\Http\Controllers\PrivacyController;
+use App\Http\Controllers\ProductAlertController;
+use App\Http\Controllers\ProductCartController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProductImageController;
 use App\Http\Controllers\ProductModerationController;
+use App\Http\Controllers\ProductQuestionController;
 use App\Http\Controllers\PromoCodeController;
+use App\Http\Controllers\ReportController;
+use App\Http\Controllers\ReturnController;
+use App\Http\Controllers\ReturnPhotoController;
+use App\Http\Controllers\ReviewActionController;
 use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\ReviewPhotoController;
 use App\Http\Controllers\SearchSuggestController;
-use App\Http\Controllers\SellerOrderController;
 use App\Http\Controllers\Seller;
+use App\Http\Controllers\SellerOrderController;
 use App\Http\Controllers\SellerProductController;
 use App\Http\Controllers\StoreController;
+use App\Http\Controllers\StorefrontController;
+use App\Http\Controllers\WishlistController;
 use App\Models\User;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
@@ -296,87 +314,87 @@ Route::middleware([
     'verified',
     'operator',
 ])->prefix('operator')->name('operator.')->group(function () {
-    Route::get('/', \App\Http\Controllers\Operator\HomeController::class)->name('home');
+    Route::get('/', App\Http\Controllers\Operator\HomeController::class)->name('home');
 
     // Listings: the detail page and the flagged-listing review aid (the queue, approve and reject are above).
     Route::get('/products/{product}', [ProductModerationController::class, 'show'])->name('products.show')->whereNumber('product');
-    Route::get('/flags', [\App\Http\Controllers\Operator\FlagController::class, 'index'])->name('flags.index');
-    Route::post('/flags/{product}/dismiss', [\App\Http\Controllers\Operator\FlagController::class, 'dismiss'])->name('flags.dismiss');
+    Route::get('/flags', [FlagController::class, 'index'])->name('flags.index');
+    Route::post('/flags/{product}/dismiss', [FlagController::class, 'dismiss'])->name('flags.dismiss');
 
     // Stores.
-    Route::get('/stores', [\App\Http\Controllers\Operator\StoreReviewController::class, 'index'])->name('stores.index');
-    Route::get('/stores/{store}', [\App\Http\Controllers\Operator\StoreReviewController::class, 'show'])->name('stores.show');
-    Route::post('/stores/{store}/approve', [\App\Http\Controllers\Operator\StoreReviewController::class, 'approve'])->name('stores.approve');
-    Route::post('/stores/{store}/reject', [\App\Http\Controllers\Operator\StoreReviewController::class, 'reject'])->name('stores.reject');
-    Route::post('/stores/{store}/suspend', [\App\Http\Controllers\Operator\StoreReviewController::class, 'suspend'])->name('stores.suspend');
-    Route::post('/stores/{store}/reinstate', [\App\Http\Controllers\Operator\StoreReviewController::class, 'reinstate'])->name('stores.reinstate');
+    Route::get('/stores', [StoreReviewController::class, 'index'])->name('stores.index');
+    Route::get('/stores/{store}', [StoreReviewController::class, 'show'])->name('stores.show');
+    Route::post('/stores/{store}/approve', [StoreReviewController::class, 'approve'])->name('stores.approve');
+    Route::post('/stores/{store}/reject', [StoreReviewController::class, 'reject'])->name('stores.reject');
+    Route::post('/stores/{store}/suspend', [StoreReviewController::class, 'suspend'])->name('stores.suspend');
+    Route::post('/stores/{store}/reinstate', [StoreReviewController::class, 'reinstate'])->name('stores.reinstate');
 
     // Reviews and questions held for a check.
-    Route::get('/moderation', [\App\Http\Controllers\Operator\ContentModerationController::class, 'index'])->name('moderation.index');
-    Route::post('/moderation/reviews/{review}/release', [\App\Http\Controllers\Operator\ContentModerationController::class, 'releaseReview'])->name('moderation.reviews.release');
-    Route::post('/moderation/reviews/{review}/remove', [\App\Http\Controllers\Operator\ContentModerationController::class, 'removeReview'])->name('moderation.reviews.remove');
-    Route::post('/moderation/questions/{question}/release', [\App\Http\Controllers\Operator\ContentModerationController::class, 'releaseQuestion'])->name('moderation.questions.release');
-    Route::post('/moderation/questions/{question}/remove', [\App\Http\Controllers\Operator\ContentModerationController::class, 'removeQuestion'])->name('moderation.questions.remove');
-    Route::post('/moderation/answers/{answer}/remove', [\App\Http\Controllers\Operator\ContentModerationController::class, 'removeAnswer'])->name('moderation.answers.remove');
+    Route::get('/moderation', [ContentModerationController::class, 'index'])->name('moderation.index');
+    Route::post('/moderation/reviews/{review}/release', [ContentModerationController::class, 'releaseReview'])->name('moderation.reviews.release');
+    Route::post('/moderation/reviews/{review}/remove', [ContentModerationController::class, 'removeReview'])->name('moderation.reviews.remove');
+    Route::post('/moderation/questions/{question}/release', [ContentModerationController::class, 'releaseQuestion'])->name('moderation.questions.release');
+    Route::post('/moderation/questions/{question}/remove', [ContentModerationController::class, 'removeQuestion'])->name('moderation.questions.remove');
+    Route::post('/moderation/answers/{answer}/remove', [ContentModerationController::class, 'removeAnswer'])->name('moderation.answers.remove');
 
     // Reports.
-    Route::get('/reports', [\App\Http\Controllers\Operator\ReportController::class, 'index'])->name('reports');
-    Route::get('/reports/{type}/{id}', [\App\Http\Controllers\Operator\ReportController::class, 'show'])->name('reports.show')->whereNumber('id');
-    Route::post('/reports/{type}/{id}/resolve', [\App\Http\Controllers\Operator\ReportController::class, 'resolve'])->name('reports.resolve')->whereNumber('id');
+    Route::get('/reports', [App\Http\Controllers\Operator\ReportController::class, 'index'])->name('reports');
+    Route::get('/reports/{type}/{id}', [App\Http\Controllers\Operator\ReportController::class, 'show'])->name('reports.show')->whereNumber('id');
+    Route::post('/reports/{type}/{id}/resolve', [App\Http\Controllers\Operator\ReportController::class, 'resolve'])->name('reports.resolve')->whereNumber('id');
 
     // Returns that reached the operator.
-    Route::get('/returns', [\App\Http\Controllers\Operator\ReturnController::class, 'index'])->name('returns.index');
-    Route::get('/returns/{returnRequest}', [\App\Http\Controllers\Operator\ReturnController::class, 'show'])->name('returns.show');
-    Route::post('/returns/{returnRequest}/settle', [\App\Http\Controllers\Operator\ReturnController::class, 'settle'])->name('returns.settle');
+    Route::get('/returns', [App\Http\Controllers\Operator\ReturnController::class, 'index'])->name('returns.index');
+    Route::get('/returns/{returnRequest}', [App\Http\Controllers\Operator\ReturnController::class, 'show'])->name('returns.show');
+    Route::post('/returns/{returnRequest}/settle', [App\Http\Controllers\Operator\ReturnController::class, 'settle'])->name('returns.settle');
 
     // Money: the payment events log (the desk and the refund actions are above) and the ledger reconciliation.
     Route::get('/payment-events', [OperatorPaymentController::class, 'events'])->name('payments.events');
-    Route::get('/ledger', [\App\Http\Controllers\Operator\LedgerController::class, 'index'])->name('ledger.index');
-    Route::post('/ledger/run', [\App\Http\Controllers\Operator\LedgerController::class, 'run'])->middleware('throttle:6,1')->name('ledger.run');
+    Route::get('/ledger', [LedgerController::class, 'index'])->name('ledger.index');
+    Route::post('/ledger/run', [LedgerController::class, 'run'])->middleware('throttle:6,1')->name('ledger.run');
 
     // Metrics.
-    Route::get('/metrics', [\App\Http\Controllers\Operator\MetricsController::class, 'index'])->name('metrics');
-    Route::get('/metrics/export', [\App\Http\Controllers\Operator\MetricsController::class, 'export'])->name('metrics.export');
+    Route::get('/metrics', [MetricsController::class, 'index'])->name('metrics');
+    Route::get('/metrics/export', [MetricsController::class, 'export'])->name('metrics.export');
 
     // Merchandising: collections, searches, synonyms, "often needed with", categories, featured stores.
     Route::view('/merchandising', 'operator.merchandising')->name('merch.index');
-    Route::get('/collections', [\App\Http\Controllers\Operator\CollectionController::class, 'index'])->name('collections.index');
-    Route::get('/collections/create', [\App\Http\Controllers\Operator\CollectionController::class, 'create'])->name('collections.create');
-    Route::post('/collections', [\App\Http\Controllers\Operator\CollectionController::class, 'store'])->name('collections.store');
-    Route::post('/collections/preview', [\App\Http\Controllers\Operator\CollectionController::class, 'preview'])->middleware('throttle:60,1')->name('collections.preview');
-    Route::get('/collections/find', [\App\Http\Controllers\Operator\CollectionController::class, 'find'])->middleware('throttle:60,1')->name('collections.find');
-    Route::get('/collections/{collection}/edit', [\App\Http\Controllers\Operator\CollectionController::class, 'edit'])->name('collections.edit');
-    Route::patch('/collections/{collection}', [\App\Http\Controllers\Operator\CollectionController::class, 'update'])->name('collections.update');
-    Route::delete('/collections/{collection}', [\App\Http\Controllers\Operator\CollectionController::class, 'destroy'])->name('collections.destroy');
+    Route::get('/collections', [App\Http\Controllers\Operator\CollectionController::class, 'index'])->name('collections.index');
+    Route::get('/collections/create', [App\Http\Controllers\Operator\CollectionController::class, 'create'])->name('collections.create');
+    Route::post('/collections', [App\Http\Controllers\Operator\CollectionController::class, 'store'])->name('collections.store');
+    Route::post('/collections/preview', [App\Http\Controllers\Operator\CollectionController::class, 'preview'])->middleware('throttle:60,1')->name('collections.preview');
+    Route::get('/collections/find', [App\Http\Controllers\Operator\CollectionController::class, 'find'])->middleware('throttle:60,1')->name('collections.find');
+    Route::get('/collections/{collection}/edit', [App\Http\Controllers\Operator\CollectionController::class, 'edit'])->name('collections.edit');
+    Route::patch('/collections/{collection}', [App\Http\Controllers\Operator\CollectionController::class, 'update'])->name('collections.update');
+    Route::delete('/collections/{collection}', [App\Http\Controllers\Operator\CollectionController::class, 'destroy'])->name('collections.destroy');
 
-    Route::get('/search/synonyms', [\App\Http\Controllers\Operator\SearchTuningController::class, 'synonyms'])->name('search.synonyms');
-    Route::post('/search/synonyms', [\App\Http\Controllers\Operator\SearchTuningController::class, 'storeSynonym'])->name('search.synonyms.store');
-    Route::delete('/search/synonyms/{synonym}', [\App\Http\Controllers\Operator\SearchTuningController::class, 'destroySynonym'])->name('search.synonyms.destroy');
-    Route::get('/search/queries', [\App\Http\Controllers\Operator\SearchTuningController::class, 'searches'])->name('search.queries');
-    Route::get('/search/complements', [\App\Http\Controllers\Operator\SearchTuningController::class, 'complements'])->name('search.complements');
-    Route::post('/search/complements', [\App\Http\Controllers\Operator\SearchTuningController::class, 'storeComplement'])->name('search.complements.store');
-    Route::delete('/search/complements/{rule}', [\App\Http\Controllers\Operator\SearchTuningController::class, 'destroyComplement'])->name('search.complements.destroy')->whereNumber('rule');
+    Route::get('/search/synonyms', [SearchTuningController::class, 'synonyms'])->name('search.synonyms');
+    Route::post('/search/synonyms', [SearchTuningController::class, 'storeSynonym'])->name('search.synonyms.store');
+    Route::delete('/search/synonyms/{synonym}', [SearchTuningController::class, 'destroySynonym'])->name('search.synonyms.destroy');
+    Route::get('/search/queries', [SearchTuningController::class, 'searches'])->name('search.queries');
+    Route::get('/search/complements', [SearchTuningController::class, 'complements'])->name('search.complements');
+    Route::post('/search/complements', [SearchTuningController::class, 'storeComplement'])->name('search.complements.store');
+    Route::delete('/search/complements/{rule}', [SearchTuningController::class, 'destroyComplement'])->name('search.complements.destroy')->whereNumber('rule');
 
-    Route::get('/catalogue/categories', [\App\Http\Controllers\Operator\CatalogueAdminController::class, 'categories'])->name('catalogue.categories');
-    Route::post('/catalogue/categories', [\App\Http\Controllers\Operator\CatalogueAdminController::class, 'storeCategory'])->name('catalogue.categories.store');
-    Route::patch('/catalogue/categories/{category}', [\App\Http\Controllers\Operator\CatalogueAdminController::class, 'updateCategory'])->name('catalogue.categories.update');
-    Route::post('/catalogue/categories/{category}/attributes', [\App\Http\Controllers\Operator\CatalogueAdminController::class, 'storeAttribute'])->name('catalogue.attributes.store');
-    Route::delete('/catalogue/categories/{category}/attributes/{attribute}', [\App\Http\Controllers\Operator\CatalogueAdminController::class, 'destroyAttribute'])->name('catalogue.attributes.destroy');
-    Route::get('/catalogue/featured', [\App\Http\Controllers\Operator\CatalogueAdminController::class, 'featured'])->name('catalogue.featured');
-    Route::post('/catalogue/featured', [\App\Http\Controllers\Operator\CatalogueAdminController::class, 'addFeatured'])->name('catalogue.featured.add');
-    Route::delete('/catalogue/featured/{store}', [\App\Http\Controllers\Operator\CatalogueAdminController::class, 'removeFeatured'])->name('catalogue.featured.remove');
+    Route::get('/catalogue/categories', [CatalogueAdminController::class, 'categories'])->name('catalogue.categories');
+    Route::post('/catalogue/categories', [CatalogueAdminController::class, 'storeCategory'])->name('catalogue.categories.store');
+    Route::patch('/catalogue/categories/{category}', [CatalogueAdminController::class, 'updateCategory'])->name('catalogue.categories.update');
+    Route::post('/catalogue/categories/{category}/attributes', [CatalogueAdminController::class, 'storeAttribute'])->name('catalogue.attributes.store');
+    Route::delete('/catalogue/categories/{category}/attributes/{attribute}', [CatalogueAdminController::class, 'destroyAttribute'])->name('catalogue.attributes.destroy');
+    Route::get('/catalogue/featured', [CatalogueAdminController::class, 'featured'])->name('catalogue.featured');
+    Route::post('/catalogue/featured', [CatalogueAdminController::class, 'addFeatured'])->name('catalogue.featured.add');
+    Route::delete('/catalogue/featured/{store}', [CatalogueAdminController::class, 'removeFeatured'])->name('catalogue.featured.remove');
 
     // People: support lookup (each opening is access-logged), operator access.
-    Route::get('/people', [\App\Http\Controllers\Operator\PeopleController::class, 'index'])->name('people.index');
-    Route::get('/people/users/{user}', [\App\Http\Controllers\Operator\PeopleController::class, 'user'])->name('people.user');
-    Route::get('/people/stores/{store}', [\App\Http\Controllers\Operator\PeopleController::class, 'store'])->name('people.store');
-    Route::get('/people/orders/{order}', [\App\Http\Controllers\Operator\PeopleController::class, 'order'])->name('people.order');
-    Route::get('/operators', [\App\Http\Controllers\Operator\PeopleController::class, 'operators'])->name('team');
-    Route::post('/operators', [\App\Http\Controllers\Operator\PeopleController::class, 'grant'])->name('team.grant');
-    Route::post('/operators/{user}/revoke', [\App\Http\Controllers\Operator\PeopleController::class, 'revoke'])->name('team.revoke');
+    Route::get('/people', [PeopleController::class, 'index'])->name('people.index');
+    Route::get('/people/users/{user}', [PeopleController::class, 'user'])->name('people.user');
+    Route::get('/people/stores/{store}', [PeopleController::class, 'store'])->name('people.store');
+    Route::get('/people/orders/{order}', [PeopleController::class, 'order'])->name('people.order');
+    Route::get('/operators', [PeopleController::class, 'operators'])->name('team');
+    Route::post('/operators', [PeopleController::class, 'grant'])->name('team.grant');
+    Route::post('/operators/{user}/revoke', [PeopleController::class, 'revoke'])->name('team.revoke');
 
-    Route::get('/health', \App\Http\Controllers\Operator\HealthController::class)->name('health');
-    Route::get('/audit', \App\Http\Controllers\Operator\AuditController::class)->name('audit');
+    Route::get('/health', App\Http\Controllers\Operator\HealthController::class)->name('health');
+    Route::get('/audit', AuditController::class)->name('audit');
 });
 // --- end w7 ---
 
@@ -447,43 +465,43 @@ Route::middleware([
 // --- w4 ---
 // Product page actions, store pages, wishlist, alerts, reviews, questions and reports (R-43 W4). Throttles are inline middleware
 // parameters or the `community` limiter that DiscoveryServiceProvider defines; nothing is registered from this file.
-Route::get('/stores', [\App\Http\Controllers\StorefrontController::class, 'index'])->name('stores.index');
-Route::get('/stores/{store:slug}', [\App\Http\Controllers\StorefrontController::class, 'show'])->name('stores.show');
-Route::post('/products/{product}/cart', [\App\Http\Controllers\ProductCartController::class, 'store'])->middleware('throttle:60,1')->name('products.cart');
-Route::post('/products/{product}/bundle', [\App\Http\Controllers\ProductCartController::class, 'bundle'])->middleware('throttle:30,1')->name('products.bundle');
-Route::post('/delivery-region', [\App\Http\Controllers\DeliveryRegionController::class, 'store'])->middleware('throttle:30,1')->name('delivery.region');
-Route::get('/wishlist/shared/{token}', [\App\Http\Controllers\WishlistController::class, 'shared'])->middleware('throttle:60,1')->where('token', '[A-Za-z0-9]{40,64}')->name('wishlist.shared');
+Route::get('/stores', [StorefrontController::class, 'index'])->name('stores.index');
+Route::get('/stores/{store:slug}', [StorefrontController::class, 'show'])->name('stores.show');
+Route::post('/products/{product}/cart', [ProductCartController::class, 'store'])->middleware('throttle:60,1')->name('products.cart');
+Route::post('/products/{product}/bundle', [ProductCartController::class, 'bundle'])->middleware('throttle:30,1')->name('products.bundle');
+Route::post('/delivery-region', [DeliveryRegionController::class, 'store'])->middleware('throttle:30,1')->name('delivery.region');
+Route::get('/wishlist/shared/{token}', [WishlistController::class, 'shared'])->middleware('throttle:60,1')->where('token', '[A-Za-z0-9]{40,64}')->name('wishlist.shared');
 
 Route::middleware([
     'auth:sanctum',
     config('jetstream.auth_session'),
     'verified',
 ])->group(function () {
-    Route::get('/wishlist', [\App\Http\Controllers\WishlistController::class, 'index'])->name('wishlist.index');
-    Route::post('/wishlist/sharing', [\App\Http\Controllers\WishlistController::class, 'sharing'])->name('wishlist.sharing');
-    Route::post('/wishlist/{product}', [\App\Http\Controllers\WishlistController::class, 'toggle'])->middleware('throttle:60,1')->whereNumber('product')->name('wishlist.toggle');
-    Route::delete('/wishlist/items/{item}', [\App\Http\Controllers\WishlistController::class, 'destroy'])->name('wishlist.items.destroy');
-    Route::post('/wishlist/items/{item}/cart', [\App\Http\Controllers\WishlistController::class, 'toCart'])->name('wishlist.items.cart');
-    Route::post('/wishlist/items/{item}/alert', [\App\Http\Controllers\WishlistController::class, 'alert'])->name('wishlist.items.alert');
+    Route::get('/wishlist', [WishlistController::class, 'index'])->name('wishlist.index');
+    Route::post('/wishlist/sharing', [WishlistController::class, 'sharing'])->name('wishlist.sharing');
+    Route::post('/wishlist/{product}', [WishlistController::class, 'toggle'])->middleware('throttle:60,1')->whereNumber('product')->name('wishlist.toggle');
+    Route::delete('/wishlist/items/{item}', [WishlistController::class, 'destroy'])->name('wishlist.items.destroy');
+    Route::post('/wishlist/items/{item}/cart', [WishlistController::class, 'toCart'])->name('wishlist.items.cart');
+    Route::post('/wishlist/items/{item}/alert', [WishlistController::class, 'alert'])->name('wishlist.items.alert');
 
-    Route::get('/account/alerts', [\App\Http\Controllers\ProductAlertController::class, 'index'])->name('account.alerts');
-    Route::post('/products/{product}/alerts', [\App\Http\Controllers\ProductAlertController::class, 'store'])->middleware('throttle:community')->name('alerts.store');
-    Route::delete('/account/alerts/{alert}', [\App\Http\Controllers\ProductAlertController::class, 'destroy'])->name('alerts.destroy');
+    Route::get('/account/alerts', [ProductAlertController::class, 'index'])->name('account.alerts');
+    Route::post('/products/{product}/alerts', [ProductAlertController::class, 'store'])->middleware('throttle:community')->name('alerts.store');
+    Route::delete('/account/alerts/{alert}', [ProductAlertController::class, 'destroy'])->name('alerts.destroy');
 
-    Route::patch('/reviews/{review}', [\App\Http\Controllers\ReviewActionController::class, 'update'])->name('reviews.update');
-    Route::post('/reviews/{review}/vote', [\App\Http\Controllers\ReviewActionController::class, 'vote'])->middleware('throttle:community')->name('reviews.vote');
-    Route::post('/reviews/{review}/report', [\App\Http\Controllers\ReviewActionController::class, 'report'])->middleware('throttle:community')->name('reviews.report');
-    Route::post('/reviews/{review}/reply', [\App\Http\Controllers\ReviewActionController::class, 'respond'])->middleware('throttle:community')->name('reviews.reply');
+    Route::patch('/reviews/{review}', [ReviewActionController::class, 'update'])->name('reviews.update');
+    Route::post('/reviews/{review}/vote', [ReviewActionController::class, 'vote'])->middleware('throttle:community')->name('reviews.vote');
+    Route::post('/reviews/{review}/report', [ReviewActionController::class, 'report'])->middleware('throttle:community')->name('reviews.report');
+    Route::post('/reviews/{review}/reply', [ReviewActionController::class, 'respond'])->middleware('throttle:community')->name('reviews.reply');
 
-    Route::post('/products/{product}/questions', [\App\Http\Controllers\ProductQuestionController::class, 'store'])->middleware('throttle:community')->name('questions.store');
-    Route::post('/questions/{question}/answers', [\App\Http\Controllers\ProductQuestionController::class, 'answer'])->middleware('throttle:community')->name('questions.answer');
-    Route::delete('/questions/{question}', [\App\Http\Controllers\ProductQuestionController::class, 'destroy'])->name('questions.destroy');
-    Route::post('/questions/{question}/report', [\App\Http\Controllers\ProductQuestionController::class, 'report'])->middleware('throttle:community')->name('questions.report');
-    Route::post('/answers/{answer}/report', [\App\Http\Controllers\ProductQuestionController::class, 'reportAnswer'])->middleware('throttle:community')->name('answers.report');
+    Route::post('/products/{product}/questions', [ProductQuestionController::class, 'store'])->middleware('throttle:community')->name('questions.store');
+    Route::post('/questions/{question}/answers', [ProductQuestionController::class, 'answer'])->middleware('throttle:community')->name('questions.answer');
+    Route::delete('/questions/{question}', [ProductQuestionController::class, 'destroy'])->name('questions.destroy');
+    Route::post('/questions/{question}/report', [ProductQuestionController::class, 'report'])->middleware('throttle:community')->name('questions.report');
+    Route::post('/answers/{answer}/report', [ProductQuestionController::class, 'reportAnswer'])->middleware('throttle:community')->name('answers.report');
 
-    Route::post('/products/{product}/report', [\App\Http\Controllers\ReportController::class, 'product'])->middleware('throttle:community')->name('products.report');
-    Route::post('/stores/{store:slug}/report', [\App\Http\Controllers\ReportController::class, 'store'])->middleware('throttle:community')->name('stores.report');
-    Route::post('/stores/{store:slug}/messages', [\App\Http\Controllers\StorefrontController::class, 'message'])->middleware('throttle:6,60')->name('stores.message');
+    Route::post('/products/{product}/report', [ReportController::class, 'product'])->middleware('throttle:community')->name('products.report');
+    Route::post('/stores/{store:slug}/report', [ReportController::class, 'store'])->middleware('throttle:community')->name('stores.report');
+    Route::post('/stores/{store:slug}/messages', [StorefrontController::class, 'message'])->middleware('throttle:6,60')->name('stores.message');
 });
 // --- end w4 ---
 
@@ -526,4 +544,4 @@ if (! Features::enabled(Features::registration())) {
 }
 
 // Last of all: an address nothing answers is a 404 inside the web group, so the error page can read the session (NotFoundController).
-Route::fallback(\App\Http\Controllers\NotFoundController::class);
+Route::fallback(NotFoundController::class);

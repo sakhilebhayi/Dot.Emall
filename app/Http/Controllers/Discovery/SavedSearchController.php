@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Discovery;
 
+use App\Contracts\CategoryTree;
 use App\Http\Controllers\Controller;
 use App\Models\SavedSearch;
 use App\Services\Discovery\SavedSearches;
@@ -105,7 +106,7 @@ class SavedSearchController extends Controller
         }
 
         if ($request->categoryId !== null) {
-            $parts[] = 'in '.(app(\App\Contracts\CategoryTree::class)->find($request->categoryId)['name'] ?? 'a category');
+            $parts[] = 'in '.(app(CategoryTree::class)->find($request->categoryId)['name'] ?? 'a category');
         }
 
         if ($request->brands) {

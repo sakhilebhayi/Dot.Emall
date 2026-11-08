@@ -5,12 +5,15 @@ namespace Tests\Feature\Shop;
 use App\Enums\OrderStatus;
 use App\Models\Order;
 use App\Models\OrderMessage;
+use App\Models\Shipment;
 use App\Models\User;
 use App\Notifications\OrderMessageNotification;
 use App\Services\CheckoutService;
 use App\Services\Guests\GuestOrderAccess;
+use App\Services\OrderLifecycle;
 use App\Services\Shipping\ShipmentService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
 use Tests\Concerns\BuildsCommerce;
@@ -49,10 +52,10 @@ class OrderPagesTest extends TestCase
 
     private function refundsOk(): void
     {
-        $this->fakeHttp(['api.paystack.co/refund' => \Illuminate\Support\Facades\Http::response(['status' => true, 'message' => 'queued', 'data' => ['id' => 7001, 'status' => 'pending']], 200)]);
+        $this->fakeHttp(['api.paystack.co/refund' => Http::response(['status' => true, 'message' => 'queued', 'data' => ['id' => 7001, 'status' => 'pending']], 200)]);
     }
 
-    private function ship(Order $order, array $data = ['carrier_key' => 'courier_guy', 'tracking_number' => 'TCG-12345678']): \App\Models\Shipment
+    private function ship(Order $order, array $data = ['carrier_key' => 'courier_guy', 'tracking_number' => 'TCG-12345678']): Shipment
     {
         return app(ShipmentService::class)->ship($order->groups()->first(), $this->seller, $data + ['estimated_from' => now()->addDays(2)->toDateString(), 'estimated_to' => now()->addDays(4)->toDateString()]);
     }
@@ -100,7 +103,7 @@ class OrderPagesTest extends TestCase
         $payment = $order->payments()->first();
 
         $page = $this->actingAs($this->buyer)->get(route('orders.show', $order))->assertOk();
-        $page->assertSee('Order progress')->assertSee('Order placed')->assertSee("Payment received")->assertSee("Not yet")
+        $page->assertSee('Order progress')->assertSee('Order placed')->assertSee('Payment received')->assertSee('Not yet')
             ->assertSee('Parcel 1: Orders Test Stores')->assertSee('Waybill Kettle')
             ->assertSee('Estimated arrival:')->assertSee('Estimate from the seller')->assertSee('Not a promise', false)
             ->assertSee('Thandiwe Mokoena')->assertSee('14 Protea Lane')
@@ -132,7 +135,7 @@ class OrderPagesTest extends TestCase
         $this->actingAs($this->buyer)->get(route('orders.show', $order))->assertSee('Not yet');
 
         $this->refundsOk();
-        app(\App\Services\OrderLifecycle::class)->cancelItem($order->items()->first(), $this->buyer);
+        app(OrderLifecycle::class)->cancelItem($order->items()->first(), $this->buyer);
         $this->actingAs($this->buyer)->get(route('orders.show', $order->fresh()))->assertSee('Cancelled')->assertSee('Refund');
     }
 

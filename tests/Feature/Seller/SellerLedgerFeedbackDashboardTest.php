@@ -11,6 +11,7 @@ use App\Services\Community\ProductQuestions;
 use App\Services\Ledger\LedgerService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Http;
 use Tests\Concerns\BuildsCommerce;
 use Tests\Concerns\BuildsMarketplace;
 use Tests\Concerns\BuildsPayments;
@@ -63,7 +64,7 @@ class SellerLedgerFeedbackDashboardTest extends TestCase
     {
         [$seller, $product] = $this->shippingSeller([], ['price' => 200]);
         [$order, $group, $line] = $this->paidParcel($product);
-        $this->fakeHttp(['api.paystack.co/refund' => \Illuminate\Support\Facades\Http::response(['status' => true, 'message' => 'queued', 'data' => ['id' => 7004, 'status' => 'pending']], 200)]);
+        $this->fakeHttp(['api.paystack.co/refund' => Http::response(['status' => true, 'message' => 'queued', 'data' => ['id' => 7004, 'status' => 'pending']], 200)]);
         $this->actingAs($seller)->post(route('seller.orders.cancel', $group), ['item_ids' => [$line->id], 'reason' => 'Out of stock after all']);
 
         $page = $this->get(route('seller.ledger'))->assertOk()->assertSee('Reversal');

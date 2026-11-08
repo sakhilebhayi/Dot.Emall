@@ -5,10 +5,11 @@ namespace App\Services\Checkout;
 use App\Models\Address;
 use App\Models\User;
 use App\Services\Addresses\AddressBook;
+use App\Services\Cart\CartLine;
 use App\Services\Cart\CartQuote;
 use App\Services\Cart\QuoteResult;
-use Illuminate\Support\Collection;
 use App\Services\Shipping\Region;
+use Illuminate\Support\Collection;
 
 /**
  * What a shopper has told us so far, kept in the session so nothing typed is lost: the promo code, the delivery estimate region,
@@ -58,7 +59,7 @@ class CheckoutDraft
      * option is "collect it yourself" and the seller also delivers, delivery is the starting choice (the radio shows it and the shopper can
      * move to collection with one press). The total the page shows and the one checkout checks are the same quote.
      *
-     * @param  Collection<int, \App\Services\Cart\CartLine>  $lines
+     * @param  Collection<int, CartLine>  $lines
      */
     public function quote(CartQuote $quotes, Collection $lines, ?User $user, ?string $promo = null, bool $usePromo = true): QuoteResult
     {

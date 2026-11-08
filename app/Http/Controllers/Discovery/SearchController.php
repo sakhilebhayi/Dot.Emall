@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Discovery;
 
 use App\Contracts\CatalogueSource;
 use App\Http\Controllers\Controller;
+use App\Models\StoreCategory;
 use App\Services\Catalogue\CategoryTree;
 use App\Services\Discovery\Recommender;
 use App\Services\Discovery\SearchLog;
@@ -104,7 +105,7 @@ class SearchController extends Controller
             'view' => $view,
             'category' => $category,
             'categoryNode' => $category !== null ? $this->node($category['id']) : null,
-            'categoryDescription' => $category !== null ? \App\Models\StoreCategory::query()->whereKey($category['id'])->value('description') : null,
+            'categoryDescription' => $category !== null ? StoreCategory::query()->whereKey($category['id'])->value('description') : null,
             'breadcrumbs' => $category !== null ? $this->breadcrumbs($category['id']) : [],
             'chips' => $this->chips($result, $links, $category !== null),
             'facetCategories' => $category === null && ! $this->categoryInferred($result) ? $this->categoryOptions($result) : [],
@@ -175,7 +176,7 @@ class SearchController extends Controller
     /** @return list<array{label: string, href: ?string}> */
     private function breadcrumbs(int $id): array
     {
-        $category = \App\Models\StoreCategory::query()->find($id);
+        $category = StoreCategory::query()->find($id);
         $trail = [['label' => 'Home', 'href' => url('/')], ['label' => 'Categories', 'href' => route('categories.index')]];
 
         foreach ($category ? $this->tree->breadcrumbs($category) : [] as $step) {
