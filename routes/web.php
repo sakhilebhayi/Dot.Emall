@@ -17,9 +17,11 @@ use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\SellerOrderController;
 use App\Http\Controllers\SellerProductController;
 use App\Http\Controllers\StoreController;
+use App\Models\User;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
+use Illuminate\Http\Request;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
@@ -127,6 +129,33 @@ Route::middleware([
         Route::post('/refunds/{refund}/mark-done', [OperatorPaymentController::class, 'markRefundDone'])->name('refunds.mark-done');
     });
 });
+
+// --- dev ---
+// Local-only sign-in for design and audit sessions (docs/R43_DEMO.md). Registered only in the
+// 'local' and 'testing' environments, so it does not exist in production: the route is absent, not guarded.
+if (app()->environment('local', 'testing')) {
+    Route::get('/dev/login/{user}', function (Request $request, string $user) {
+        $account = User::query()
+            ->when(ctype_digit($user), fn ($q) => $q->where('id', (int) $user), fn ($q) => $q->where('email', $user))
+            ->firstOrFail();
+
+        auth()->login($account);
+        $request->session()->regenerate();
+
+        $to = (string) $request->query('to', '/dashboard');
+
+        return redirect(str_starts_with($to, '/') && ! str_starts_with($to, '//') ? $to : '/dashboard');
+    })->name('dev.login');
+
+    Route::get('/dev/logout', function (Request $request) {
+        auth()->guard('web')->logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
+        return redirect('/');
+    })->name('dev.logout');
+}
+// --- end dev ---
 
 // Public sign-up is closed (accounts are created by InfoDot at first sign-in). Keep the named route so any link or
 // invitation email that points at it lands on the login page instead of failing.
