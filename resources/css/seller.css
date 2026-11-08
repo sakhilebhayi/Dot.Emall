@@ -5,6 +5,7 @@
  * promotions, analytics, ledger, reviews and questions, and the printable packing slip.
  */
 
+.sd-page { padding-block-start: var(--s-3); }
 .sd-page > * + * { margin-block-start: var(--s-6); }
 .sd-cols { display: grid; gap: var(--s-6); align-items: start; }
 @media (min-width: 64rem) { .sd-cols { grid-template-columns: minmax(0, 1fr) 20rem; gap: var(--s-7); } .sd-cols--even { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
@@ -16,7 +17,7 @@
 .sd-measure { max-width: var(--measure, 40rem); }
 .sd-h2 { font-size: var(--text-lg); font-weight: 700; }
 .sd-h3 { font-size: var(--text-md); font-weight: 700; }
-.sd-num { font-variant-numeric: tabular-nums lining-nums; }
+.sd-num { font-variant-numeric: lining-nums; font-feature-settings: "lnum" 1; }
 .sd-code { font-family: var(--font-code); font-size: var(--text-xs); }
 .sd-hr { border: 0; border-top: 1px solid var(--line); margin: 0; }
 .sd-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
@@ -125,6 +126,7 @@ a.sd-item__title:hover { text-decoration: underline; text-underline-offset: 0.2e
 .sd-variants th { text-align: start; font-weight: 650; color: var(--ink-2); padding: var(--s-2) var(--s-2); border-bottom: 2px solid var(--ink); white-space: nowrap; }
 .sd-variants td { padding: var(--s-2); border-bottom: 1px solid var(--line); vertical-align: top; }
 .sd-variants .ds-input, .sd-variants .ds-select { min-height: 2.5rem; }
+.sd-variants .ds-select { min-width: 8.5rem; }
 .sd-variants .sd-w-price { min-width: 7rem; } .sd-variants .sd-w-stock { min-width: 5.5rem; }
 @media (max-width: 56rem) {
     .sd-variants thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
@@ -168,7 +170,7 @@ a.sd-item__title:hover { text-decoration: underline; text-underline-offset: 0.2e
 .sd-address { font-style: normal; display: grid; gap: 2px; }
 .sd-lines { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
 .sd-lines li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: var(--s-3); align-items: center; padding-block: var(--s-2); border-bottom: 1px solid var(--line); }
-.sd-lines li > .sd-line__total { font-variant-numeric: tabular-nums lining-nums; font-weight: 650; text-align: end; }
+.sd-lines li > .sd-line__total { font-weight: 650; text-align: end; }
 @media (max-width: 40rem) { .sd-lines li { grid-template-columns: auto minmax(0, 1fr); } .sd-lines li > .sd-line__total { grid-column: 2; text-align: start; } }
 .sd-do { display: grid; gap: var(--s-3); padding: var(--s-4); background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-control); }
 .sd-do h3 { font-size: var(--text-md); font-weight: 700; }
@@ -184,3 +186,21 @@ a.sd-item__title:hover { text-decoration: underline; text-underline-offset: 0.2e
 @media print {
     .sd-noprint { display: none !important; }
 }
+
+/* A figure in a row of facts is not in a column of figures, so it gets lining numerals with natural punctuation (tabular figures space the comma and point out). */
+.sd-page .ds-stat__value { font-variant-numeric: lining-nums; font-feature-settings: "lnum" 1; }
+
+/* A shipping method's summary row, and the buyer-quote list beside it. */
+.sd-summary { list-style: none; cursor: pointer; display: grid; gap: 2px; padding-inline-end: 4rem; position: relative; }
+.sd-summary::-webkit-details-marker { display: none; }
+.sd-summary__edit { position: absolute; inset-block-start: 0; inset-inline-end: 0; display: inline-flex; align-items: center; gap: var(--s-1); color: var(--brand); font-weight: 650; }
+details[open] > .sd-summary .sd-summary__edit .ds-icon { transform: rotate(180deg); }
+.sd-summary:focus-visible { outline: 2px solid var(--focus); outline-offset: 4px; }
+.sd-quotes { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
+.sd-quotes li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px var(--s-3); padding-block: var(--s-3); border-bottom: 1px solid var(--line); }
+.sd-quotes__price { font-weight: 700; font-variant-numeric: lining-nums; font-feature-settings: "lnum" 1; text-align: end; }
+.sd-quotes__est { grid-column: 1 / -1; font-size: var(--text-sm); }
+.sd-line__total { font-variant-numeric: lining-nums; font-feature-settings: "lnum" 1; }
+
+/* Money in a table: lining figures with natural punctuation; the cents are always two digits, so the decimals still line up on the right. */
+.sd-page .ds-table .is-num, .sd-page .ds-table .ds-price { font-variant-numeric: lining-nums; font-feature-settings: "lnum" 1; }

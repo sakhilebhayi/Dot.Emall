@@ -17,16 +17,20 @@
                     @foreach ($methods as $m)
                         @php $failed = $errors->any() && (string) old('_method_id') === (string) $m->id; @endphp
                         <details class="sd-do" @if ($failed) open @endif id="method-{{ $m->id }}">
-                            <summary style="cursor: pointer; display: grid; gap: 2px;">
+                            @php
+                                $price = match ($m->type) {
+                                    \App\Enums\ShippingMethodType::Collection => 'free, collected from you',
+                                    \App\Enums\ShippingMethodType::FreeOver => Shop::amount($m->price).', free over '.Shop::amount($m->free_over),
+                                    default => Shop::amount($m->price),
+                                };
+                                $summary = $m->type->label().': '.$price.'. Packing '.$m->handling_days.' '.($m->handling_days === 1 ? 'day' : 'days')
+                                    .($m->type === \App\Enums\ShippingMethodType::Collection ? '' : ', delivery '.$m->window_min_days.' to '.$m->window_max_days.' days').'. '
+                                    .($m->regions->isNotEmpty() ? 'Only in '.$m->regions->count().' '.($m->regions->count() === 1 ? 'region' : 'regions').'.' : 'To everywhere you can reach.');
+                            @endphp
+                            <summary class="sd-summary">
                                 <span><strong>{{ $m->name }}</strong> @unless ($m->is_active)<x-ds.badge tone="cau" icon="eye-off">Not offered</x-ds.badge>@endunless</span>
-                                <span class="sd-muted">
-                                    {{ $m->type->label() }}:
-                                    @if ($m->type === \App\Enums\ShippingMethodType::Collection) free, collected from you
-                                    @elseif ($m->type === \App\Enums\ShippingMethodType::FreeOver) {{ Shop::amount($m->price) }}, free over {{ Shop::amount($m->free_over) }}
-                                    @else {{ Shop::amount($m->price) }} @endif
-                                    . Packing {{ $m->handling_days }} {{ $m->handling_days === 1 ? 'day' : 'days' }}, delivery {{ $m->window_min_days }} to {{ $m->window_max_days }} days.
-                                    @if ($m->regions->isNotEmpty()) Only in {{ $m->regions->count() }} {{ $m->regions->count() === 1 ? 'region' : 'regions' }}. @else To everywhere you can reach. @endif
-                                </span>
+                                <span class="sd-muted">{{ $summary }}</span>
+                                <span class="sd-summary__edit">Edit<x-ds.icon name="chevron-down" :size="16" /></span>
                             </summary>
                             <form method="POST" action="{{ route('seller.shipping.update', $m) }}" class="sd-stack" novalidate>
                                 @csrf @method('PATCH')
@@ -92,11 +96,13 @@
                         @if (! $quote->canDeliver())
                             <p class="sd-muted">Nothing is offered to this address. {{ $methods->isEmpty() ? '' : 'Check your region rules.' }}</p>
                         @else
-                            <ul class="sd-lines">
+                            <ul class="sd-quotes">
                                 @foreach ($quote->options as $o)
-                                    <li><span class="sd-thumb" style="width: 2rem; height: 2rem;"><x-ds.icon name="{{ $o->isCollection() ? 'store' : 'truck' }}" :size="18" /></span>
-                                        <span><strong>{{ $o->name }}</strong><br><span class="sd-muted">{{ $o->estimateLabel }}@if ($rem = $o->remainingForFree((int) round((float) $previewBasket * 100))) . Spend {{ Shop::money($rem) }} more for free delivery.@endif</span></span>
-                                        <span class="sd-line__total">{{ $o->isArranged() ? 'Arranged with you' : ($o->priceCents === 0 ? 'Free' : Shop::money($o->priceCents)) }}</span></li>
+                                    <li>
+                                        <strong>{{ $o->name }}</strong>
+                                        <span class="sd-quotes__price">{{ $o->isArranged() ? 'Arranged with you' : ($o->priceCents === 0 ? 'Free' : Shop::money($o->priceCents)) }}</span>
+                                        <span class="sd-muted sd-quotes__est">{{ $o->estimateLabel }}@if ($rem = $o->remainingForFree((int) round((float) $previewBasket * 100))) Spend {{ Shop::money($rem) }} more for free delivery.@endif</span>
+                                    </li>
                                 @endforeach
                             </ul>
                         @endif

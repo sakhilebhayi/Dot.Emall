@@ -16,15 +16,24 @@ use Illuminate\Support\Facades\Gate;
  */
 class ProductImageController extends Controller
 {
-    public function store(Request $request, Product $product, ProductImages $images): RedirectResponse
+    public function store(Request $request, Product $product, ProductImages $images): RedirectResponse|\Illuminate\Http\JsonResponse
     {
         Gate::authorize('update', $product);
 
-        $request->validate(array_merge(ProductImages::rules(), ['images' => ['required', 'array', 'min:1', 'max:'.ProductImages::MAX_PER_PRODUCT]]));
+        // The drop zone sends the pictures itself (to show progress) and asks for JSON. The app renders JSON errors only under /api (D-41),
+        // so a refusal is answered here as a 422 the page can print in place; a plain form post gets the usual redirect with errors.
+        try {
+            $request->validate(array_merge(ProductImages::rules(), ['images' => ['required', 'array', 'min:1', 'max:'.ProductImages::MAX_PER_PRODUCT]]));
 
-        $added = $images->add($product, $request->file('images'));
+            $added = $images->add($product, $request->file('images'));
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            if ($request->wantsJson()) {
+                return response()->json(['message' => collect($e->errors())->flatten()->first(), 'errors' => $e->errors()], 422);
+            }
 
-        // The drop zone sends the pictures itself (to show progress) and asks for JSON; a plain form post gets the redirect.
+            throw $e;
+        }
+
         if ($request->wantsJson()) {
             $request->session()->flash('status', $added->count().' '.($added->count() === 1 ? 'photo' : 'photos').' added.');
 

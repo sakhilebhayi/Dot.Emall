@@ -30,7 +30,7 @@ class SellerOrderController extends SellerController
 
         $page = $parcels->query($store, $tab)
             ->with(['order:id,user_id,guest_email,status,payment_status,requires_payment,paid_at,created_at,currency,shipping_name', 'items:id,order_group_id,order_id,product_name,variant_label,quantity,total,discount_amount,status', 'shipments:id,order_group_id,carrier_name,tracking_number'])
-            ->orderByDesc('id')->paginate(15)->withQueryString();
+            ->orderBy('id', $tab === 'to_ship' ? 'asc' : 'desc')->paginate(15)->withQueryString();
 
         return view('seller.orders.index', [
             'store' => $store,

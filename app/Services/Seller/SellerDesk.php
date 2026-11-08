@@ -45,7 +45,8 @@ class SellerDesk
         $returns = (clone $open)->count();
         $next = (clone $open)->min('respond_by');
 
-        $low = $this->inventory->lowStock($store, 50);
+        // A listing the seller has switched off is not "low", it is off: the same rule as the analytics page.
+        $low = $this->inventory->lowStock($store, 50)->load('product:id,name,low_stock_threshold,is_active')->filter(fn ($v) => $v->product?->is_active)->values();
 
         $questions = ProductQuestion::query()->published()->where('answers_count', 0)
             ->whereIn('product_id', Product::withTrashed()->where('store_id', $store->id)->select('id'))->count();

@@ -171,8 +171,9 @@ class SellerAnalytics
             'value_cents' => (int) $live->sum(fn ($r) => Money::toCents($r->price) * (int) $r->stock),
             'units' => (int) $live->sum('stock'),
             'variants' => $live->count(),
-            'low' => $rows->filter(fn ($r) => $r->stock > 0 && $r->stock <= (int) $r->low_stock_threshold)->count(),
-            'out' => $rows->filter(fn ($r) => $r->stock <= 0)->count(),
+            // Low and out count the options of listings that are switched on; one switched off by its seller is not "out of stock", it is off.
+            'low' => $rows->filter(fn ($r) => $r->is_active && $r->stock > 0 && $r->stock <= (int) $r->low_stock_threshold)->count(),
+            'out' => $rows->filter(fn ($r) => $r->is_active && $r->stock <= 0)->count(),
             'has_data' => $rows->isNotEmpty(),
         ];
     }
