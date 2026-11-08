@@ -47,6 +47,23 @@ class OrderItem extends Model
         'refunded_at' => 'datetime',
     ];
 
+    /**
+     * Every line belongs to a parcel (its seller's share of the order), which is what the seller desk lists, ships and earns on.
+     * Checkout always sets it; a line made any other way (an older order, a test, a repair script) gets the parcel of its
+     * order and store here, so a line can never be invisible to its seller.
+     */
+    protected static function booted(): void
+    {
+        static::creating(function (OrderItem $item): void {
+            if ($item->order_group_id === null && $item->order_id !== null && $item->store_id !== null) {
+                $item->order_group_id = OrderGroup::query()->firstOrCreate(
+                    ['order_id' => $item->order_id, 'store_id' => $item->store_id],
+                    ['seller_id' => $item->seller_id, 'store_name' => $item->store_name ?? 'Store', 'method_type' => 'arranged', 'method_name' => null, 'delivery_cents' => 0, 'status' => 'pending'],
+                )->id;
+            }
+        });
+    }
+
     public function order(): BelongsTo
     {
         return $this->belongsTo(Order::class);

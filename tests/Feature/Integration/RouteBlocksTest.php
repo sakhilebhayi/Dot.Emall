@@ -36,7 +36,8 @@ class RouteBlocksTest extends TestCase
     {
         $this->get('/account')->assertRedirect('/login');
         $this->get('/sell/dashboard')->assertRedirect('/login');
-        $this->get('/sell/start')->assertRedirect('/login');
+        // The real onboarding page (W6) is public: a visitor reads the terms before signing in.
+        $this->get('/sell/start')->assertOk()->assertSee('Sign in with InfoDot');
 
         $seller = User::factory()->withPersonalTeam()->create();
         Store::factory()->create(['owner_id' => $seller->id, 'name' => 'Alias Stores']);

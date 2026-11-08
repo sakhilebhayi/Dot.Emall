@@ -33,11 +33,13 @@ final class Navigation
         return [
             ['label' => 'Dashboard', 'route' => 'seller.dashboard', 'alt' => ['dashboard'], 'icon' => 'home', 'match' => ['seller.dashboard', 'dashboard']],
             ['label' => 'Products', 'route' => 'seller.products.index', 'icon' => 'box', 'match' => ['seller.products.*']],
-            ['label' => 'Orders', 'route' => 'seller.orders.index', 'icon' => 'receipt', 'match' => ['seller.orders.*', 'seller.order-items.*']],
+            ['label' => 'Orders', 'route' => 'seller.orders.index', 'icon' => 'package-check', 'match' => ['seller.orders.*', 'seller.order-items.*', 'seller.shipments.*']],
             ['label' => 'Returns', 'route' => 'seller.returns', 'icon' => 'return', 'match' => ['seller.returns*']],
             ['label' => 'Shipping', 'route' => 'seller.shipping', 'icon' => 'truck', 'match' => ['seller.shipping*']],
             ['label' => 'Promotions', 'route' => 'seller.promo-codes.index', 'icon' => 'percent', 'match' => ['seller.promo-codes.*']],
             ['label' => 'Analytics', 'route' => 'seller.analytics', 'icon' => 'chart', 'match' => ['seller.analytics*']],
+            ['label' => 'Ledger', 'route' => 'seller.ledger', 'icon' => 'receipt', 'match' => ['seller.ledger*']],
+            ['label' => 'Reviews and questions', 'route' => 'seller.feedback', 'icon' => 'message', 'match' => ['seller.feedback', 'seller.questions.*', 'seller.reviews.*']],
             ['label' => 'Store profile', 'route' => 'seller.store.edit', 'icon' => 'store', 'match' => ['seller.store.*']],
         ];
     }

@@ -4,9 +4,10 @@
 --}}
 @php
     $appName = config('app.name', 'Dot.Emall');
-    $plainTitle = trim(strip_tags((string) ($title ?? '')));
+    // A slot arrives already escaped; decode it once so the single {{ }} below does not escape an ampersand twice.
+    $plainTitle = trim(html_entity_decode(strip_tags((string) ($title ?? '')), ENT_QUOTES | ENT_HTML5));
     $fullTitle = $plainTitle !== '' ? $plainTitle.' | '.$appName : $appName;
-    $plainDescription = trim(strip_tags((string) ($description ?? '')));
+    $plainDescription = trim(html_entity_decode(strip_tags((string) ($description ?? '')), ENT_QUOTES | ENT_HTML5));
     $nonce = csp_nonce();
 @endphp
 <meta charset="utf-8">

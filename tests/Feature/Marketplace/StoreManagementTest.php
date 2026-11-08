@@ -46,7 +46,8 @@ class StoreManagementTest extends TestCase
         $seller = $this->makeSeller();
         $product = $this->makeListing($seller, ['name' => 'Follows The Store Open Closed']);
 
-        $this->actingAs($seller)->patch(route('seller.store.update'), ['name' => $seller->store->name]);
+        // The form sends an explicit 0 for a closed store: leaving the field out no longer closes it by accident (W6).
+        $this->actingAs($seller)->patch(route('seller.store.update'), ['name' => $seller->store->name, 'is_active' => '0']);
         $this->assertFalse($seller->store()->first()->is_active);
         $this->get(route('products.index'))->assertDontSee('Follows The Store Open Closed');
 
@@ -67,8 +68,8 @@ class StoreManagementTest extends TestCase
     {
         $user = $this->makeBuyer();
 
-        $this->actingAs($user)->get(route('seller.store.edit'))->assertRedirect(route('seller.store.create'));
-        $this->actingAs($user)->patch(route('seller.store.update'), ['name' => 'x'])->assertRedirect(route('seller.store.create'));
+        $this->actingAs($user)->get(route('seller.store.edit'))->assertRedirect(route('sell.start'));
+        $this->actingAs($user)->patch(route('seller.store.update'), ['name' => 'x'])->assertRedirect(route('sell.start'));
     }
 
     public function test_a_seller_only_ever_edits_their_own_store(): void
@@ -106,7 +107,7 @@ class StoreManagementTest extends TestCase
         $seller = $this->makeSeller();
 
         $this->actingAs($seller)->post(route('seller.store.store'), ['name' => 'Second Store Attempt'])
-            ->assertRedirect(route('seller.products.create'));
+            ->assertRedirect(route('seller.dashboard'));
 
         $this->assertSame(1, Store::where('owner_id', $seller->id)->count());
     }

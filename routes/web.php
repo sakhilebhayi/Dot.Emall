@@ -39,6 +39,7 @@ use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\ReviewPhotoController;
 use App\Http\Controllers\SearchSuggestController;
 use App\Http\Controllers\SellerOrderController;
+use App\Http\Controllers\Seller;
 use App\Http\Controllers\SellerProductController;
 use App\Http\Controllers\StoreController;
 use App\Models\User;
@@ -262,8 +263,6 @@ Route::middleware([
     config('jetstream.auth_session'),
     'verified',
 ])->group(function () {
-    Route::get('/sell/dashboard', DashboardController::class)->name('seller.dashboard');
-    Route::get('/sell/start', [StoreController::class, 'create'])->name('sell.start');
 });
 // --- end integration ---
 
@@ -385,6 +384,70 @@ Route::middleware([
     Route::get('/audit', \App\Http\Controllers\Operator\AuditController::class)->name('audit');
 });
 // --- end w7 ---
+
+// --- w6 ---
+// The seller desk (R-43 W6). Existing seller.* names (products, orders, promo codes, store) are registered above and keep working;
+// everything new is here. A seller reaches only the store they own; a parcel, return or listing that is not theirs answers 404 or 403.
+// Nothing is registered from this file but routes.
+Route::get('/sell/start', Seller\StartController::class)->name('sell.start');
+
+Route::middleware([
+    'auth:sanctum',
+    config('jetstream.auth_session'),
+    'verified',
+])->prefix('sell')->group(function () {
+    Route::get('/dashboard', Seller\DashboardController::class)->name('seller.dashboard');
+
+    Route::get('/store', [StoreController::class, 'status'])->name('seller.store.status');
+    Route::post('/store/submit', [StoreController::class, 'submit'])->name('seller.store.submit');
+    Route::post('/store/company', [StoreController::class, 'linkTeam'])->name('seller.store.link-team');
+
+    Route::post('/products/bulk', [SellerProductController::class, 'bulk'])->name('seller.products.bulk');
+    Route::patch('/products/{product}/attributes', [SellerProductController::class, 'attributes'])->name('seller.products.attributes');
+    Route::post('/products/{product}/duplicate', [SellerProductController::class, 'duplicate'])->name('seller.products.duplicate');
+    Route::post('/products/{product}/resubmit', [SellerProductController::class, 'resubmit'])->name('seller.products.resubmit');
+    Route::get('/products/{product}/stock', [SellerProductController::class, 'stockHistory'])->name('seller.products.stock-history');
+    Route::post('/products/{product}/options', [Seller\VariantController::class, 'options'])->name('seller.products.options');
+    Route::post('/products/{product}/variants', [Seller\VariantController::class, 'variants'])->name('seller.products.variants');
+    Route::post('/products/{product}/stock', [Seller\VariantController::class, 'stock'])->name('seller.products.stock');
+
+    Route::get('/shipping', [Seller\ShippingController::class, 'index'])->name('seller.shipping');
+    Route::post('/shipping/methods', [Seller\ShippingController::class, 'store'])->name('seller.shipping.store');
+    Route::patch('/shipping/methods/{method}', [Seller\ShippingController::class, 'update'])->name('seller.shipping.update');
+    Route::delete('/shipping/methods/{method}', [Seller\ShippingController::class, 'destroy'])->name('seller.shipping.destroy');
+    Route::post('/shipping/methods/{method}/regions', [Seller\ShippingController::class, 'addRegion'])->name('seller.shipping.regions.store');
+    Route::delete('/shipping/methods/{method}/regions/{region}', [Seller\ShippingController::class, 'removeRegion'])->name('seller.shipping.regions.destroy')->scopeBindings();
+
+    Route::get('/orders/{group}', [Seller\ParcelController::class, 'show'])->name('seller.orders.show')->whereNumber('group');
+    Route::get('/orders/{group}/slip', [Seller\ParcelController::class, 'slip'])->name('seller.orders.slip')->whereNumber('group');
+    Route::post('/orders/{group}/pack', [Seller\ParcelController::class, 'pack'])->name('seller.orders.pack')->whereNumber('group');
+    Route::post('/orders/{group}/ready', [Seller\ParcelController::class, 'ready'])->name('seller.orders.ready')->whereNumber('group');
+    Route::post('/orders/{group}/ship', [Seller\ParcelController::class, 'ship'])->name('seller.orders.ship')->whereNumber('group');
+    Route::post('/orders/{group}/deliver', [Seller\ParcelController::class, 'deliver'])->name('seller.orders.deliver')->whereNumber('group');
+    Route::post('/orders/{group}/cancel', [Seller\ParcelController::class, 'cancel'])->name('seller.orders.cancel')->whereNumber('group');
+    Route::post('/orders/{group}/notes', [Seller\ParcelController::class, 'note'])->name('seller.orders.note')->whereNumber('group');
+    Route::patch('/shipments/{shipment}', [Seller\ParcelController::class, 'tracking'])->name('seller.shipments.update')->whereNumber('shipment');
+    Route::post('/shipments/{shipment}/events', [Seller\ParcelController::class, 'event'])->name('seller.shipments.events.store')->whereNumber('shipment');
+
+    Route::get('/returns', [Seller\ReturnController::class, 'index'])->name('seller.returns');
+    Route::get('/returns/{return}', [Seller\ReturnController::class, 'show'])->name('seller.returns.show')->whereNumber('return');
+    Route::get('/returns/{return}/photos/{index}', [Seller\ReturnController::class, 'photo'])->name('seller.returns.photo')->whereNumber(['return', 'index']);
+    Route::post('/returns/{return}/approve', [Seller\ReturnController::class, 'approve'])->name('seller.returns.approve')->whereNumber('return');
+    Route::post('/returns/{return}/decline', [Seller\ReturnController::class, 'decline'])->name('seller.returns.decline')->whereNumber('return');
+    Route::post('/returns/{return}/receive', [Seller\ReturnController::class, 'receive'])->name('seller.returns.receive')->whereNumber('return');
+
+    Route::patch('/promo-codes/{promoCode}/toggle', [PromoCodeController::class, 'toggle'])->name('seller.promo-codes.toggle');
+
+    Route::get('/analytics', [Seller\AnalyticsController::class, 'index'])->name('seller.analytics');
+    Route::get('/analytics/export/{what}', [Seller\AnalyticsController::class, 'export'])->name('seller.analytics.export');
+    Route::get('/ledger', [Seller\LedgerController::class, 'index'])->name('seller.ledger');
+    Route::get('/ledger/export', [Seller\LedgerController::class, 'export'])->name('seller.ledger.export');
+
+    Route::get('/reviews', [Seller\FeedbackController::class, 'index'])->name('seller.feedback');
+    Route::post('/questions/{question}/answer', [Seller\FeedbackController::class, 'answer'])->name('seller.questions.answer');
+    Route::post('/reviews/{review}/reply', [Seller\FeedbackController::class, 'respond'])->name('seller.reviews.reply');
+});
+// --- end w6 ---
 
 // --- dev ---
 // Local-only sign-in for design and audit sessions (docs/R43_DEMO.md). Registered only in the

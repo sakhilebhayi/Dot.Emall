@@ -58,7 +58,7 @@
                     @if ($contained)<div class="ds-container" style="max-width: 72rem; margin-inline: 0;">@endif
                         @isset($breadcrumbs)<div style="padding-top: var(--s-4);">{{ $breadcrumbs }}</div>@endisset
                         @isset($heading)
-                            <x-ds.page-header :title="(string) $heading" :lead="isset($lead) ? (string) $lead : null">
+                            <x-ds.page-header :title="html_entity_decode((string) $heading, ENT_QUOTES | ENT_HTML5)" :lead="isset($lead) ? html_entity_decode((string) $lead, ENT_QUOTES | ENT_HTML5) : null">
                                 @isset($actions)<x-slot:actions>{{ $actions }}</x-slot:actions>
 @endisset
                             </x-ds.page-header>

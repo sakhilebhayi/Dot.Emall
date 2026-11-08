@@ -52,7 +52,7 @@ class ProductListingTest extends TestCase
 
         $this->actingAs($user)
             ->get(route('seller.products.create'))
-            ->assertRedirect(route('seller.store.create'));
+            ->assertRedirect(route('sell.start'));
     }
 
     public function test_a_user_cannot_submit_a_listing_for_a_store_they_do_not_own(): void
@@ -71,7 +71,7 @@ class ProductListingTest extends TestCase
 
         $this->actingAs($userWithNoStore)
             ->post(route('seller.products.store'), $this->validPayload())
-            ->assertRedirect(route('seller.store.create'));
+            ->assertRedirect(route('sell.start'));
 
         $this->assertSame(0, Product::where('name', 'Handmade Mug')->count());
     }

@@ -273,7 +273,7 @@ class CheckoutService
 
             $this->guardUnpaidCap($buyer, $guestEmail);
 
-            $promo = $this->resolvePromo($input['promo_code'] ?? null, $lines);
+            $promo = $this->resolvePromo($input['promo_code'] ?? null, $lines, $buyer, $guestEmail);
             [$snapshot, $region, $name, $phone, $addressLine] = $this->destination($buyer, $input);
 
             // One delivery choice per seller group, priced here and nowhere else.
@@ -473,7 +473,7 @@ class CheckoutService
      *
      * @throws PromoRejectedException
      */
-    private function resolvePromo(?string $input, Collection $lines): ?PromoCode
+    private function resolvePromo(?string $input, Collection $lines, ?User $buyer = null, ?string $guestEmail = null): ?PromoCode
     {
         $input = $input === null ? '' : trim($input);
 
@@ -498,6 +498,11 @@ class CheckoutService
             $eligibleCents = $lines
                 ->filter(fn (array $l) => $l['product']->store_id === $promo->store_id)
                 ->sum(fn (array $l) => $l['quantity'] * Money::toCents($l['variant']->price));
+
+            // The seller's conditions (minimum spend, a cap per buyer) answer with the same single message as every other refusal.
+            if ($promo->refusalFor($eligibleCents, $buyer?->id, $guestEmail) !== null) {
+                continue;
+            }
 
             $discount = Money::discountCents($promo->discount_type, $promo->discount_value, $eligibleCents);
 

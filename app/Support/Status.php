@@ -16,6 +16,7 @@ final class Status
         'paid' => ['Paid', 'card', 'pos'],
         'packing' => ['Packing', 'box', 'info'],
         'shipped' => ['Shipped', 'truck', 'info'],
+        'ready_for_collection' => ['Ready for collection', 'store', 'info'],
         'delivered' => ['Delivered', 'package-check', 'pos'],
         'ready_for_collection' => ['Ready for collection', 'pin', 'info'],
         'collected' => ['Collected', 'bag', 'pos'],
