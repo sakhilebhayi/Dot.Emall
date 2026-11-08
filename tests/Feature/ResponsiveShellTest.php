@@ -49,13 +49,13 @@ class ResponsiveShellTest extends TestCase
         $order = $this->placeOrder($buyer, [[$product, 1]]);
 
         foreach ([
-            [$buyer, route('dashboard'), 'menu-drawer'],
+            [$buyer, route('account.home'), 'menu-drawer'],
             [$buyer, route('cart.index'), 'menu-drawer'],
             [$buyer, route('orders.index'), 'menu-drawer'],
             [$buyer, route('orders.show', $order), 'menu-drawer'],
             [$buyer, route('seller.store.create'), 'menu-drawer'],
             [$buyer, route('profile.show'), 'menu-drawer'],
-            [$seller, route('dashboard'), 'desk-menu'],
+            [$seller, route('seller.dashboard'), 'desk-menu'],
             [$seller, route('seller.products.index'), 'desk-menu'],
             [$seller, route('seller.products.create'), 'desk-menu'],
             [$seller, route('seller.orders.index'), 'desk-menu'],
@@ -74,20 +74,20 @@ class ResponsiveShellTest extends TestCase
 
         $this->assertScrollsHorizontally($this->assertResponsiveShell($this->actingAs($buyer)->get(route('orders.index'))), 'Your orders');
         $this->assertScrollsHorizontally($this->assertResponsiveShell($this->actingAs($seller)->get(route('seller.orders.index')), 'desk-menu'), 'Orders to fulfil');
-        $this->assertScrollsHorizontally($this->assertResponsiveShell($this->actingAs($seller)->get(route('dashboard')), 'desk-menu'), 'Recent orders');
+        $this->assertScrollsHorizontally($this->assertResponsiveShell($this->actingAs($seller)->get(route('seller.dashboard')), 'desk-menu'), 'Recent orders');
     }
 
     public function test_the_desk_menu_lists_the_seller_desk_for_a_seller_and_the_account_menu_the_buyer_pages(): void
     {
         $seller = $this->makeSeller();
-        $xpath = $this->assertResponsiveShell($this->actingAs($seller)->get(route('dashboard')), 'desk-menu');
+        $xpath = $this->assertResponsiveShell($this->actingAs($seller)->get(route('seller.dashboard')), 'desk-menu');
 
         foreach (['seller.products.index', 'seller.orders.index', 'seller.promo-codes.index', 'seller.store.edit'] as $name) {
             $this->assertGreaterThan(0, $xpath->query('//dialog[@id="desk-menu"]//a[@href="'.route($name).'"]')->length, $name);
         }
         $this->assertStringContainsString('ds-ctx-seller', $xpath->query('//body')->item(0)->getAttribute('class'));
 
-        $xpath = $this->assertResponsiveShell($this->actingAs($this->makeBuyer())->get(route('dashboard')));
+        $xpath = $this->assertResponsiveShell($this->actingAs($this->makeBuyer())->get(route('account.home')));
         $this->assertStringContainsString('ds-ctx-account', $xpath->query('//body')->item(0)->getAttribute('class'));
         $this->assertGreaterThan(0, $xpath->query('//dialog[@id="account-menu-sheet"]//a[@href="'.route('orders.index').'"]')->length);
         $this->assertSame(0, $xpath->query('//a[@href="'.route('seller.products.index').'"]')->length, 'a buyer is not shown the seller desk');
@@ -98,7 +98,7 @@ class ResponsiveShellTest extends TestCase
         $buyer = $this->makeBuyer();
         $second = Team::factory()->create(['user_id' => $buyer->id, 'personal_team' => false, 'name' => 'Karoo Trading Collective']);
 
-        $xpath = $this->assertResponsiveShell($this->actingAs($buyer)->get(route('dashboard')));
+        $xpath = $this->assertResponsiveShell($this->actingAs($buyer)->get(route('account.home')));
 
         $menu = '//div[@id="account-menu"]';
         $this->assertSame(1, $xpath->query($menu.'//form[@action="'.route('logout').'"]//button')->length);

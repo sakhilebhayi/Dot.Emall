@@ -158,7 +158,7 @@ class SellerPaymentGatingTest extends TestCase
     {
         $this->payOrder($this->unpaid());
 
-        $this->actingAs($this->seller)->get(route('dashboard'))
+        $this->actingAs($this->seller)->get(route('seller.dashboard'))
             ->assertOk()
             ->assertSee('Payout is not available yet')
             ->assertSee('earned, not paid out');

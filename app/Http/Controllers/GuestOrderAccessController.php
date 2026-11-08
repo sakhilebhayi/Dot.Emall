@@ -58,7 +58,7 @@ class GuestOrderAccessController extends Controller
         $result = $payments->confirmReturn($order, is_string($reference) ? $reference : null);
 
         if (Route::has('guest.orders.show') && ! $request->wantsJson()) {
-            return redirect()->route('guest.orders.show', $order)->with($result->isGood() ? 'status' : 'error', $result->message());
+            return redirect()->route('guest.orders.show', $order)->with($result->isGood() ? 'status' : 'error', $result->message())->with('payment_outcome', $result->outcome);
         }
 
         return response()->json(['order' => $order->reference(), 'payment' => $result->message(), 'good' => $result->isGood(), 'payment_status' => $order->refresh()->payment_status->value]);

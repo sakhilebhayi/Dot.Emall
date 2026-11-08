@@ -20,7 +20,7 @@ class NotificationBellTest extends TestCase
         $user = User::factory()->withPersonalTeam()->create();
 
         $this->actingAs($user)
-            ->get('/dashboard')
+            ->get(route('account.home'))
             ->assertOk()
             ->assertSeeLivewire('notification-bell');
     }

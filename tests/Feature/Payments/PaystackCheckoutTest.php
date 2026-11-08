@@ -186,20 +186,24 @@ class PaystackCheckoutTest extends TestCase
         $this->assertCount(1, $seller->fresh()->notifications, 'a free order is ready to fulfil, so the seller is told');
     }
 
-    public function test_the_cart_page_says_what_happens_next(): void
+    public function test_the_checkout_page_says_what_happens_next(): void
     {
         $this->enablePaystack();
         $buyer = $this->makeBuyer();
-        $this->cartFor($buyer, $this->makeListing($this->makeSeller()));
+        $listing = $this->makeListing($this->makeSeller());
+        $this->cartFor($buyer, $listing);
+        $address = ['recipient_name' => 'Thandi Test', 'line1' => '1 Test Street', 'city' => 'Johannesburg', 'province' => 'Gauteng', 'postal_code' => '2000', 'country' => 'ZA'];
 
-        $this->actingAs($buyer)->get(route('cart.index'))
-            ->assertSee('Pay with Paystack')
-            ->assertSee('TEST MODE')
+        // Delivery set: the payment step names Paystack and the test mode; the button says how much.
+        $this->actingAs($buyer)->post(route('checkout.delivery'), ['address' => $address, 'address_id' => 'new'])->assertRedirect();
+        $this->actingAs($buyer)->get(route('checkout.show'))
+            ->assertSee('Paystack')
+            ->assertSee('Test mode')
             ->assertDontSee('No payment is taken');
 
         config(['paystack.secret_key' => '']);
-        $this->actingAs($buyer)->get(route('cart.index'))
+        $this->actingAs($buyer)->get(route('checkout.show'))
             ->assertSee('No payment is taken')
-            ->assertDontSee('TEST MODE');
+            ->assertDontSee('Test mode: no real money moves');
     }
 }

@@ -1,12 +1,23 @@
 <?php
 
+use App\Http\Controllers\AccountController;
+use App\Http\Controllers\AddressController;
 use App\Http\Controllers\AssistantController;
 use App\Http\Controllers\Auth\EcosystemAuthController;
 use App\Http\Controllers\CartController;
+use App\Http\Controllers\CheckoutController;
+use App\Http\Controllers\DevFakePaystackController;
 use App\Http\Controllers\CspReportController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\GuestOrderAccessController;
 use App\Http\Controllers\HealthController;
+use App\Http\Controllers\GuestOrderController;
+use App\Http\Controllers\HelpController;
+use App\Http\Controllers\NotificationPreferenceController;
+use App\Http\Controllers\OrderActionsController;
+use App\Http\Controllers\PrivacyController;
+use App\Http\Controllers\ReturnController;
+use App\Http\Controllers\ReturnPhotoController;
 use App\Http\Controllers\OperatorPaymentController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\OrderItemCancellationController;
@@ -95,10 +106,6 @@ Route::middleware([
     Route::post('/products/{product}/reviews', [ReviewController::class, 'store'])->name('reviews.store');
     Route::delete('/reviews/{review}', [ReviewController::class, 'destroy'])->name('reviews.destroy');
 
-    Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
-    Route::post('/cart', [CartController::class, 'store'])->name('cart.store');
-    Route::patch('/cart/{cartItem}', [CartController::class, 'update'])->name('cart.update');
-    Route::delete('/cart/{cartItem}', [CartController::class, 'destroy'])->name('cart.destroy');
     Route::post('/cart/checkout', [CartController::class, 'checkout'])->middleware('throttle:checkout')->name('cart.checkout');
 
     Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
@@ -157,6 +164,88 @@ Route::get('/guest/orders/{order}/{token}/payment', [GuestOrderAccessController:
     ->name('guest.orders.payment.callback');
 // --- end data-a ---
 
+// --- w5 ---
+// Cart, checkout, orders, returns, account and help (R-43 W5). Registered here and nowhere else; no limiter, alias or binding is
+// defined in this file (App\Providers\CheckoutServiceProvider and EmallServiceProvider own those).
+// The cart and checkout are PUBLIC: a guest keeps a session cart and checks out with an e-mail address (D-9).
+Route::middleware('throttle:guest-cart')->group(function () {
+    Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
+    Route::post('/cart', [CartController::class, 'store'])->name('cart.store');
+    Route::patch('/cart/lines/{variant}', [CartController::class, 'update'])->name('cart.update');
+    Route::delete('/cart/lines/{variant}', [CartController::class, 'destroy'])->name('cart.destroy');
+    Route::post('/cart/promo', [CartController::class, 'applyPromo'])->name('cart.promo');
+    Route::delete('/cart/promo', [CartController::class, 'clearPromo'])->name('cart.promo.clear');
+    Route::post('/cart/region', [CartController::class, 'setRegion'])->name('cart.region');
+    Route::post('/cart/delivery', [CartController::class, 'setDelivery'])->name('cart.delivery');
+    Route::post('/cart/prices/accept', [CartController::class, 'acceptPrices'])->name('cart.prices.accept');
+
+    Route::get('/checkout', [CheckoutController::class, 'show'])->name('checkout.show');
+    Route::post('/checkout/delivery', [CheckoutController::class, 'delivery'])->name('checkout.delivery');
+});
+Route::post('/checkout', [CheckoutController::class, 'place'])->middleware('throttle:checkout')->name('checkout.place');
+
+// Testing only: a local stand-in for Paystack's hosted page. Present only in local/testing AND with EMALL_E2E_FAKE_PAYSTACK on.
+if (app()->environment('local', 'testing') && config('emall.e2e_fake_paystack')) {
+    Route::get('/dev/fake-paystack/{reference}', [DevFakePaystackController::class, 'show'])->name('dev.fake-paystack');
+    Route::post('/dev/fake-paystack/{reference}', [DevFakePaystackController::class, 'complete'])->name('dev.fake-paystack.complete');
+}
+
+// Guest order pages (D-9, D-19): reached from the e-mailed link (guest.orders.access), which stores a grant for that one order in this
+// session. Without the grant every one of these answers the same 404 as a wrong token. The {order} segment is the order id.
+Route::middleware('throttle:guest-order')->prefix('guest/orders/{order}')->name('guest.orders.')->group(function () {
+    Route::get('/', [GuestOrderController::class, 'show'])->name('show');
+    Route::get('/receipt', [OrderActionsController::class, 'receipt'])->name('receipt');
+    Route::post('/pay', [OrderActionsController::class, 'pay'])->name('pay');
+    Route::post('/payment/check', [OrderActionsController::class, 'checkPayment'])->name('payment.check');
+    Route::post('/message', [OrderActionsController::class, 'message'])->name('message');
+    Route::post('/report', [OrderActionsController::class, 'report'])->name('report');
+    Route::post('/reorder', [OrderActionsController::class, 'reorder'])->name('reorder');
+    Route::post('/items/{item}/receive', [OrderActionsController::class, 'receive'])->name('items.receive')->scopeBindings();
+    Route::post('/items/{item}/cancel', [OrderActionsController::class, 'cancel'])->name('items.cancel')->scopeBindings();
+    Route::get('/items/{item}/return', [ReturnController::class, 'create'])->name('returns.create')->scopeBindings();
+    Route::post('/items/{item}/return', [ReturnController::class, 'store'])->name('returns.store')->scopeBindings();
+});
+Route::get('/return-photos/{return}/{index}', ReturnPhotoController::class)->whereNumber('index')->name('return-photos.show');
+
+// Signed-in buyer: the cart's wishlist move, order actions, returns, account area. All behind sign-in and the usual verified check.
+Route::middleware(['auth:sanctum', config('jetstream.auth_session'), 'verified'])->group(function () {
+    Route::post('/cart/lines/{variant}/wishlist', [CartController::class, 'moveToWishlist'])->name('cart.wishlist');
+
+    Route::post('/orders/{order}/payment/check', [OrderActionsController::class, 'checkPayment'])->name('orders.payment.check');
+    Route::get('/orders/{order}/receipt', [OrderActionsController::class, 'receipt'])->name('orders.receipt');
+    Route::post('/orders/{order}/message', [OrderActionsController::class, 'message'])->name('orders.message');
+    Route::post('/orders/{order}/report', [OrderActionsController::class, 'report'])->name('orders.report');
+    Route::post('/orders/{order}/reorder', [OrderActionsController::class, 'reorder'])->name('orders.reorder');
+    Route::post('/orders/{order}/items/{item}/receive', [OrderActionsController::class, 'receive'])->name('orders.items.receive')->scopeBindings();
+    Route::get('/orders/{order}/items/{item}/return', [ReturnController::class, 'create'])->name('orders.returns.create')->scopeBindings();
+    Route::post('/orders/{order}/items/{item}/return', [ReturnController::class, 'store'])->name('orders.returns.store')->scopeBindings();
+
+    Route::get('/account', [AccountController::class, 'home'])->name('account.home');
+    Route::get('/account/returns', [ReturnController::class, 'index'])->name('account.returns');
+    Route::get('/account/returns/{return}', [ReturnController::class, 'show'])->name('account.returns.show');
+    Route::post('/account/returns/{return}/escalate', [ReturnController::class, 'escalate'])->name('account.returns.escalate');
+
+    Route::get('/account/addresses', [AddressController::class, 'index'])->name('account.addresses');
+    Route::post('/account/addresses', [AddressController::class, 'store'])->name('account.addresses.store');
+    Route::get('/account/addresses/{address}/edit', [AddressController::class, 'edit'])->name('account.addresses.edit');
+    Route::patch('/account/addresses/{address}', [AddressController::class, 'update'])->name('account.addresses.update');
+    Route::delete('/account/addresses/{address}', [AddressController::class, 'destroy'])->name('account.addresses.destroy');
+    Route::post('/account/addresses/{address}/default', [AddressController::class, 'makeDefault'])->name('account.addresses.default');
+
+    Route::get('/account/notifications', [NotificationPreferenceController::class, 'edit'])->name('account.notifications');
+    Route::put('/account/notifications', [NotificationPreferenceController::class, 'update'])->name('account.notifications.update');
+    Route::get('/account/privacy', [PrivacyController::class, 'show'])->name('account.privacy');
+    Route::get('/account/privacy/export', [PrivacyController::class, 'export'])->name('account.privacy.export');
+});
+
+// Help (public).
+Route::get('/help', [HelpController::class, 'index'])->name('help.index');
+Route::get('/help/delivery', [HelpController::class, 'delivery'])->name('help.delivery');
+Route::get('/help/returns', [HelpController::class, 'returns'])->name('help.returns');
+Route::get('/help/contact', [HelpController::class, 'contact'])->name('help.contact');
+Route::get('/help/selling', [HelpController::class, 'sellers'])->name('help.sellers');
+// --- end w5 ---
+
 // --- integration ---
 // Pure aliases of pages that already exist, so the shell's navigation resolves (DESIGN.md, "Route names feature work must
 // register"). A feature agent that builds the real page for one of these names deletes its line here and registers the real
@@ -168,7 +257,6 @@ Route::middleware([
     config('jetstream.auth_session'),
     'verified',
 ])->group(function () {
-    Route::get('/account', DashboardController::class)->name('account.home');
     Route::get('/sell/dashboard', DashboardController::class)->name('seller.dashboard');
     Route::get('/sell/start', [StoreController::class, 'create'])->name('sell.start');
 });

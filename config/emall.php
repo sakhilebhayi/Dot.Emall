@@ -67,6 +67,9 @@ return [
     'returns' => [
         'window_days' => (int) env('EMALL_RETURN_WINDOW_DAYS', 7),
         'seller_response_days' => (int) env('EMALL_RETURN_RESPONSE_DAYS', 10),
+        // W5: photos a buyer may attach to a return request (JPEG, PNG or WebP, checked by content, re-encoded, private disk).
+        'max_photos' => (int) env('EMALL_RETURN_MAX_PHOTOS', 4),
+        'max_photo_kilobytes' => (int) env('EMALL_RETURN_PHOTO_KB', 4096),
     ],
 
     // Seller onboarding: when true a new store starts as a draft and needs operator approval before it is public.
@@ -88,4 +91,13 @@ return [
     'reference_price' => [
         'window_days' => 30,
     ],
+
+    // W5: the one contact channel the platform may state. Empty by default: nothing is invented, and the contact page then says
+    // that contact happens through the order page and the operator queue.
+    'support_email' => env('EMALL_SUPPORT_EMAIL', ''),
+
+    // W5, TESTING ONLY: a local stand-in for Paystack's hosted page, so the whole checkout can be driven in a browser without
+    // the network. It is honoured only when APP_ENV is local or testing (App\Providers\CheckoutServiceProvider); in any other
+    // environment the flag does nothing, the routes do not exist and the real client is used.
+    'e2e_fake_paystack' => filter_var(env('EMALL_E2E_FAKE_PAYSTACK', false), FILTER_VALIDATE_BOOL),
 ];

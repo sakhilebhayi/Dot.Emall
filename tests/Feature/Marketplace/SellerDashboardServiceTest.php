@@ -145,7 +145,7 @@ class SellerDashboardServiceTest extends TestCase
             [$this->makeListing($b, ['price' => 7654.32]), 1],
         ]);
 
-        $page = $this->actingAs($a)->get(route('dashboard'))->assertOk();
+        $page = $this->actingAs($a)->get(route('seller.dashboard'))->assertOk();
 
         $page->assertDontSee('7,654.32');
         $page->assertDontSee('7,664.32');

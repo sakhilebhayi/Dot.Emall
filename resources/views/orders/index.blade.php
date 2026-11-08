@@ -1,71 +1,39 @@
 <x-account-layout>
     <x-slot:title>Your orders</x-slot:title>
+    <x-slot:heading>Your orders</x-slot:heading>
+    <x-slot:lead>Everything you have bought, newest first.</x-slot:lead>
 
-<div style="padding:2rem 2.5rem 3rem;">
+    <form method="GET" action="{{ route('orders.index') }}" class="co-filter" role="search">
+        <x-ds.input label="Find an order" name="q" id="order-q" :value="$q" placeholder="Order number or product name" autocomplete="off" />
+        <x-ds.select label="Show" name="status" id="order-status" :options="$filters" :selected="$filter" />
+        <x-ds.button type="submit" variant="quiet" icon="search">Filter</x-ds.button>
+        @if ($q !== '' || $filter !== 'all')<x-ds.button :href="route('orders.index')" variant="link">Clear</x-ds.button>@endif
+    </form>
 
-    <div style="margin-bottom:1.75rem;">
-        <h1 style="font-family:var(--font-text);font-size:1.6rem;font-weight:800;color:var(--ink);letter-spacing:-0.02em;;margin:0;">
-            My Orders
-        </h1>
-        <div style="font-size:0.78rem;color:var(--ink-3);margin-top:0.25rem;">
-            Orders you've placed as a buyer across the marketplace
-        </div>
-    </div>
-
-    <div class="dot-card" style="overflow:hidden;">
-        @if($orders->isEmpty())
-        <div style="padding:2.5rem;text-align:center;">
-            <x-ds.icon name="receipt" :size="36" />
-            <div style="font-size:0.85rem;color:var(--ink-3);margin-bottom:1rem;">You haven't placed any orders yet.</div>
-            <a href="{{ route('products.index') }}" style="font-size:0.78rem;font-weight:600;color:var(--brand);text-decoration:none;">Browse the marketplace →</a>
-        </div>
-        @else
-        <div class="table-scroll" style="overflow-x:auto;" role="region" aria-label="Your orders" tabindex="0">
-            <table style="width:100%;border-collapse:collapse;">
-                <thead>
-                    <tr style="border-bottom:1px solid var(--line);">
-                        <th style="padding:0.85rem 1.25rem;text-align:left;font-size:0.65rem;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:0.1em;">Date</th>
-                        <th style="padding:0.85rem 1.25rem;text-align:left;font-size:0.65rem;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:0.1em;">Order #</th>
-                        <th style="padding:0.85rem 1.25rem;text-align:left;font-size:0.65rem;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:0.1em;">Items</th>
-                        <th style="padding:0.85rem 1.25rem;text-align:left;font-size:0.65rem;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:0.1em;">Status</th>
-                        <th style="padding:0.85rem 1.25rem;text-align:right;font-size:0.65rem;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:0.1em;">Total</th>
-                        <th></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach($orders as $order)
-                    <tr style="border-bottom:1px solid var(--line);">
-                        <td style="padding:0.9rem 1.25rem;font-size:0.75rem;color:var(--ink-3);white-space:nowrap;">{{ $order->created_at->format('d M Y') }}</td>
-                        <td style="padding:0.9rem 1.25rem;white-space:nowrap;">
-                            <a href="{{ route('orders.show', $order) }}" style="font-family:var(--font-text);font-size:0.78rem;font-weight:700;color:var(--ink);text-decoration:none;">
-                                {{ $order->reference() }}
-                            </a>
-                        </td>
-                        <td style="padding:0.9rem 1.25rem;font-size:0.78rem;color:var(--ink-2);">{{ $order->items->count() }} item{{ $order->items->count() === 1 ? '' : 's' }}</td>
-                        <td style="padding:0.9rem 1.25rem;">
-                            <x-status-pill :status="$order->status" size="sm" />
-                            @if($order->requires_payment && $order->status !== \App\Enums\OrderStatus::Cancelled)
-                                @if($order->payment_status->isSettled())
-                                <x-status-pill status="paid" size="sm" />
-                                @elseif($order->payment_status === \App\Enums\PaymentStatus::Failed)
-                                <x-status-pill status="payment failed" size="sm" />
-                                @else
-                                <x-status-pill status="awaiting payment" size="sm" />
-                                @endif
-                            @endif
-                        </td>
-                        <td style="padding:0.9rem 1.25rem;text-align:right;font-family:var(--font-text);font-size:0.82rem;font-weight:700;color:var(--ink);">{{ $order->amount($order->total) }}</td>
-                        <td style="padding:0.9rem 1.25rem;text-align:right;">
-                            <a href="{{ route('orders.show', $order) }}" style="font-size:0.7rem;font-weight:600;color:var(--brand);text-decoration:none;">View →</a>
-                        </td>
-                    </tr>
-                    @endforeach
-                </tbody>
-            </table>
-        </div>
-        <div style="padding:1rem 1.25rem;">{{ $orders->links() }}</div>
-        @endif
-    </div>
-
-</div>
+    @if ($orders->isEmpty())
+        <x-ds.empty-state title="{{ $q !== '' || $filter !== 'all' ? 'No orders match' : 'No orders yet' }}" icon="receipt">
+            {{ $q !== '' || $filter !== 'all' ? 'Try a different order number, or show all orders.' : 'When you buy something, it appears here with its delivery progress.' }}
+            <x-slot:actions><x-ds.button :href="route('products.index')">Continue shopping</x-ds.button></x-slot:actions>
+        </x-ds.empty-state>
+    @else
+        <x-ds.table caption="Your orders">
+            <x-slot:head><tr><th scope="col">Order</th><th scope="col">Placed</th><th scope="col">Items</th><th scope="col">Status</th><th scope="col" class="is-num">Total</th><th scope="col"><span class="ds-visually-hidden">Actions</span></th></tr></x-slot:head>
+            @foreach ($orders as $order)
+                <tr>
+                    <td data-label="Order"><a href="{{ route('orders.show', $order) }}" class="ds-code">{{ $order->reference() }}</a></td>
+                    <td data-label="Placed">{{ $order->created_at->format('j M Y') }}</td>
+                    <td data-label="Items">{{ $order->items->count() }} from {{ max(1, $order->groups->count()) }} {{ $order->groups->count() > 1 ? 'sellers' : 'seller' }}</td>
+                    <td data-label="Status"><x-ds.status kind="order" :state="$statuses[$order->id]" /></td>
+                    <td data-label="Total" class="is-num"><span class="co-total">{{ $order->money($order->totalCents()) }}</span></td>
+                    <td data-label="">
+                        <div class="co-rowactions">
+                            <x-ds.button :href="route('orders.show', $order)" size="sm" variant="quiet">Open<span class="ds-visually-hidden"> order {{ $order->reference() }}</span></x-ds.button>
+                            <form method="POST" action="{{ route('orders.reorder', $order) }}">@csrf<x-ds.button type="submit" size="sm" variant="link" icon="cart">Buy again<span class="ds-visually-hidden"> order {{ $order->reference() }}</span></x-ds.button></form>
+                        </div>
+                    </td>
+                </tr>
+            @endforeach
+        </x-ds.table>
+        <x-ds.pagination :paginator="$orders" />
+    @endif
 </x-account-layout>

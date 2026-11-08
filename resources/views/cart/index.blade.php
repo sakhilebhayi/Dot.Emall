@@ -1,122 +1,181 @@
+@php
+    use App\Support\Shop;
+    $count = $lines->sum(fn ($l) => $l->quantity);
+    $blocked = $quote->problems !== [];
+    $undeliverable = collect($quote->groups)->contains(fn ($g) => ! $g['can_deliver']);
+    $promo = $quote->promo;
+@endphp
 <x-store-layout>
     <x-slot:title>Your cart</x-slot:title>
-
-<div style="padding:2rem 2.5rem 3rem;max-width:800px;">
-
-    <div style="margin-bottom:1.75rem;">
-        <h1 style="font-family:var(--font-text);font-size:1.6rem;font-weight:800;color:var(--ink);letter-spacing:-0.02em;;margin:0;">
-            Your Cart
-        </h1>
-        <div style="font-size:0.78rem;color:var(--ink-3);margin-top:0.25rem;">
-            {{ $items->count() }} item{{ $items->count() === 1 ? '' : 's' }}
-        </div>
-    </div>
-
-    @if(session('status'))
-        <div style="background:var(--pos-bg);border:1px solid var(--pos);color:var(--pos);padding:0.75rem 1rem;border-radius:8px;font-size:0.8rem;margin-bottom:1.25rem;">
-            {{ session('status') }}
-        </div>
-    @endif
-    @if($errors->any())
-        <div style="background:var(--crit-bg);border:1px solid var(--crit);color:var(--crit);padding:0.75rem 1rem;border-radius:8px;font-size:0.8rem;margin-bottom:1.25rem;">
-            @foreach($errors->all() as $error)<div>{{ $error }}</div>@endforeach
-        </div>
-    @endif
-    @if(session('error'))
-        <div style="background:var(--crit-bg);border:1px solid var(--crit);color:var(--crit);padding:0.75rem 1rem;border-radius:8px;font-size:0.8rem;margin-bottom:1.25rem;">
-            {{ session('error') }}
-        </div>
+    <x-slot:description>Your items grouped by seller, with delivery prices and the total to pay before you check out.</x-slot:description>
+    <x-slot:heading>Your cart</x-slot:heading>
+    @if ($lines->isNotEmpty())
+        <x-slot:lead>{{ $count }} {{ $count === 1 ? 'item' : 'items' }} from {{ $parcelCount }} {{ $parcelCount === 1 ? 'seller' : 'sellers' }}. @if ($parcelCount > 1)Each seller sends their own parcel and sets their own delivery price.@endif</x-slot:lead>
     @endif
 
-    @if($items->isEmpty())
-    <div class="dot-card" style="padding:3rem 2rem;text-align:center;">
-        <div style="width:56px;height:56px;border-radius:14px;background:var(--brand-soft);display:flex;align-items:center;justify-content:center;margin:0 auto 1rem;">
-            <x-ds.icon name="cart" :size="28" />
+    @if ($promoNotice)<x-ds.alert tone="cau" class="co-gap">{{ $promoNotice }}</x-ds.alert>@endif
+
+    @if ($changes !== [])
+        <x-ds.alert tone="cau" title="Some prices changed since you last looked" class="co-gap">
+            <ul class="co-list">
+                @foreach ($changes as $c)
+                    <li>{{ $c['name'] }}: was {{ Shop::money($c['from']) }}, now {{ Shop::money($c['to']) }} each.</li>
+                @endforeach
+            </ul>
+            <p>The total below uses the new prices. Keep them to go on, or remove an item you no longer want.</p>
+            <form method="POST" action="{{ route('cart.prices.accept') }}">@csrf<x-ds.button type="submit" variant="quiet" size="sm">Keep the new prices</x-ds.button></form>
+        </x-ds.alert>
+    @endif
+
+    @if ($lines->isEmpty())
+        <div class="co-empty">
+            <x-ds.empty-state title="Your cart is empty" icon="cart">
+                Add something from a store and it will wait here. You do not need an account to buy.
+                <x-slot:actions>
+                    <x-ds.button :href="route('products.index')" icon="search">Continue shopping</x-ds.button>
+                    @unless ($signedIn)<x-ds.button :href="route('login')" variant="quiet">Sign in with InfoDot</x-ds.button>@endunless
+                </x-slot:actions>
+            </x-ds.empty-state>
         </div>
-        <div style="font-family:var(--font-text);font-size:1rem;font-weight:700;color:var(--ink);margin-bottom:0.4rem;">Your cart is empty</div>
-        <div style="font-size:0.8rem;color:var(--ink-3);margin-bottom:1.25rem;">Browse the marketplace to find something you like.</div>
-        <a href="{{ route('products.index') }}" style="display:inline-flex;align-items:center;gap:0.45rem;padding:0.6rem 1.5rem;border-radius:9999px;background:var(--brand);font-family:var(--font-text);font-size:0.78rem;font-weight:700;color:var(--on-brand);text-decoration:none;">
-            Browse Products
-        </a>
-    </div>
+
+        @if ($suggestions->isNotEmpty())
+            <x-ds.section :title="$suggestions['title']" :lead="$suggestions['basis']">
+                <div class="ds-grid">
+                    @foreach ($suggestions['products'] as $p)
+                        <x-ds.product-card :href="route('products.show', $p)" :title="$p->name" :image="$p->images->first()?->url()" :store="$p->store->name" :amount="$p->price" :stock="$p->stock" ratio="1 / 1" />
+                    @endforeach
+                </div>
+            </x-ds.section>
+        @endif
     @else
-    <div class="dot-card" style="overflow:hidden;margin-bottom:1.5rem;">
-        @foreach($items as $item)
-        @php $problem = $problems[$item->id] ?? null; @endphp
-        <div style="display:flex;align-items:center;gap:1rem;padding:1rem 1.25rem;flex-wrap:wrap;{{ !$loop->last ? 'border-bottom:1px solid var(--line);' : '' }}">
-            <div style="width:52px;height:52px;border-radius:8px;background:var(--photo-ground);display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;">
-                @if($item->product->images->isNotEmpty())
-                    <img src="{{ $item->product->images->first()->url() }}" alt="" style="width:100%;height:100%;object-fit:cover;">
-                @else
-                    <x-ds.icon name="box" :size="22" />
-                @endif
-            </div>
-            <div style="flex:1;min-width:180px;">
-                <a href="{{ route('products.show', $item->product) }}" style="font-size:0.82rem;font-weight:700;color:var(--ink);text-decoration:none;">{{ $item->product->name }}</a>
-                <div style="font-size:0.7rem;color:var(--ink-3);">{{ $item->product->store->name }} · {{ \App\Support\Shop::amount($item->product->price) }} each</div>
-                @if($problem)
-                <div style="font-size:0.72rem;font-weight:600;color:var(--brand);margin-top:0.25rem;" role="alert">{{ $problem }}</div>
-                @endif
-            </div>
-            <form method="POST" action="{{ route('cart.update', $item) }}" style="display:flex;gap:0.4rem;align-items:center;">
-                @csrf
-                @method('PATCH')
-                <label for="qty-{{ $item->id }}" style="position:absolute;left:-9999px;">Quantity of {{ $item->product->name }}</label>
-                <input id="qty-{{ $item->id }}" type="number" name="quantity" value="{{ $item->quantity }}" min="1" max="{{ max(1, min(99, $item->product->stock)) }}" class="dot-input" style="width:72px;padding:0.35rem 0.5rem;">
-                <button type="submit" class="dot-btn dot-btn-ghost" style="padding:0.35rem 0.7rem;font-size:0.72rem;">Update</button>
-            </form>
-            <div style="font-family:var(--font-text);font-size:0.85rem;font-weight:700;color:var(--ink);white-space:nowrap;min-width:80px;text-align:right;">
-                {{ \App\Support\Shop::amount($item->quantity * $item->product->price) }}
-            </div>
-            <form method="POST" action="{{ route('cart.destroy', $item) }}">
-                @csrf @method('DELETE')
-                <button type="submit" class="topbar-btn" title="Remove {{ $item->product->name }}" aria-label="Remove {{ $item->product->name }}">
-                    <x-ds.icon name="trash" :size="16" />
-                </button>
-            </form>
-        </div>
-        @endforeach
-    </div>
+        <div class="co-layout">
+            <div class="co-main">
+                @foreach ($quote->groups as $storeId => $g)
+                    <section class="co-parcel" aria-labelledby="parcel-{{ $storeId }}">
+                        <header class="co-parcel__head">
+                            <h2 id="parcel-{{ $storeId }}">Sold and sent by {{ $g['store_name'] }}</h2>
+                            <p class="ds-muted">Parcel {{ $loop->iteration }} of {{ $parcelCount }}</p>
+                        </header>
 
-    <div class="dot-card" style="padding:1.25rem 1.5rem;margin-bottom:1.5rem;">
-        <div style="display:flex;justify-content:space-between;font-family:var(--font-text);font-size:1rem;font-weight:800;color:var(--ink);">
-            <span>Subtotal</span>
-            <span>{{ \App\Support\Shop::amount($subtotal) }}</span>
-        </div>
-    </div>
+                        @foreach ($g['lines'] as $line)
+                            @php
+                                $variantId = $line->variant->id;
+                                $problem = $quote->problems[$variantId] ?? null;
+                                $stock = (int) $line->variant->stock;
+                                $max = max(1, min(99, $stock));
+                                $note = $problem ?? ($stock > 0 && $stock <= 5 && ! $problem ? 'Only '.$stock.' in stock.' : null);
+                                $qError = session('quantity_variant') === $variantId ? $errors->first('quantity') : null;
+                            @endphp
+                            <x-ds.cart-line
+                                :title="$line->product->name"
+                                :href="$line->product->trashed() ? null : route('products.show', $line->product)"
+                                :image="$line->product->images->first()?->url()"
+                                :option="$line->variant->label()"
+                                :unit-cents="$line->unitCents()"
+                                :quantity="$line->quantity"
+                                :line-cents="$line->totalCents()"
+                                :note="$note">
+                                @if ($problem)
+                                    <p class="co-fix">@if ($stock > 0 && $line->quantity > $stock)Lower the quantity to {{ $stock }} to keep it, or remove it.@else Remove it to go on, or save it to your wishlist for later.@endif</p>
+                                @endif
+                                <div class="co-line-actions">
+                                    <form method="POST" action="{{ route('cart.update', $variantId) }}" class="co-qty" data-autosubmit-form>
+                                        @csrf @method('PATCH')
+                                        <x-ds.quantity-stepper :value="$line->quantity" :max="$max" :id="'qty-'.$variantId" :label="'Quantity of '.$line->product->name" />
+                                        <noscript><x-ds.button type="submit" variant="quiet" size="sm">Update</x-ds.button></noscript>
+                                    </form>
+                                    <form method="POST" action="{{ route('cart.destroy', $variantId) }}">@csrf @method('DELETE')
+                                        <x-ds.button type="submit" variant="link" size="sm" icon="trash">Remove<span class="ds-visually-hidden"> {{ $line->product->name }}</span></x-ds.button>
+                                    </form>
+                                    @if ($signedIn)
+                                        <form method="POST" action="{{ route('cart.wishlist', $variantId) }}">@csrf
+                                            <x-ds.button type="submit" variant="link" size="sm" icon="heart">Move to wishlist<span class="ds-visually-hidden">: {{ $line->product->name }}</span></x-ds.button>
+                                        </form>
+                                    @else
+                                        <a class="co-signin-link" href="{{ route('login') }}">Sign in with InfoDot to save for later</a>
+                                    @endif
+                                </div>
+                                @if ($qError)<p class="ds-field__error" role="alert"><x-ds.icon name="alert-triangle" :size="16" /><span>{{ $qError }}</span></p>@endif
+                            </x-ds.cart-line>
+                        @endforeach
 
-    <form method="POST" action="{{ route('cart.checkout') }}" class="dot-card" style="padding:1.25rem 1.5rem;">
-        @csrf
-        <input type="hidden" name="checkout_token" value="{{ $checkoutToken }}">
-        <div style="font-size:0.7rem;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.75rem;">Delivery</div>
-        <label for="shipping_name" style="display:block;font-size:0.75rem;font-weight:600;color:var(--ink-2);margin-bottom:0.4rem;">Name for delivery</label>
-        <input id="shipping_name" type="text" name="shipping_name" value="{{ old('shipping_name', auth()->user()->name) }}" maxlength="120" class="dot-input" style="margin-bottom:1rem;">
-        <label for="shipping_address" style="display:block;font-size:0.75rem;font-weight:600;color:var(--ink-2);margin-bottom:0.4rem;">Shipping address</label>
-        <input id="shipping_address" type="text" name="shipping_address" value="{{ old('shipping_address') }}" required placeholder="Street, city, postal code" class="dot-input" style="margin-bottom:1rem;">
-        <label for="shipping_phone" style="display:block;font-size:0.75rem;font-weight:600;color:var(--ink-2);margin-bottom:0.4rem;">Phone for the courier (optional)</label>
-        <input id="shipping_phone" type="tel" name="shipping_phone" value="{{ old('shipping_phone') }}" maxlength="40" class="dot-input" style="margin-bottom:0.4rem;">
-        <div style="font-size:0.68rem;color:var(--ink-3);margin-bottom:1rem;">Sellers see these details only for items they still have to ship.</div>
-        <label for="cart-index-promo-code" style="display:block;font-size:0.75rem;font-weight:600;color:var(--ink-2);margin-bottom:0.4rem;">Promo code (optional)</label>
-        <input id="cart-index-promo-code" type="text" name="promo_code" placeholder="e.g. SUMMER10" class="dot-input" style="margin-bottom:1rem;text-transform:uppercase;">
-        @if(count($problems) > 0)
-        <div style="font-size:0.78rem;font-weight:600;color:var(--brand);text-align:center;" role="alert">Fix the items marked above before placing your order.</div>
-        @elseif($paystack['refused'])
-        <div style="font-size:0.78rem;font-weight:600;color:var(--brand);text-align:center;" role="alert">Card payment is not available right now, so orders cannot be placed. Please try again later.</div>
-        @elseif($paystack['enabled'])
-        <button type="submit" class="dot-btn dot-btn-primary" style="width:100%;justify-content:center;">Pay with Paystack</button>
-        @else
-        <button type="submit" class="dot-btn dot-btn-primary" style="width:100%;justify-content:center;">Place order</button>
-        @endif
-        @if($paystack['enabled'])
-        <div style="font-size:0.7rem;color:var(--ink-3);margin-top:0.6rem;text-align:center;">
-            @if($paystack['testMode'])<span style="display:inline-block;margin-right:0.4rem;padding:0.1rem 0.45rem;border-radius:4px;background:var(--brand-soft);color:var(--brand);font-weight:700;letter-spacing:0.06em;font-size:0.62rem;">TEST MODE</span>No real money moves.@endif
-            Placing the order holds your items and takes you to Paystack to pay in {{ $paystack['currency'] }}. An order that is not paid within {{ $paystack['windowMinutes'] }} minutes is cancelled.
+                        <div class="co-delivery">
+                            <h3>Delivery from {{ $g['store_name'] }}</h3>
+                            @if (! $g['can_deliver'])
+                                <p class="co-fix">{{ $region ? $g['store_name'].' does not deliver to '.($region->province ?? 'that address').'.' : 'Choose where to deliver below to see this seller\'s options.' }} @if ($region)Remove these items or change the delivery place.@endif</p>
+                            @else
+                                <form method="POST" action="{{ route('cart.delivery') }}" data-autosubmit-form>
+                                    @csrf
+                                    <fieldset class="ds-fieldset">
+                                        <legend class="ds-visually-hidden">Delivery method for {{ $g['store_name'] }}</legend>
+                                        @foreach ($g['options'] as $o)
+                                            <label class="ds-choice co-option">
+                                                <input type="radio" name="shipping_methods[{{ $storeId }}]" value="{{ $o->methodId }}" @checked($g['selected'] && $g['selected']->methodId === $o->methodId)>
+                                                <span class="ds-choice__text">
+                                                    <span class="ds-choice__label">{{ $o->name }}<span class="co-option__price">{{ $o->priceCents === 0 ? 'Free' : Shop::money($o->priceCents) }}</span></span>
+                                                    <span class="ds-choice__hint">{{ $o->estimateLabel }}</span>
+                                                    @if ($o->isCollection() && $o->collectionAddress)<span class="ds-choice__hint">Collect from {{ $o->collectionAddress }}</span>@endif
+                                                    @if ($o->remainingForFree($g['items_cents']) !== null && $o->remainingForFree($g['items_cents']) > 0)<span class="ds-choice__hint">Spend {{ Shop::money($o->remainingForFree($g['items_cents'])) }} more with this seller for free delivery.</span>@endif
+                                                </span>
+                                            </label>
+                                        @endforeach
+                                    </fieldset>
+                                    <noscript><x-ds.button type="submit" variant="quiet" size="sm">Update delivery</x-ds.button></noscript>
+                                </form>
+                            @endif
+                        </div>
+
+                        <dl class="co-parcel__sum">
+                            <div><dt>Items</dt><dd>{{ Shop::money($g['items_cents']) }}</dd></div>
+                            @if ($g['discount_cents'] > 0)<div><dt>Discount</dt><dd>{{ Shop::money(-$g['discount_cents']) }}</dd></div>@endif
+                            @if ($g['can_deliver'])<div><dt>Delivery</dt><dd>{{ $g['delivery_cents'] === 0 ? 'Free' : Shop::money($g['delivery_cents']) }}</dd></div>@endif
+                            <div class="co-parcel__total"><dt>Parcel total</dt><dd>{{ Shop::money($g['total_cents']) }}</dd></div>
+                        </dl>
+                    </section>
+                @endforeach
+            </div>
+
+            <aside class="co-side" aria-label="Order total">
+                @include('checkout._label', ['quote' => $quote, 'heading' => 'Total to pay', 'behind' => 'var(--ground)'])
+
+                <div class="co-act">
+                    @if ($blocked)
+                        <p class="co-fix" role="alert">Fix the items marked above before you check out.</p>
+                    @elseif ($undeliverable)
+                        <p class="co-fix" role="alert">One seller cannot deliver to the place below yet. Change the place or remove their items.</p>
+                    @endif
+                    @if ($blocked || $undeliverable)
+                        <x-ds.button variant="primary" size="lg" block disabled>Go to checkout</x-ds.button>
+                    @else
+                        <x-ds.button :href="route('checkout.show')" variant="primary" size="lg" block iconRight="arrow-right">Go to checkout</x-ds.button>
+                    @endif
+                    <p class="ds-muted co-note">You pay on the next steps. {{ $signedIn ? '' : 'No account needed: we send your order link to your e-mail.' }}</p>
+                    <x-ds.button :href="route('products.index')" variant="link">Continue shopping</x-ds.button>
+                </div>
+
+                <x-ds.panel title="Promo code" class="co-panel">
+                    @if ($promo)
+                        <p><span class="ds-code">{{ $promo->code }}</span> is applied. {{ \App\Services\Checkout\CartPage::describePromo($quote) }}.@if ($promo->expires_at) Valid until {{ $promo->expires_at->format('j M Y') }}.@endif @if ($promo->max_uses !== null) Limited to {{ $promo->max_uses }} uses in total, {{ max(0, $promo->max_uses - $promo->used_count) }} left.@endif</p>
+                        <form method="POST" action="{{ route('cart.promo.clear') }}">@csrf @method('DELETE')<x-ds.button type="submit" variant="quiet" size="sm">Remove code</x-ds.button></form>
+                    @else
+                        <form method="POST" action="{{ route('cart.promo') }}" class="co-inline">
+                            @csrf
+                            <x-ds.input label="Have a code?" name="promo_code" id="cart-promo" autocomplete="off" hint="A code works on items from the seller who issued it. The terms are shown once it applies." />
+                            <x-ds.button type="submit" variant="quiet">Apply</x-ds.button>
+                        </form>
+                    @endif
+                </x-ds.panel>
+
+                <x-ds.panel title="Delivering to" class="co-panel">
+                    <p class="ds-muted">@if ($region){{ $region->province ?? 'South Africa' }}{{ $region->postalCode ? ', '.$region->postalCode : '' }}. Delivery prices and dates are estimates for this place.@else Not set. Prices that depend on the place show once you choose it.@endif</p>
+                    <form method="POST" action="{{ route('cart.region') }}" class="co-region">
+                        @csrf
+                        <x-ds.select label="Province" name="province" id="cart-province" :options="array_combine($provinces, $provinces)" placeholder="Choose a province" :selected="$estimate['province'] ?? $region?->province" />
+                        <x-ds.input label="Postal code" name="postal_code" id="cart-postal" inputmode="numeric" maxlength="4" autocomplete="postal-code" :value="$estimate['postal_code'] ?? $region?->postalCode" />
+                        <x-ds.button type="submit" variant="quiet">Update delivery prices</x-ds.button>
+                    </form>
+                </x-ds.panel>
+            </aside>
         </div>
-        @elseif(! $paystack['refused'])
-        <div style="font-size:0.7rem;color:var(--ink-3);margin-top:0.6rem;text-align:center;">No payment is taken. Your order is placed as pending and unpaid.</div>
-        @endif
-    </form>
     @endif
-
-</div>
 </x-store-layout>

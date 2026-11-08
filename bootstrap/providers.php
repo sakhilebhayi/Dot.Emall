@@ -1,6 +1,7 @@
 <?php
 
 use App\Providers\AppServiceProvider;
+use App\Providers\CheckoutServiceProvider;
 use App\Providers\DiscoveryServiceProvider;
 use App\Providers\EmallServiceProvider;
 use App\Providers\FortifyServiceProvider;
@@ -14,4 +15,5 @@ return [
     FortifyServiceProvider::class,
     JetstreamServiceProvider::class,
     DiscoveryServiceProvider::class,
+    CheckoutServiceProvider::class,
 ];

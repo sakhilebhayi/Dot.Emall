@@ -63,6 +63,17 @@ class DeleteUser implements DeletesUsers
      */
     private function refuseWhileOrdersAreOpen(User $user): void
     {
+        if (($reason = $this->blockedReason($user)) !== null) {
+            throw ValidationException::withMessages(['password' => $reason]);
+        }
+    }
+
+    /**
+     * Why this account cannot be deleted right now, in words for the person; null when it can. The account page reads the same answer, so
+     * what it says and what the delete button does cannot disagree.
+     */
+    public function blockedReason(User $user): ?string
+    {
         $open = [OrderStatus::Pending->value, OrderStatus::Processing->value, OrderStatus::Shipped->value];
         $owedBack = [RefundStatus::Pending->value, RefundStatus::Submitted->value, RefundStatus::Failed->value];
 
@@ -80,11 +91,11 @@ class DeleteUser implements DeletesUsers
             ->exists();
 
         if ($asBuyer || $asSeller) {
-            throw ValidationException::withMessages([
-                'password' => $asSeller
-                    ? 'You still have paid orders to ship or cancel. Finish them first, then delete your account.'
-                    : 'You still have orders on their way or a refund being paid back. Wait for them to finish, or cancel them, then delete your account.',
-            ]);
+            return $asSeller
+                ? 'You still have paid orders to ship or cancel. Finish them first, then delete your account.'
+                : 'You still have orders on their way or a refund being paid back. Wait for them to finish, or cancel them, then delete your account.';
         }
+
+        return null;
     }
 }

@@ -139,7 +139,7 @@ class StorefrontCurrencyTest extends TestCase
         $order->items()->update(['status' => 'delivered']);
         $order->forceFill(['status' => 'delivered'])->save();
 
-        $page = $this->actingAs($seller)->get(route('dashboard'))->assertOk();
+        $page = $this->actingAs($seller)->get(route('seller.dashboard'))->assertOk();
 
         $page->assertSee('R2,469.12')->assertDontSee('$2,469.12');
     }
@@ -165,7 +165,7 @@ class StorefrontCurrencyTest extends TestCase
         foreach ([
             [$buyer, route('orders.show', $orderId)],
             [$buyer, route('orders.index')],
-            [$seller, route('dashboard')],
+            [$seller, route('seller.dashboard')],
             [$seller, route('seller.orders.index')],
             [null, route('products.show', $listing)],
         ] as [$user, $url]) {
