@@ -83,7 +83,11 @@ class HomeController extends Controller
         Product::query()->browsable()->whereIn('category_id', array_keys($rootOf))->where('stock', '>', 0)->whereHas('images')
             ->with('images')->orderByDesc('rating_count')->orderByDesc('id')->limit(120)->get()
             ->each(function (Product $p) use (&$byCategory, $rootOf) {
-                $byCategory[$rootOf[$p->category_id]] ??= $p->images->first()->url();
+                // Up to four different products per category: the lead tile shows them side by side instead of one picture blown up.
+                $root = $rootOf[$p->category_id];
+                if (count($byCategory[$root] ?? []) < 4) {
+                    $byCategory[$root][] = $p->images->first()->url();
+                }
             });
 
         return array_map(fn (array $r) => [
@@ -91,7 +95,8 @@ class HomeController extends Controller
             'name' => $r['name'],
             'slug' => $r['slug'],
             'count' => $r['rollup_count'],
-            'image' => $byCategory[$r['id']] ?? null,
+            'image' => $byCategory[$r['id']][0] ?? null,
+            'images' => $byCategory[$r['id']] ?? [],
             'basis' => number_format($r['rollup_count']).' '.($r['rollup_count'] === 1 ? 'product' : 'products').' you can buy today',
         ], $roots);
     }

@@ -5,7 +5,7 @@
 --}}
 @props(['title', 'href' => null, 'image' => null, 'store' => null, 'option' => null, 'unitCents' => null, 'quantity', 'lineCents', 'note' => null])
 <div {{ $attributes->class('ds-cartline') }}>
-    <span class="ds-cartline__media">@if ($image)<img src="{{ $image }}" alt="" loading="lazy" decoding="async" width="104" height="104">@endif</span>
+    <span class="ds-cartline__media">@if ($image)<img src="{{ $image }}" alt="" loading="lazy" decoding="async" width="104" height="104">@else<span class="ds-cartline__noimg">No photo</span>@endif</span>
     <div class="ds-cartline__info">
         @if ($store)<span class="ds-cartline__meta">{{ $store }}</span>@endif
         <span class="ds-cartline__title">@if ($href)<a href="{{ $href }}">{{ $title }}</a>@else{{ $title }}@endif</span>

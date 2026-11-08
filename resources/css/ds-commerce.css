@@ -3,14 +3,25 @@
 /* Product card: no box. A photograph on its backdrop, then the facts. The title link stretches over the whole card (one tab stop). */
 .ds-pcard { position: relative; display: grid; grid-template-rows: auto 1fr; gap: var(--s-3); min-width: 0; }
 .ds-pcard__media { position: relative; display: block; aspect-ratio: var(--ratio, 4 / 5); background: var(--photo-ground); border-radius: var(--r-photo); overflow: hidden; }
-.ds-pcard__media img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform var(--t-sheet) var(--ease); }
+.ds-pcard__media img { position: relative; z-index: 0; width: 100%; height: 100%; object-fit: cover; display: block; transition: transform var(--t-sheet) var(--ease); filter: brightness(var(--photo-brightness, 1)); }
 @media (hover: hover) { .ds-pcard:hover .ds-pcard__media img { transform: scale(1.035); } }
-.ds-pcard__noimg { position: absolute; inset: 0; display: grid; place-items: center; color: var(--ink-3); }
+.ds-pcard__noimg { position: absolute; inset: 0; z-index: 1; display: flex; flex-direction: column; justify-content: space-between; gap: var(--s-2); padding: var(--s-3); background: var(--sunken); border: 1px dashed var(--line-strong); border-radius: inherit; color: var(--ink-2); }
+.ds-pcard__media:has(.ds-pcard__noimg)::before { content: none; }
+.ds-pcard__noimg-name { font-weight: 700; font-size: var(--text-md); line-height: 1.2; letter-spacing: -0.005em; color: var(--ink); display: -webkit-box; -webkit-line-clamp: 4; line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.ds-pcard__noimg-note { display: flex; align-items: flex-start; gap: 0.4em; font-size: var(--text-xs); line-height: 1.3; font-weight: 600; color: var(--ink-3); }
+.ds-pcard__noimg-note .ds-icon { flex: none; margin-top: 0.05em; }
+/* A small tile (the phone list's square, a cart thumbnail) has room for the note only, not a repeated name. */
+.ds-pcard__media { container-type: inline-size; }
+@container (max-width: 10rem) {
+    .ds-pcard__noimg-name { display: none; }
+    .ds-pcard__noimg { justify-content: center; padding: var(--s-1); }
+    .ds-pcard__noimg-note { flex-direction: column; align-items: center; text-align: center; font-size: 0.6875rem; }
+}
 .ds-pcard__tag { position: absolute; inset-block-end: var(--s-2); inset-inline-start: var(--s-2); }
 .ds-pcard__wish { position: absolute; z-index: 2; inset-block-start: var(--s-1); inset-inline-end: var(--s-1); }
 .ds-pcard__wish .ds-icon-btn { background: color-mix(in srgb, var(--surface) 88%, transparent); border-radius: 50%; }
 .ds-pcard__body { display: grid; gap: var(--s-1); align-content: start; min-width: 0; }
-.ds-pcard__store { font-size: var(--text-sm); color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ds-pcard__store { font-size: var(--text-sm); color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ds-pcard__title { font-size: var(--text-base); font-weight: 600; line-height: 1.3; letter-spacing: 0; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .ds-pcard__title a { color: var(--ink); text-decoration: none; }
 .ds-pcard__title a::after { content: ""; position: absolute; inset: 0; z-index: 1; }
@@ -18,7 +29,7 @@
 .ds-pcard__price { margin-block-start: var(--s-1); }
 .ds-pcard__stock { font-size: var(--text-sm); display: inline-flex; align-items: center; gap: 0.35em; font-weight: 600; }
 .ds-pcard__stock--cau { color: var(--cau); }
-.ds-pcard.is-out .ds-pcard__media img { opacity: 0.55; filter: grayscale(0.6); }
+.ds-pcard.is-out .ds-pcard__media img { filter: grayscale(0.6) brightness(calc(var(--photo-brightness, 1) * 0.72)); }
 .ds-pcard.is-out .ds-pcard__title a { color: var(--ink-2); }
 .ds-pcard--row { grid-template-columns: 6.5rem minmax(0, 1fr); grid-template-rows: none; gap: var(--s-4); align-items: start; padding-block: var(--s-3); border-bottom: 1px solid var(--line); }
 .ds-pcard--row .ds-pcard__media { --ratio: 1 / 1; }
@@ -32,7 +43,12 @@
 .ds-gallery__stage { position: relative; background: var(--photo-ground); border-radius: var(--r-photo); overflow: hidden; aspect-ratio: var(--ratio, 1 / 1); touch-action: pan-y; }
 .ds-gallery__slide { position: absolute; inset: 0; margin: 0; display: none; }
 .ds-gallery__slide.is-active { display: block; }
-.ds-gallery__slide img { width: 100%; height: 100%; object-fit: contain; display: block; transition: transform var(--t-sheet) var(--ease); user-select: none; -webkit-user-drag: none; }
+.ds-gallery__slide img { position: relative; width: 100%; height: 100%; object-fit: contain; display: block; transition: transform var(--t-sheet) var(--ease); user-select: none; -webkit-user-drag: none; filter: brightness(var(--photo-brightness, 1)); background: var(--photo-ground); }
+.ds-gallery__slide--none { display: none; place-items: center; align-content: center; gap: var(--s-2); text-align: center; padding: var(--s-5); color: var(--ink-2); background: var(--sunken); border: 1px dashed var(--line-strong); border-radius: var(--r-photo); }
+.ds-gallery__slide--none.is-active { display: grid; }
+.ds-gallery__slide--none figcaption { font-weight: 650; font-size: var(--text-base); }
+.ds-gallery__stage:has(.ds-gallery__slide--none) { cursor: default; aspect-ratio: 4 / 3; }
+.ds-gallery__slide--none small { font-size: var(--text-sm); color: var(--ink-3); max-width: 28ch; }
 .ds-gallery.is-zoomed .ds-gallery__slide.is-active img { transform: scale(2.2); transform-origin: var(--zx, 50%) var(--zy, 50%); transition: transform var(--t-base) var(--ease); }
 .ds-gallery__stage[data-zoomable] { cursor: zoom-in; }
 .ds-gallery.is-zoomed .ds-gallery__stage { cursor: zoom-out; }
@@ -43,7 +59,7 @@
 .ds-gallery__count { position: absolute; inset-block-end: var(--s-2); inset-inline-start: var(--s-2); z-index: 2; padding: 0.2em 0.6em; border-radius: var(--r-label); background: color-mix(in srgb, var(--surface) 90%, transparent); font-size: var(--text-xs); font-weight: 650; font-variant-numeric: tabular-nums; }
 .ds-gallery__thumbs { display: flex; gap: var(--s-2); overflow-x: auto; padding: 4px; scrollbar-width: thin; list-style: none; margin: 0; }
 .ds-gallery__thumb { flex: none; width: 4.25rem; aspect-ratio: 1; padding: 0; border: 1px solid var(--line); border-radius: var(--r-photo); background: var(--photo-ground); overflow: hidden; cursor: pointer; }
-.ds-gallery__thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.ds-gallery__thumb img { position: relative; width: 100%; height: 100%; object-fit: cover; display: block; filter: brightness(var(--photo-brightness, 1)); }
 .ds-gallery__thumb[aria-current="true"] { outline: 2px solid var(--ink); outline-offset: 1px; border-color: var(--ink); }
 .ds-gallery__thumb:hover { border-color: var(--ink); }
 @media (min-width: 48rem) {
@@ -162,3 +178,21 @@
 @media (min-width: 48rem) { .ds-buybar { display: none; } }
 .has-bottom-bar:not(.ds-ctx-account):not(.ds-ctx-seller):not(.ds-ctx-operator) .ds-app { padding-bottom: 4.5rem; }
 @media (min-width: 48rem) { .has-bottom-bar:not(.ds-ctx-account):not(.ds-ctx-seller):not(.ds-ctx-operator) .ds-app { padding-bottom: 0; } }
+
+
+/* Photos wait on a quiet skeleton, behind the picture (cards, thumbnails and cart lines; the big stage keeps its flat ground and its reserved ratio), so a slot is never an empty square and nothing jumps. It pulses a few times and then
+   rests (a photo that never loads should not animate forever); with reduced motion it does not pulse at all. In the dark theme the near-white
+   studio grounds are dimmed one step so a photograph does not glare against the indigo page. */
+:root { --photo-brightness: 1; }
+@media (prefers-color-scheme: dark) { :root:not(.light) { --photo-brightness: 0.76; } }
+:root.dark { --photo-brightness: 0.76; }
+.disc-tile img, .disc-ranked img, .disc-mosaic img, .disc-pick__media img, .ds-cartline__media img, .co-photos img, .wl-item__media img, .ds-hero__photo img { filter: brightness(var(--photo-brightness)); }
+.ds-pcard__media::before, .ds-gallery__thumb::before, .ds-cartline__media::before {
+    content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none; background: linear-gradient(110deg, var(--sunken) 30%, var(--photo-ground) 50%, var(--sunken) 70%); background-size: 220% 100%; animation: ds-photo-wait 1.5s ease-in-out 5;
+}
+.ds-gallery__thumb { position: relative; }
+.ds-cartline__media { position: relative; }
+.ds-cartline__noimg { position: absolute; inset: 0; z-index: 1; display: grid; place-items: center; text-align: center; padding: var(--s-1); font-size: 0.6875rem; line-height: 1.25; font-weight: 600; color: var(--ink-3); border: 1px dashed var(--line-strong); border-radius: inherit; background: var(--sunken); }
+.ds-gallery__slide { z-index: 1; }
+@keyframes ds-photo-wait { from { background-position: 120% 0; } to { background-position: -20% 0; } }
+@media (prefers-reduced-motion: reduce) { .ds-pcard__media::before, .ds-gallery__thumb::before, .ds-cartline__media::before { animation: none; } }

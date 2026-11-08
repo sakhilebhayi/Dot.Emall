@@ -165,10 +165,14 @@
 @media (hover: hover) { .disc-tile img { transition: transform var(--t-sheet) var(--ease); } .disc-tile a:hover img { transform: scale(1.035); } .disc-tile a { overflow: hidden; } }
 .disc-tile--lead { grid-column: 1 / -1; }
 .disc-tile--lead img { aspect-ratio: 2 / 1; }
+/* The lead tile shows four different products of the category side by side, not one picture blown up to fill it. */
+.disc-tile__mosaic { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 2px; background: var(--line); }
+.disc-tile--lead .disc-tile__mosaic img { aspect-ratio: 1; height: 100%; min-height: 0; }
 @media (min-width: 48rem) {
     .disc-tiles { grid-template-columns: repeat(4, minmax(0, 1fr)); }
     .disc-tile--lead { grid-column: span 2; grid-row: span 2; }
     .disc-tile--lead img { aspect-ratio: auto; height: 100%; min-height: 18rem; }
+    .disc-tile--lead .disc-tile__mosaic { height: 100%; min-height: 18rem; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; }
     .disc-tile--lead a { grid-template-rows: minmax(0, 1fr) auto; }
 }
 

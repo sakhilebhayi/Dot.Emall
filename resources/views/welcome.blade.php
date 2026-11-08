@@ -91,7 +91,7 @@
                     @foreach ($shelf as $tile)
                         <li class="disc-tile @if ($loop->first && count($shelf) >= 5) disc-tile--lead @endif">
                             <a href="{{ route('categories.show', $tile['slug']) }}">
-                                @if ($tile['image'])<img src="{{ $tile['image'] }}" alt="" width="480" height="480" loading="lazy" decoding="async">@else<span class="disc-tile__noimg"><x-ds.icon name="image" :size="32" /></span>@endif
+                                @if ($loop->first && count($shelf) >= 5 && count($tile['images']) >= 4)<span class="disc-tile__mosaic">@foreach ($tile['images'] as $shot)<img src="{{ $shot }}" alt="" width="240" height="240" loading="lazy" decoding="async">@endforeach</span>@elseif ($tile['image'])<img src="{{ $tile['image'] }}" alt="" width="480" height="480" loading="lazy" decoding="async">@else<span class="disc-tile__noimg"><x-ds.icon name="image" :size="32" /></span>@endif
                                 <span class="disc-tile__label"><strong>{{ $tile['name'] }}</strong><span>{{ $tile['basis'] }}</span></span>
                             </a>
                         </li>
