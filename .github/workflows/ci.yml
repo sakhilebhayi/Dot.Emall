@@ -1,8 +1,12 @@
 name: CI
 
 # Runs the test suite on every pull request (whatever its base branch, so stacked
-# PRs are covered) and on pushes to the trunk. The suite uses in-memory SQLite
+# PRs are covered) and on pushes to the trunk. `tests` uses in-memory SQLite
 # from phpunit.xml and fakes Vite, so no database or asset build is needed.
+# `tests-postgres` runs the same suite on PostgreSQL 16 (phpunit.pgsql.xml), which
+# is what production runs: LIKE is case sensitive there, numeric(12,2) overflows,
+# FOR UPDATE really locks, and the parallel-checkout tests (stock, promo count,
+# payment and cancellation races) only run there. SQLite alone hid all of that.
 on:
   # Called by deploy.yml as the release gate.
   workflow_call: {}
@@ -59,3 +63,78 @@ jobs:
           MAIL_MAILER: array
           BROADCAST_CONNECTION: log
         run: ./vendor/bin/phpunit --colors=never
+
+  tests-postgres:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: dot_emall_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.4"
+          tools: composer:v2
+          coverage: none
+          extensions: pdo_pgsql, pgsql, sqlite3, pdo_sqlite, mbstring, intl, bcmath, curl, gd
+
+      - name: Prepare environment
+        run: cp .env.example .env
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist
+
+      - name: Generate application key
+        run: php artisan key:generate
+
+      - name: Run tests on PostgreSQL
+        env:
+          DB_HOST: 127.0.0.1
+          DB_PORT: 5432
+          DB_USERNAME: postgres
+          DB_PASSWORD: postgres
+          DB_DATABASE: dot_emall_test
+        run: ./vendor/bin/phpunit -c phpunit.pgsql.xml --colors=never
+
+  # Production boots with `route:cache`, `config:cache` and `event:cache`. This opens every signed-in page that way (a
+  # route file that registers anything besides routes silently loses it under route:cache: Dot.Pulse, 2026-11-08).
+  signed-in-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.4"
+          tools: composer:v2
+          coverage: none
+          extensions: sqlite3, pdo_sqlite, mbstring, intl, bcmath, curl, gd
+
+      - name: Prepare environment
+        run: cp .env.example .env
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist
+
+      - name: Generate application key
+        run: php artisan key:generate
+
+      - name: Signed-in smoke check with the production caches on
+        run: sh tests/Support/signed-in-smoke.sh
