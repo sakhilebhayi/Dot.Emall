@@ -1,0 +1,117 @@
+/* Element defaults for every page: type, links, focus, the skip link, reduced motion, and the few helpers views may use directly. */
+html {
+    overflow-x: clip;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    scroll-padding-top: calc(var(--header-h) + var(--s-4));
+}
+body {
+    overflow-x: clip;
+    margin: 0;
+    min-height: 100vh;
+    min-height: 100dvh;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--font-text);
+    font-size: var(--text-base);
+    line-height: var(--lh-body);
+    font-stretch: var(--width-text);
+    font-kerning: normal;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+}
+[x-cloak] { display: none !important; }
+::selection { background: var(--awning); color: var(--on-awning); }
+
+h1, h2, h3, h4 {
+    margin: 0;
+    font-family: var(--font-text);
+    font-stretch: var(--width-head);
+    font-weight: 700;
+    line-height: var(--lh-tight);
+    letter-spacing: -0.015em;
+    color: var(--ink);
+    text-wrap: balance;
+    overflow-wrap: break-word;
+    min-width: 0;
+}
+h1 { font-size: var(--text-2xl); }
+h2 { font-size: var(--text-xl); }
+h3 { font-size: var(--text-lg); line-height: var(--lh-snug); }
+h4 { font-size: var(--text-md); line-height: var(--lh-snug); }
+p { margin: 0; text-wrap: pretty; }
+small { font-size: var(--text-sm); }
+strong, b { font-weight: 650; }
+
+a { color: var(--brand); text-underline-offset: 0.2em; text-decoration-thickness: 1px; }
+a:hover { color: var(--brand-hover); }
+input[type="checkbox"], input[type="radio"] { accent-color: var(--brand); }
+img, svg, video { max-width: 100%; }
+img { height: auto; }
+hr { border: 0; border-top: 1px solid var(--line); margin: var(--s-5) 0; }
+code, kbd, samp { font-family: var(--font-code); font-size: 0.875em; }
+
+/* Focus is always visible and appears instantly (no transition on outline). */
+:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+    border-radius: var(--r-label);
+}
+:focus:not(:focus-visible) { outline: none; }
+
+/* Skip link: the first tab stop on every page. */
+.ds-skip {
+    position: absolute;
+    inset-block-start: var(--s-2);
+    inset-inline-start: var(--s-2);
+    z-index: 200;
+    padding: var(--s-3) var(--s-4);
+    background: var(--ink);
+    color: var(--ground);
+    font-weight: 650;
+    border-radius: var(--r-control);
+    transform: translateY(-200%);
+}
+.ds-skip:focus { transform: none; color: var(--ground); }
+
+.ds-visually-hidden {
+    position: absolute !important;
+    width: 1px; height: 1px;
+    margin: -1px; padding: 0; border: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+
+/* Numerals: tabular and lining everywhere a figure sits in a column or a price. Martian Mono prints codes (order numbers, SKUs, tracking). */
+.ds-num { font-variant-numeric: tabular-nums lining-nums; font-feature-settings: "tnum" 1, "lnum" 1; }
+.ds-code { font-family: var(--font-code); font-size: 0.8125em; font-weight: 500; letter-spacing: 0; overflow-wrap: anywhere; }
+.ds-muted { color: var(--ink-3); }
+.ds-container { width: 100%; max-width: var(--container); margin-inline: auto; padding-inline: var(--gutter); }
+.ds-stack > * + * { margin-block-start: var(--stack, var(--s-4)); }
+.ds-prose { max-width: var(--measure); }
+.ds-prose > * + * { margin-block-start: var(--s-4); }
+.ds-prose h2 { font-size: var(--text-lg); margin-block-start: var(--s-6); }
+.ds-prose h3 { font-size: var(--text-md); margin-block-start: var(--s-5); }
+.ds-prose ul, .ds-prose ol { padding-inline-start: 1.25rem; }
+.ds-prose li + li { margin-block-start: var(--s-2); }
+
+/* Reduced motion (WCAG 2.3.3): no transition, animation or smooth scroll when the system asks for less. */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}
+@media print {
+    .ds-no-print { display: none !important; }
+}
+
+/* Touch: links that stand alone (not inside a sentence) get a 44px target. */
+@media (pointer: coarse), (max-width: 39.99rem) {
+    .ds-section__head a, .ds-page-header a, .ds-rating[href], .ds-auth__body a:not(.ds-btn), .ds-stack > a, .ds-header__link { display: inline-flex; align-items: center; min-height: var(--tap); min-width: var(--tap); }
+    main table a, main .table-scroll a, main a.dot-btn { display: inline-flex; align-items: center; min-height: var(--tap); }
+}

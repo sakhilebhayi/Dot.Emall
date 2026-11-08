@@ -1,0 +1,167 @@
+/* Hallmark custom run, hand-derived: Shelf Edge (Dot.Emall). The price label is the unit of the interface; the waybill is the order. Floor: tokens only, no literal colour or font past this file. */
+/* critique: the risk is a flat paper-and-indigo shop; the fix is real product photography as the only large colour, the label strip and perforation as the one recurring device. */
+/*
+ * Dot.Emall design tokens. Everything the layouts and components colour or size comes from here (see DESIGN.md).
+ *
+ * Light and dark are first class. The <html> element carries class="light" or class="dark" once a person has chosen (the choice is kept
+ * in localStorage); with no class the browser's prefers-color-scheme decides, through color-scheme and light-dark(). Colour tokens are
+ * light-dark() pairs, so a single declaration serves both themes and no component needs a dark: variant.
+ *
+ * Contrast: every text pair used by the kit is checked in tests/Unit/DesignTokensTest.php (AA, 4.5:1 text, 3:1 for control edges).
+ */
+:root {
+    color-scheme: light dark;
+}
+:root.light { color-scheme: light; }
+:root.dark { color-scheme: dark; }
+
+:root,
+.kit__theme { /* .kit__theme re-declares the tokens so the gallery can draw both themes side by side: light-dark() is resolved where it is declared. */
+    /* Grounds. Label paper is a cool grey with a breath of green, not cream; the dark theme is deep indigo ink, not black. */
+    --ground: light-dark(#f6f7f4, #161830);
+    --surface: light-dark(#ffffff, #1f2240);
+    --raised: light-dark(#ffffff, #282c4e);
+    --sunken: light-dark(#eceee9, #111326);
+    --photo-ground: light-dark(#eceee9, #2b3052);
+
+    /* Ink (text). ink-3 is the quietest text allowed anywhere: it still passes AA on every ground. */
+    --ink: light-dark(#1b1e36, #eceefa);
+    --ink-2: light-dark(#3a3f5e, #c8ccea);
+    --ink-3: light-dark(#565c7b, #a3a9cf);
+
+    /* Lines. line divides; line-strong is the edge of a control (3:1 against its ground). */
+    --line: light-dark(#dcdfd8, #353a59);
+    --line-strong: light-dark(#7d839c, #6e75a0);
+
+    /* Stamp indigo: the one action colour, taken from the logo chevron. */
+    --brand: light-dark(#4b58a8, #aab4f4);
+    --brand-hover: light-dark(#3d4991, #c0c8f8);
+    --brand-soft: light-dark(#e6e9f8, #2b3160);
+    --on-brand: light-dark(#ffffff, #161830);
+
+    /* Awning yellow: the logo's yellow. It marks the label strip and tape, never body text, and carries ink on it. */
+    --awning: #f2c82d;
+    --on-awning: #1b1e36;
+
+    /* Tones. Each status uses one tone plus a word and a shape, never colour alone. */
+    --pos: light-dark(#0a6b4d, #6fd9ae);
+    --pos-bg: light-dark(#dcf1e8, #173a34);
+    --cau: light-dark(#7a5200, #f2c82d);
+    --cau-bg: light-dark(#fbeec2, #3d3410);
+    --crit: light-dark(#b3261e, #ff9d94);
+    --crit-bg: light-dark(#fbe3e1, #4a2326);
+    --info: var(--brand);
+    --info-bg: var(--brand-soft);
+
+    /* Toast: an inverted strip, so it reads as a different layer in both themes. */
+    --toast-bg: var(--ink);
+    --toast-fg: var(--ground);
+    --toast-accent: light-dark(#f2c82d, #7a5200);
+    --toast-crit: light-dark(#ff9d94, #b3261e);
+
+    /* Focus ring: 2px, 3:1 against every ground. */
+    --focus: light-dark(#3d4991, #f2c82d);
+    --scrim: light-dark(rgb(27 30 54 / 0.55), rgb(8 9 20 / 0.7));
+
+    /* Type. Schibsted Grotesk carries text, headings and every price (tabular lining numerals, a zero that reads as a zero); Martian Mono only prints codes. */
+    --font-text: "Schibsted Grotesk", "Schibsted Grotesk Fallback", system-ui, sans-serif;
+    --font-code: "Martian Mono", "Martian Mono Fallback", ui-monospace, "SF Mono", Menlo, monospace;
+    --text-xs: 0.8125rem;
+    --text-sm: 0.875rem;
+    --text-base: 1rem;
+    --text-md: 1.125rem;
+    --text-lg: clamp(1.25rem, 1.1rem + 0.6vw, 1.5rem);
+    --text-xl: clamp(1.5rem, 1.25rem + 1.1vw, 2rem);
+    --text-2xl: clamp(1.875rem, 1.4rem + 2.2vw, 3rem);
+    --text-3xl: clamp(2.25rem, 1.5rem + 3.6vw, 4.25rem);
+    --lh-tight: 1.1;
+    --lh-snug: 1.3;
+    --lh-body: 1.55;
+    --width-text: 100%;
+    --width-price: 100%;
+    --width-head: 100%;
+
+    /* Space: a 4px unit. */
+    --s-1: 0.25rem;
+    --s-2: 0.5rem;
+    --s-3: 0.75rem;
+    --s-4: 1rem;
+    --s-5: 1.5rem;
+    --s-6: 2rem;
+    --s-7: 3rem;
+    --s-8: 4.5rem;
+    --gutter: 1rem;
+    --measure: 66ch;
+    --container: 80rem;
+    --header-h: 4rem;
+    --bottom-bar-h: 3.75rem;
+    --tap: 2.75rem;
+
+    /* Shape. The radius follows the object: a label has square-ish corners and notches, a control is 6px, a sheet is 12px. */
+    --r-label: 3px;
+    --r-photo: 4px;
+    --r-control: 6px;
+    --r-sheet: 12px;
+    --r-pill: 999px;
+
+    /* Elevation. Nothing in the page body has a shadow; only layers that float above it do. */
+    --lift-1: 0 6px 20px -6px rgb(0 0 0 / 0.28), 0 0 0 1px var(--line);
+    --lift-2: 0 22px 60px -12px rgb(0 0 0 / 0.42), 0 0 0 1px var(--line);
+
+    /* Motion: stamp, do not bounce. Ease-out only; nothing above 300ms except the dialog sheet. */
+    --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+    --t-press: 90ms;
+    --t-quick: 140ms;
+    --t-base: 200ms;
+    --t-sheet: 280ms;
+
+    /* The perforation: how the label divider is drawn (a dashed rule, so it prints and scales as a line, not as an image). */
+    --perf: 2px dashed var(--line-strong);
+    --notch: 9px;
+}
+
+@media (min-width: 40rem) {
+    :root { --gutter: 1.5rem; }
+}
+@media (min-width: 64rem) {
+    :root { --gutter: 2rem; --header-h: 4.5rem; }
+}
+
+/*
+ * Tailwind bridge. The Jetstream and legacy views still use Tailwind colour utilities (text-gray-600, bg-indigo-600, dark:text-gray-400).
+ * tailwind.config.js points those names at these triplets, so those pages take the Shelf Edge palette. New views use the tokens above and
+ * the ds components instead; do not add colour utilities to new work. Format: "R G B" so Tailwind can add an alpha.
+ */
+:root {
+    --tw-gray-50: 246 247 244;
+    --tw-gray-100: 236 238 233;
+    --tw-gray-200: 220 223 216;
+    --tw-gray-300: 195 199 214;
+    --tw-gray-400: 163 169 207;
+    --tw-gray-500: 99 106 138;
+    --tw-gray-600: 74 80 112;
+    --tw-gray-700: 53 58 89;
+    --tw-gray-800: 31 34 64;
+    --tw-gray-900: 22 24 48;
+    --tw-gray-950: 17 19 38;
+    --tw-indigo-50: 238 240 251;
+    --tw-indigo-100: 230 233 248;
+    --tw-indigo-200: 204 210 241;
+    --tw-indigo-300: 170 180 244;
+    --tw-indigo-400: 135 145 224;
+    --tw-indigo-500: 102 114 196;
+    --tw-indigo-600: 75 88 168;
+    --tw-indigo-700: 61 73 145;
+    --tw-indigo-800: 47 56 116;
+    --tw-indigo-900: 35 42 88;
+    --tw-red-100: 251 227 225;
+    --tw-red-400: 255 157 148;
+    --tw-red-500: 179 38 30;
+    --tw-red-600: 179 38 30;
+    --tw-red-700: 143 30 24;
+    --tw-green-400: 111 217 174;
+    --tw-green-500: 10 107 77;
+    --tw-green-600: 10 107 77;
+    --tw-yellow-500: 122 82 0;
+    --tw-yellow-600: 122 82 0;
+}
