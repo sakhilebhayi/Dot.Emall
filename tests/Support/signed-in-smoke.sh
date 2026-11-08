@@ -6,12 +6,13 @@
 # Builds a throwaway SQLite database, runs `php artisan route:cache && config:cache && event:cache` (what every deploy
 # does), opens every page as the right person and compares the answer, then removes the caches again. It never touches
 # your real database: DB_* and the session/cache/queue/mail drivers are forced for this run only, and the cached config
-# is deleted on exit. APP_ENV=production, so a debug page can never hide a failure.
+# is deleted on exit. APP_ENV=production, so a debug page can never hide a failure and APP_URL's host is the only Host the app answers for
+# (trustHosts).
 set -u
 cd "$(dirname "$0")/../.."
 
 WORK=$(mktemp -d)
-export APP_ENV=production APP_DEBUG=false APP_URL=https://emall.smoke.test
+export APP_ENV=production APP_DEBUG=false APP_URL=https://emall.smoke.test TRUSTED_HOSTS=
 export DB_CONNECTION=sqlite DB_DATABASE="$WORK/smoke.sqlite" DB_URL=
 export SESSION_DRIVER=array CACHE_STORE=array QUEUE_CONNECTION=sync MAIL_MAILER=array BROADCAST_CONNECTION=log
 export FILESYSTEM_DISK=local LOG_CHANNEL=stderr LOG_LEVEL=error

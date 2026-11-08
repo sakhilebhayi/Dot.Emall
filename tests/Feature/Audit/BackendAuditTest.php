@@ -5,6 +5,7 @@ namespace Tests\Feature\Audit;
 use App\Actions\Jetstream\DeleteUser;
 use App\Enums\OrderStatus;
 use App\Enums\PaymentStatus;
+use App\Http\Middleware\TrustedHostList;
 use App\Models\CartItem;
 use App\Models\OrderItem;
 use App\Models\PersonalAccessToken;
@@ -13,6 +14,9 @@ use App\Models\User;
 use App\Services\SellerDashboard;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
@@ -297,5 +301,73 @@ class BackendAuditTest extends TestCase
         ] as $table => $index) {
             $this->assertTrue(Schema::hasIndex($table, $index), "{$table} is missing {$index}");
         }
+    }
+
+    // ---- F-09: a forged Host header was copied into the password-reset link and the Paystack callback ----------------------
+
+    public function test_the_trusted_host_list_is_the_app_url_host_unless_told_otherwise(): void
+    {
+        config(['app.url' => 'https://emall.example.co.za', 'security.trusted_hosts' => []]);
+        $this->assertSame(['^emall\.example\.co\.za$'], TrustedHostList::patterns(Request::create('/login')));
+
+        config(['security.trusted_hosts' => ['emall.example.co.za', 'EMALL.example.app']]);
+        $this->assertSame(['^emall\.example\.co\.za$', '^emall\.example\.app$'], TrustedHostList::patterns(Request::create('/login')));
+    }
+
+    public function test_the_health_probe_and_an_unconfigured_app_are_never_locked_out(): void
+    {
+        config(['app.url' => 'https://emall.example.co.za', 'security.trusted_hosts' => []]);
+        $this->assertSame([], TrustedHostList::patterns(Request::create('/up')));
+
+        config(['app.url' => 'http://localhost']);
+        $this->assertSame([], TrustedHostList::patterns(Request::create('/login')));
+    }
+
+    // ---- F-10: a double click on "Add to cart" was a 500 ------------------------------------------------------------------
+
+    public function test_adding_the_same_product_twice_at_once_adds_on_top_instead_of_failing(): void
+    {
+        $product = $this->makeListing($this->makeSeller(), ['stock' => 10]);
+        $buyer = $this->makeBuyer();
+
+        // The competing request lands between this one's read of the cart and its write.
+        $raced = false;
+        DB::beforeExecuting(function (string $query) use (&$raced, $buyer, $product) {
+            if (! $raced && str_starts_with(strtolower($query), 'insert') && str_contains($query, 'cart_items')) {
+                $raced = true;
+                DB::table('cart_items')->insert(['user_id' => $buyer->id, 'product_id' => $product->id, 'quantity' => 1, 'created_at' => now(), 'updated_at' => now()]);
+            }
+        });
+
+        $this->actingAs($buyer)->post(route('cart.store'), ['product_id' => $product->id, 'quantity' => 2])->assertRedirect(route('cart.index'));
+
+        $this->assertTrue($raced, 'the competing insert really happened first');
+        $this->assertSame(3, (int) CartItem::withoutGlobalScopes()->where('user_id', $buyer->id)->sum('quantity'));
+        $this->assertSame(1, CartItem::withoutGlobalScopes()->where('user_id', $buyer->id)->count());
+    }
+
+    // ---- Upload safety (no defect found): an image that is also a script keeps neither the script nor a script name -------
+
+    public function test_a_jpeg_with_php_appended_is_stored_without_the_php_and_with_a_random_image_name(): void
+    {
+        Storage::fake('public');
+        $seller = $this->makeSeller();
+        $product = $this->makeListing($seller);
+
+        $image = imagecreatetruecolor(300, 300);
+        ob_start();
+        imagejpeg($image);
+        $polyglot = ob_get_clean().'<?php system($_GET["c"]); ?>';
+
+        $this->actingAs($seller)
+            ->post(route('seller.products.images.store', $product), ['images' => [UploadedFile::fake()->createWithContent('shell.php.jpg', $polyglot)]])
+            ->assertSessionHasNoErrors();
+
+        $path = $product->images()->firstOrFail()->path;
+        $stored = Storage::disk('public')->get($path);
+
+        $this->assertStringNotContainsString('<?php', $stored);
+        $this->assertStringNotContainsString('system(', $stored);
+        $this->assertMatchesRegularExpression('#^product-images/\d+/[A-Za-z0-9]{40}\.(jpg|png|webp)$#', $path);
     }
 }

@@ -19,13 +19,13 @@ Purpose: this is Dot.Emall's own knowledge home — owned and maintained by the 
 
 Dot.Emall is the marketplace platform in the Dot Ecosystem: a multi-vendor storefront application where sellers open a store, list products, and fulfil orders, while buyers shop across every store in the marketplace. It owns the commerce *matching* domain — listings, catalogue, cart, and order flow — not settlement (Dot.Billing), seller finance (Dot.Finance), or auctions (Dot.Auction).
 
-**Status:** working application. The repository is a Laravel 12 codebase with a real schema, models, a seller desk, a seller flow (store, listings with photos, orders to fulfil, promo codes), an operator review screen for new listings, a public storefront, and ecosystem SSO. **Payment is Paystack, test mode first** (README, "Paystack payments"): with a test key configured, checkout sends the buyer to Paystack to pay the *platform's* account and sellers can fulfil an order only once it is paid; with no key, orders are placed *pending and unpaid* exactly as before. **Seller payouts, splits, commissions and KYC are not built**. Sections below describe what exists today; the Roadmap (§7) covers what's still ahead.
+**Status:** working application. The repository is a Laravel 13 codebase with a real schema, models, a seller desk, a seller flow (store, listings with photos, orders to fulfil, promo codes), an operator review screen for new listings, a public storefront, and ecosystem SSO. **Payment is Paystack, test mode first** (README, "Paystack payments"): with a test key configured, checkout sends the buyer to Paystack to pay the *platform's* account and sellers can fulfil an order only once it is paid; with no key, orders are placed *pending and unpaid* exactly as before. **Seller payouts, splits, commissions and KYC are not built**. Sections below describe what exists today; the Roadmap (§7) covers what's still ahead.
 
 ## 2. Architecture
 
 | Layer | Technology |
 |---|---|
-| Framework | Laravel 12 (PHP 8.4) |
+| Framework | Laravel 13 (PHP 8.4) |
 | Frontend | Livewire 3 · Alpine.js 3 · Tailwind CSS |
 | Auth / accounts | Laravel Jetstream (teams) + Fortify + Sanctum |
 | Database | PostgreSQL 16 — shared instance across the Dot Ecosystem (`infodot` database) |

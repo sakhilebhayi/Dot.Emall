@@ -8,7 +8,7 @@
 
 <br />
 
-![Laravel](https://img.shields.io/badge/Laravel-12-FF2D20?style=flat-square&logo=laravel&logoColor=white) ![PHP](https://img.shields.io/badge/PHP-8.4-777BB4?style=flat-square&logo=php&logoColor=white) ![Livewire](https://img.shields.io/badge/Livewire-3-FB70A9?style=flat-square) ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-336791?style=flat-square&logo=postgresql&logoColor=white)
+![Laravel](https://img.shields.io/badge/Laravel-13-FF2D20?style=flat-square&logo=laravel&logoColor=white) ![PHP](https://img.shields.io/badge/PHP-8.4-777BB4?style=flat-square&logo=php&logoColor=white) ![Livewire](https://img.shields.io/badge/Livewire-3-FB70A9?style=flat-square) ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-336791?style=flat-square&logo=postgresql&logoColor=white)
 
 <br /><br />
 
@@ -111,7 +111,7 @@ Signed-in pages render inside `resources/views/layouts/app.blade.php`. From 860p
 
 | Layer | Technology |
 |---|---|
-| Framework | Laravel 12 |
+| Framework | Laravel 13 |
 | Language | PHP 8.4 |
 | Frontend | Livewire 3 · Alpine.js 3 · Tailwind CSS |
 | Database | PostgreSQL 16 (shared `infodot` database across the ecosystem) |

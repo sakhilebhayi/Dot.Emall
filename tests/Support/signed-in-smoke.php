@@ -79,6 +79,19 @@ $ok = $response->getStatusCode() === 401;
 $failures += $ok ? 0 : 1;
 printf("%-9s %-46s %d%s\n", 'anyone', 'POST /webhooks/paystack (unsigned)', $response->getStatusCode(), $ok ? '  (expected 401)' : '   <-- FAIL (expected 401)');
 
+// Host pinning (TrustHosts, F-09): an unknown Host is refused, a health probe is not.
+foreach ([['https://evil.smoke.test/login', 400], ['https://evil.smoke.test/up', 200]] as [$url, $expected]) {
+    $app['session.store']->flush();
+    Auth::forgetGuards();
+    $request = Request::create($url, 'GET');
+    $response = $kernel->handle($request);
+    $status = $response->getStatusCode();
+    $kernel->terminate($request, $response);
+    $ok = $status === $expected;
+    $failures += $ok ? 0 : 1;
+    printf("%-9s %-46s %d%s\n", 'anyone', $url, $status, $ok ? "  (expected {$expected})" : "   <-- FAIL (expected {$expected})");
+}
+
 // A real sign-in, not a user planted in the guard: InfoDot's launch page posts a handoff token, the app starts a session
 // and sets a cookie, and the NEXT requests (with only that cookie) must be authenticated. This is the path that broke on
 // Dot.Press and Dot.Pulse (sign in through SSO, then every call answers "Unauthenticated"): a stateful-domain or cookie
