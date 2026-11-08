@@ -3,23 +3,15 @@
 namespace App\Notifications;
 
 use App\Models\Product;
-use App\Notifications\Concerns\ChecksPreferences;
+use App\Services\Notifications\NotificationPreferences;
 use App\Support\Shop;
-use Illuminate\Notifications\Messages\MailMessage;
-use Illuminate\Notifications\Notification;
 
-/** The price is now lower than when the person asked. Quotes only recorded prices. */
-class PriceDropNotification extends Notification
+/** The price is now lower than when the person asked. Quotes only recorded prices (the one price history). */
+class PriceDropNotification extends EmallNotification
 {
-    use ChecksPreferences;
+    protected string $category = NotificationPreferences::ALERTS;
 
     public function __construct(public Product $product, public float $was, public float $now, public ?float $lowest30 = null) {}
-
-    /** @return array<int, string> */
-    public function via(object $notifiable): array
-    {
-        return $this->channelsFor($notifiable, 'price_drop');
-    }
 
     private function text(): string
     {
@@ -32,14 +24,16 @@ class PriceDropNotification extends Notification
         return $text;
     }
 
-    public function toMail(object $notifiable): MailMessage
-    {
-        return (new MailMessage)->subject('Price drop: '.$this->product->name)->line($this->text())->action('View product', route('products.show', $this->product));
-    }
-
     /** @return array<string, mixed> */
     public function toDatabase(object $notifiable): array
     {
-        return ['type' => 'price_drop', 'title' => 'Price drop', 'message' => $this->text(), 'product_id' => $this->product->id, 'url' => route('products.show', $this->product)];
+        return [
+            'type' => 'price_drop',
+            'title' => 'Price drop: '.$this->product->name,
+            'message' => $this->text(),
+            'product_id' => $this->product->id,
+            'url' => route('products.show', $this->product),
+            'action' => 'View product',
+        ];
     }
 }

@@ -3,9 +3,12 @@
 namespace App\Services\Discovery;
 
 use App\Models\Product;
+use App\Models\ProductVariant;
 use App\Models\User;
 use App\Models\Wishlist;
 use App\Models\WishlistItem;
+use App\Services\Cart\CartManager;
+use App\Services\Cart\CartProblem;
 use App\Support\Actor;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -113,9 +116,11 @@ class Wishlists
     }
 
     /**
-     * Puts one unit in the buyer's cart (never more than is in stock) and takes it off the list.
+     * Puts one unit in the buyer's cart through the cart service (a cart line is a VARIANT) and takes it off the list.
+     * A saved variant is used as saved; a product with a single choice uses that choice; a product with several choices
+     * and none saved is not guessed at: the answer says so (`needs_variant`) and the item stays on the list.
      *
-     * @return array{ok: bool, message: string}
+     * @return array{ok: bool, message: string, needs_variant?: bool}
      */
     public function moveToCart(User $user, WishlistItem $item): array
     {
@@ -125,18 +130,25 @@ class Wishlists
             return ['ok' => false, 'message' => 'This product is no longer available.'];
         }
 
-        if ($product->stock < 1) {
+        $active = ProductVariant::query()->where('product_id', $product->id)->where('is_active', true)->orderBy('price')->orderBy('id')->get();
+        $variant = $item->variant_id !== null ? $active->firstWhere('id', $item->variant_id) : null;
+
+        if ($variant === null) {
+            if ($active->count() > 1) {
+                return ['ok' => false, 'needs_variant' => true, 'message' => '"'.$product->name.'" comes in several options. Choose one on the product page.'];
+            }
+
+            $variant = $active->first();
+        }
+
+        if ($variant === null || $variant->stock < 1) {
             return ['ok' => false, 'message' => '"'.$product->name.'" is out of stock. Set an alert to hear when it is back.'];
         }
 
-        $inCart = (int) DB::table('cart_items')->where('user_id', $user->id)->where('product_id', $product->id)->value('quantity');
-
-        if ($inCart >= $product->stock) {
-            return ['ok' => false, 'message' => 'You already have all '.$product->stock.' in stock in your cart.'];
-        }
-
-        if ($inCart === 0) {
-            DB::table('cart_items')->insertOrIgnore(['user_id' => $user->id, 'product_id' => $product->id, 'quantity' => 1, 'created_at' => now(), 'updated_at' => now()]);
+        try {
+            app(CartManager::class)->add($user, $variant, 1);
+        } catch (CartProblem $e) {
+            return ['ok' => false, 'message' => $e->getMessage()];
         }
 
         $item->delete();

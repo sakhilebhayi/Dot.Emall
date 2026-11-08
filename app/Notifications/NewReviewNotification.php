@@ -3,24 +3,15 @@
 namespace App\Notifications;
 
 use App\Models\Review;
-use Illuminate\Notifications\Notification;
 
 /**
- * In-app (database channel) notification sent to a product's store owner
+ * Notice (in the app and, like every seller notice, by e-mail) sent to a product's store owner
  * the moment a buyer leaves a review. Dispatched from
  * App\Http\Controllers\ReviewController::store().
  */
-class NewReviewNotification extends Notification
+class NewReviewNotification extends EmallNotification
 {
     public function __construct(public Review $review) {}
-
-    /**
-     * @return array<int, string>
-     */
-    public function via(object $notifiable): array
-    {
-        return ['database'];
-    }
 
     /**
      * @return array<string, mixed>
@@ -36,6 +27,7 @@ class NewReviewNotification extends Notification
             'product_id' => $product->id,
             'review_id' => $this->review->id,
             'url' => route('products.show', $product),
+            'action' => 'See the review',
         ];
     }
 }

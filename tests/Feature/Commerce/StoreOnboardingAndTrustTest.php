@@ -384,16 +384,21 @@ class StoreOnboardingAndTrustTest extends TestCase
         $order = $this->placeOrder($buyer, array_map(fn () => [$this->makeListing($seller, ['rating_count' => 0]), 1], range(1, 5)));
         $this->deliver($order);
         app(ReturnService::class)->request($order->items()->first()->fresh(), $buyer, 'faulty');
-        Product::query()->where('store_id', $store->id)->limit(2)->get()->each(function ($p, $i) {
-            DB::table('products')->where('id', $p->id)->update(['rating_count' => $i === 0 ? 3 : 1, 'rating_average' => $i === 0 ? 4.0 : 2.0]);
-        });
+        // The store's rating is the discovery workstream's aggregate over published reviews (D-51), not a sum of product columns.
+        DB::table('store_rating_aggregates')->insert(['store_id' => $store->id, 'average_rating' => 3.5, 'review_count' => 6, 'updated_at' => now()]);
 
         $trust = StoreTrust::for($store->fresh());
 
         $this->assertSame([5, 20.0], [$trust['metrics']['return_rate']['sample'], (float) $trust['metrics']['return_rate']['value']]);
-        $this->assertSame(4, $trust['metrics']['review_count']['value']);
+        $this->assertSame(6, $trust['metrics']['review_count']['value']);
         $this->assertEqualsWithDelta(3.5, $trust['metrics']['review_average']['value'], 0.001);
         $this->assertSame(14, $trust['months_on_emall']);
+
+        DB::table('store_rating_aggregates')->where('store_id', $store->id)->update(['review_count' => 4]);
+        $few = StoreTrust::for($store->fresh())['metrics'];
+        $this->assertSame(4, $few['review_count']['value']);
+        $this->assertNull($few['review_average']['value'], 'an average of four is withheld, like on the product pages');
+        $this->assertStringContainsString('needs 5; has 4', $few['review_average']['note']);
     }
 
     public function test_the_trust_ladder_costs_a_fixed_number_of_queries(): void

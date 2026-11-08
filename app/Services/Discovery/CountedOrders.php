@@ -12,9 +12,11 @@ use Illuminate\Support\Facades\DB;
  * What counts as a real purchase when a number is shown to a shopper (units sold, bought together, trending,
  * reorder). One definition, in one place, so every figure agrees:
  *
- *   an order LINE counts when it is not cancelled and either its order's payment is confirmed (paid or partially
- *   refunded) or the order never required payment (placed before the gateway was configured) and the line has been
- *   DELIVERED. Pending, unpaid, failed, cancelled and fully refunded orders never count.
+ *   an order LINE counts when it is not cancelled or returned-and-refunded and either its order's payment is confirmed
+ *   (paid or partially refunded) or the order never required payment (placed before the gateway was configured) and
+ *   the line is COMPLETED (delivered, or collected: the state machine's own OrderStatus::completedValues, D-51).
+ *   Pending, unpaid, failed, cancelled and fully refunded orders never count, and a line whose return was refunded
+ *   is not a sale to rank or recommend by.
  */
 class CountedOrders
 {
@@ -23,12 +25,12 @@ class CountedOrders
     {
         $query = DB::table('order_items as oi')
             ->join('orders as o', 'o.id', '=', 'oi.order_id')
-            ->where('oi.status', '!=', OrderStatus::Cancelled->value)
+            ->whereNotIn('oi.status', [OrderStatus::Cancelled->value, OrderStatus::Refunded->value])
             ->where(function ($q) {
                 $q->whereIn('o.payment_status', [PaymentStatus::Paid->value, PaymentStatus::PartiallyRefunded->value])
                     ->orWhere(function ($q) {
                         $q->where('o.requires_payment', false)
-                            ->where('oi.status', OrderStatus::Delivered->value)
+                            ->whereIn('oi.status', OrderStatus::completedValues())
                             ->where('o.payment_status', '!=', PaymentStatus::Refunded->value);
                     });
             });
@@ -51,7 +53,7 @@ class CountedOrders
                     $q->whereIn('o.payment_status', [PaymentStatus::Paid->value, PaymentStatus::PartiallyRefunded->value])
                         ->orWhere(function ($q) {
                             $q->where('o.requires_payment', false)
-                                ->where('oi.status', OrderStatus::Delivered->value)
+                                ->whereIn('oi.status', OrderStatus::completedValues())
                                 ->where('o.payment_status', '!=', PaymentStatus::Refunded->value);
                         });
                 });

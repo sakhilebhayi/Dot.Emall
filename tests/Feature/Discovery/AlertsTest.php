@@ -2,7 +2,6 @@
 
 namespace Tests\Feature\Discovery;
 
-use App\Contracts\NotificationPreferences;
 use App\Models\ProductAlert;
 use App\Models\SavedSearch;
 use App\Models\User;
@@ -12,6 +11,7 @@ use App\Notifications\SavedSearchDigestNotification;
 use App\Services\Discovery\AlertEvaluator;
 use App\Services\Discovery\ProductAlerts;
 use App\Services\Discovery\SavedSearches;
+use App\Services\Notifications\NotificationPreferences;
 use App\Services\Search\SearchRequest;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
@@ -149,40 +149,46 @@ class AlertsTest extends TestCase
         Notification::assertSentTo($user, PriceDropNotification::class, fn ($n) => $n->lowest30 === 900.0 && ! str_contains($n->toDatabase($user)['message'], 'lowest'), 'today\'s price is the lowest on record, so the notice makes no claim about an earlier low');
     }
 
-    public function test_notifications_use_database_and_mail_and_respect_preferences(): void
+    public function test_alerts_use_the_one_preferences_service(): void
     {
         $user = User::factory()->create();
         $notification = new BackInStockNotification($this->makeListing($this->makeSeller()));
+        $prefs = app(NotificationPreferences::class);
 
-        $this->assertSame(['database', 'mail'], $notification->via($user));
+        $this->assertSame(['database'], $notification->via($user), 'alerts are in the app by default; e-mail is opt-in');
 
-        $this->app->instance(NotificationPreferences::class, new class implements NotificationPreferences
-        {
-            public function allows(User $user, string $category, string $channel): bool
-            {
-                return $channel !== 'mail';
-            }
-        });
+        $prefs->set($user, NotificationPreferences::ALERTS, mail: true, inApp: true);
+        $this->assertSame(['database', 'mail'], (new BackInStockNotification($notification->product))->via($user));
 
-        $this->assertSame(['database'], $notification->via($user));
+        $prefs->set($user, NotificationPreferences::ALERTS, mail: false, inApp: false);
+        $this->assertSame([], (new BackInStockNotification($notification->product))->via($user));
     }
 
-    public function test_a_muted_category_sends_nothing_at_all(): void
+    public function test_a_person_who_turned_alerts_off_is_not_sent_one_but_the_alert_is_still_spent(): void
     {
-        $this->app->instance(NotificationPreferences::class, new class implements NotificationPreferences
-        {
-            public function allows(User $user, string $category, string $channel): bool
-            {
-                return false;
-            }
-        });
         $user = $this->makeBuyer();
         $product = $this->makeListing($this->makeSeller(), ['stock' => 0]);
         app(ProductAlerts::class)->subscribe($user, $product, ProductAlert::BACK_IN_STOCK);
+        app(NotificationPreferences::class)->set($user, NotificationPreferences::ALERTS, mail: false, inApp: false);
         $product->update(['stock' => 3]);
 
-        $this->assertSame(0, $this->app->make(AlertEvaluator::class)->backInStock());
+        $this->assertSame(0, app(AlertEvaluator::class)->backInStock());
         Notification::assertNothingSent();
+        $this->assertFalse(ProductAlert::first()->active);
+    }
+
+    public function test_the_alert_e_mail_is_built_on_the_shared_layout_from_the_same_payload_as_the_in_app_row(): void
+    {
+        $user = User::factory()->create();
+        $notice = new BackInStockNotification($this->makeListing($this->makeSeller(), ['name' => 'Camping Stove Deluxe']));
+
+        $mail = $notice->toMail($user);
+
+        $this->assertSame($notice->toDatabase($user)['title'], $mail->subject);
+        $this->assertSame('Dot.Emall', $mail->salutation);
+        $this->assertSame('View product', $mail->actionText);
+        $this->assertStringContainsString('Camping Stove Deluxe', implode(' ', $mail->introLines));
+        $this->assertStringContainsString('This alert is now finished', implode(' ', $mail->outroLines));
     }
 
     public function test_a_saved_search_digest_goes_out_on_schedule_for_new_matches_only(): void

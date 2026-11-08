@@ -4,6 +4,8 @@ namespace Tests\Feature\Discovery;
 
 use App\Models\SavedSearch;
 use App\Models\WishlistItem;
+use App\Services\Cart\CartManager;
+use App\Services\Catalogue\ProductVariants;
 use App\Services\Discovery\SavedSearches;
 use App\Services\Discovery\Wishlists;
 use App\Services\Search\SearchRequest;
@@ -132,6 +134,30 @@ class WishlistTest extends TestCase
         $product->update(['stock' => 0]);
         $again = $lists->add($user, $product->fresh());
         $this->assertFalse($lists->moveToCart($user, $again)['ok']);
+    }
+
+    public function test_move_to_cart_puts_a_variant_in_the_cart_the_cart_service_can_read(): void
+    {
+        $user = $this->makeBuyer();
+        $product = $this->makeListing($this->makeSeller(), ['price' => 100, 'stock' => 10]);
+        app(ProductVariants::class)->defineOptions($product, ['Size' => ['S', 'M']]);
+        $small = app(ProductVariants::class)->saveVariant($product, ['Size' => 'S'], ['price' => 100, 'stock' => 3]);
+        $medium = app(ProductVariants::class)->saveVariant($product, ['Size' => 'M'], ['price' => 110, 'stock' => 3]);
+        $lists = app(Wishlists::class);
+
+        $unchosen = $lists->add($user, $product->refresh());
+        $result = $lists->moveToCart($user, $unchosen);
+        $this->assertFalse($result['ok']);
+        $this->assertTrue($result['needs_variant'], 'several options and none saved: the shopper is asked, nothing is guessed');
+        $this->assertSame(1, WishlistItem::count(), 'the item stays on the list');
+
+        $chosen = $lists->add($user, $product, $medium->id);
+        $this->assertTrue($lists->moveToCart($user, $chosen)['ok']);
+
+        $lines = app(CartManager::class)->lines($user);
+        $this->assertCount(1, $lines, 'a cart row without a variant would vanish from the cart');
+        $this->assertSame($medium->id, $lines->first()->variant->id);
+        $this->assertNotSame($small->id, $lines->first()->variant->id);
     }
 
     public function test_the_list_has_a_size_limit(): void

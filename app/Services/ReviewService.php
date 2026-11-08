@@ -48,12 +48,16 @@ class ReviewService
             ->exists();
     }
 
-    /** The delivered order line a new review would be attached to: the oldest not yet used by a review. */
+    /**
+     * The completed order line a new review would be attached to: the oldest not yet used by a review. "Completed" is
+     * the state machine's own word (OrderStatus::isCompleted, D-51): delivered, or collected for a collection parcel.
+     * A cancelled or refunded line is not a purchase the shopper kept, so it does not verify anything.
+     */
     public function deliveredItemFor(User $user, Product $product): ?OrderItem
     {
         return OrderItem::query()
             ->where('product_id', $product->id)
-            ->where('status', OrderStatus::Delivered->value)
+            ->whereIn('status', OrderStatus::completedValues())
             ->whereHas('order', fn ($q) => $q->where('user_id', $user->id))
             ->whereNotIn('id', Review::query()->whereNotNull('order_item_id')->select('order_item_id'))
             ->orderBy('id')

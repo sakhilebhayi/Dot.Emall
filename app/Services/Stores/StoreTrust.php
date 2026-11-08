@@ -5,9 +5,9 @@ namespace App\Services\Stores;
 use App\Enums\OrderStatus;
 use App\Models\OrderGroup;
 use App\Models\OrderItem;
-use App\Models\Product;
 use App\Models\ReturnRequest;
 use App\Models\Store;
+use App\Services\Community\StoreRatings;
 use App\Services\Shipping\BusinessDays;
 use Illuminate\Support\Carbon;
 
@@ -60,14 +60,21 @@ class StoreTrust
 
         [$onTime, $due, $hours] = $this->shippingFigures($store);
         [$returns, $completed] = $this->returnFigures($store);
-        [$reviewCount, $reviewAverage] = $this->reviewFigures($store);
+        $ratings = app(StoreRatings::class)->summary($store);
 
         $metrics = [
             'fulfilment_rate' => $this->metric($due >= $min ? round($onTime / $due * 100, 1) : null, $due, 'percent', 'shipped within the handling time they promised'),
             'median_hours_to_ship' => $this->metric(count($hours) >= $min ? $this->median($hours) : null, count($hours), 'hours', 'from payment to shipped'),
             'return_rate' => $this->metric($completed >= $min ? round($returns / $completed * 100, 1) : null, $completed, 'percent', 'of delivered items had a return requested'),
-            'review_count' => ['value' => $reviewCount, 'sample' => $reviewCount, 'note' => null, 'unit' => 'reviews'],
-            'review_average' => ['value' => $reviewCount > 0 ? $reviewAverage : null, 'sample' => $reviewCount, 'note' => $reviewCount === 0 ? 'No reviews yet.' : null, 'unit' => 'stars'],
+            // One source of truth for what shoppers think of a store: the store rating aggregate (published reviews only),
+            // which withholds an average below its own minimum exactly as the product pages do.
+            'review_count' => ['value' => $ratings['count'], 'sample' => $ratings['count'], 'note' => null, 'unit' => 'reviews'],
+            'review_average' => [
+                'value' => $ratings['average'],
+                'sample' => $ratings['count'],
+                'note' => $ratings['shown'] ? "Average of {$ratings['count']} published reviews." : ($ratings['count'] === 0 ? 'No reviews yet.' : "Not enough reviews yet to show an average (needs {$ratings['minimum']}; has {$ratings['count']})."),
+                'unit' => 'stars',
+            ],
         ];
 
         return [
@@ -132,19 +139,6 @@ class StoreTrust
             ->whereIn('order_item_id', OrderItem::query()->where('store_id', $store->id)->select('id'))->count();
 
         return [$returns, $completed];
-    }
-
-    /**
-     * @return array{0: int, 1: float}
-     */
-    private function reviewFigures(Store $store): array
-    {
-        $row = Product::query()->withTrashed()->where('store_id', $store->id)->where('rating_count', '>', 0)
-            ->selectRaw('sum(rating_count) as n, sum(rating_average * rating_count) as stars')->first();
-
-        $n = (int) ($row->n ?? 0);
-
-        return [$n, $n > 0 ? round((float) $row->stars / $n, 2) : 0.0];
     }
 
     /**

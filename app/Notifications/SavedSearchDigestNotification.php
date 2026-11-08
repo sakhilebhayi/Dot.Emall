@@ -3,22 +3,14 @@
 namespace App\Notifications;
 
 use App\Models\SavedSearch;
-use App\Notifications\Concerns\ChecksPreferences;
-use Illuminate\Notifications\Messages\MailMessage;
-use Illuminate\Notifications\Notification;
+use App\Services\Notifications\NotificationPreferences;
 
-class SavedSearchDigestNotification extends Notification
+class SavedSearchDigestNotification extends EmallNotification
 {
-    use ChecksPreferences;
+    protected string $category = NotificationPreferences::ALERTS;
 
     /** @param  list<int>  $sampleProductIds */
     public function __construct(public SavedSearch $saved, public int $newCount, public array $sampleProductIds = []) {}
-
-    /** @return array<int, string> */
-    public function via(object $notifiable): array
-    {
-        return $this->channelsFor($notifiable, 'saved_search');
-    }
 
     private function text(): string
     {
@@ -30,15 +22,14 @@ class SavedSearchDigestNotification extends Notification
         return route('products.index', array_filter(['q' => $this->saved->query] + ($this->saved->filters ?? []), fn ($v) => $v !== null && $v !== []));
     }
 
-    public function toMail(object $notifiable): MailMessage
-    {
-        return (new MailMessage)->subject('New matches: '.$this->saved->name)->line($this->text())->action('See them', $this->url())
-            ->line('You get this '.$this->saved->notify_frequency.' because you turned it on for this search. You can turn it off on the saved search.');
-    }
-
     /** @return array<string, mixed> */
     public function toDatabase(object $notifiable): array
     {
-        return ['type' => 'saved_search', 'title' => 'New matches', 'message' => $this->text(), 'saved_search_id' => $this->saved->id, 'url' => $this->url()];
+        return ['type' => 'saved_search', 'title' => 'New matches: '.$this->saved->name, 'message' => $this->text(), 'saved_search_id' => $this->saved->id, 'url' => $this->url(), 'action' => 'See them'];
+    }
+
+    protected function mailFootnote(): ?string
+    {
+        return 'You get this '.$this->saved->notify_frequency.' because you turned it on for this search. You can turn it off on the saved search.';
     }
 }

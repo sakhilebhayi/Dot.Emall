@@ -2,13 +2,14 @@
 
 namespace App\Services\Discovery;
 
-use App\Contracts\NotificationPreferences;
 use App\Models\Product;
 use App\Models\ProductAlert;
 use App\Models\SavedSearch;
+use App\Models\User;
 use App\Notifications\BackInStockNotification;
 use App\Notifications\PriceDropNotification;
 use App\Notifications\SavedSearchDigestNotification;
+use App\Services\Notifications\NotificationPreferences;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -20,6 +21,8 @@ use Illuminate\Support\Facades\DB;
  *   price drop      once per new low: it fires when the live price is under the baseline (and the target), and again
  *                   only if the price later falls under the price it last reported
  *   saved search    at most daily or weekly, only when there are new matches
+ *
+ * Whether to send at all goes through the one NotificationPreferences service (the "alerts" category).
  */
 class AlertEvaluator
 {
@@ -51,7 +54,7 @@ class AlertEvaluator
                     $claimed = ProductAlert::query()->whereKey($alert->id)->where('active', true)
                         ->update(['active' => false, 'triggered_at' => now()]);
 
-                    if ($claimed === 1 && $alert->user && $this->allowed($alert, 'back_in_stock')) {
+                    if ($claimed === 1 && $alert->user && $this->wanted($alert->user)) {
                         $alert->user->notify(new BackInStockNotification($alert->product));
                         $sent++;
                     }
@@ -85,7 +88,7 @@ class AlertEvaluator
                         ->where(fn ($q) => $q->whereNull('last_notified_price')->orWhere('last_notified_price', '>', $price))
                         ->update(['last_notified_price' => $price, 'triggered_at' => now()]);
 
-                    if ($claimed === 1 && $alert->user && $this->allowed($alert, 'price_drop')) {
+                    if ($claimed === 1 && $alert->user && $this->wanted($alert->user)) {
                         $alert->user->notify(new PriceDropNotification($alert->product, $baseline, $price, $this->alerts->lowestRecentPrice($alert->product, $alert->variant_id)));
                         $sent++;
                     }
@@ -124,7 +127,7 @@ class AlertEvaluator
 
                 $this->searches->markSeen($saved, $new);
 
-                if ($this->preferences->allows($saved->user, 'saved_search', 'database')) {
+                if ($this->wanted($saved->user)) {
                     $saved->user->notify(new SavedSearchDigestNotification($saved, count($new), array_slice($new, 0, 3)));
                     $sent++;
                 }
@@ -134,8 +137,9 @@ class AlertEvaluator
         return $sent;
     }
 
-    private function allowed(ProductAlert $alert, string $category): bool
+    /** The person has at least one channel open for alerts (in the app by default; e-mail only when they asked for it). */
+    private function wanted(User $user): bool
     {
-        return $alert->user !== null && $this->preferences->allows($alert->user, $category, 'database');
+        return $this->preferences->channels($user, NotificationPreferences::ALERTS) !== [];
     }
 }

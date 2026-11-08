@@ -10,8 +10,9 @@ use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
 /**
- * Base for every Dot.Emall notice: an in-app (database) row and an e-mail, filtered by the person's preferences
- * (NotificationPreferences), plus Dot.Notify when its env settings exist. The e-mail is built from the same payload
+ * Base for every Dot.Emall notice (orders, returns, money AND the alerts, saved-search digests and answers of discovery,
+ * D-51): an in-app (database) row and an e-mail on the one mail layout, filtered by the person's preferences
+ * (NotificationPreferences, one table), plus Dot.Notify when its env settings exist. The e-mail is built from the same payload
  * as the in-app row, so the two can never disagree.
  *
  * A guest (an AnonymousNotifiable with only an e-mail address) gets mail only.
@@ -57,11 +58,21 @@ abstract class EmallNotification extends Notification
             $mail->action((string) ($data['action'] ?? 'View on Dot.Emall'), (string) $data['url']);
         }
 
+        if (($footnote = $this->mailFootnote()) !== null) {
+            $mail->line($footnote);
+        }
+
         if ($notifiable instanceof AnonymousNotifiable) {
             $mail->line('This link opens your order without an account. Anyone who has this e-mail can use it, so keep it private.');
         }
 
         return $mail->salutation('Dot.Emall');
+    }
+
+    /** One closing sentence for the e-mail only (why the person is getting it). */
+    protected function mailFootnote(): ?string
+    {
+        return null;
     }
 
     /**
