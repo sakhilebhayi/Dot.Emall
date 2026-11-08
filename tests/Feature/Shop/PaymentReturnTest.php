@@ -2,12 +2,16 @@
 
 namespace Tests\Feature\Shop;
 
+use App\Enums\OrderStatus;
 use App\Enums\PaymentStatus;
 use App\Models\Order;
 use App\Models\Payment;
+use App\Services\CheckoutService;
 use App\Services\Guests\GuestOrderAccess;
+use App\Services\OrderLifecycle;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Support\Str;
 use Tests\Concerns\BuildsCommerce;
 use Tests\Concerns\BuildsMarketplace;
 use Tests\Concerns\BuildsPayments;
@@ -47,6 +51,16 @@ class PaymentReturnTest extends TestCase
     {
         $this->back('success')->assertOk()->assertSee('Payment received. Your order is confirmed.')->assertSee('The seller has been told and will pack your order')->assertDontSee('Check payment again');
         $this->assertSame(PaymentStatus::Paid, $this->order->fresh()->payment_status);
+    }
+
+    public function test_once_the_goods_have_been_delivered_the_paid_panel_no_longer_says_the_seller_will_pack_it(): void
+    {
+        $this->back('success')->assertSee('will pack your order');
+
+        $this->order->items()->update(['status' => OrderStatus::Delivered->value]);
+
+        $html = $this->actingAs($this->buyer)->get(route('orders.show', $this->order))->assertOk()->assertSee('Payment received')->getContent();
+        $this->assertStringNotContainsString('will pack your order', $html);
     }
 
     public function test_a_failed_attempt_says_so_and_offers_a_retry_on_any_method(): void
@@ -108,7 +122,7 @@ class PaymentReturnTest extends TestCase
 
     public function test_an_order_that_expired_unpaid_says_it_was_cancelled_and_nothing_is_due(): void
     {
-        app(\App\Services\OrderLifecycle::class)->cancelUnpaidOrder($this->order->fresh());
+        app(OrderLifecycle::class)->cancelUnpaidOrder($this->order->fresh());
 
         $this->actingAs($this->buyer)->get(route('orders.show', $this->order))->assertSee('This order was cancelled. Nothing is due.')->assertDontSee('Try payment again');
     }
@@ -117,7 +131,7 @@ class PaymentReturnTest extends TestCase
     {
         $product = $this->makeListing($seller, ['price' => 80, 'stock' => 9]);
         $variant = $product->defaultVariant()->first();
-        $order = app(\App\Services\CheckoutService::class)->placeAsGuest('g@example.test', [['variant_id' => $variant->id, 'quantity' => 1]], ['shipping_address' => '1 Test Street, Cape Town', 'shipping_name' => 'G'], (string) \Illuminate\Support\Str::uuid());
+        $order = app(CheckoutService::class)->placeAsGuest('g@example.test', [['variant_id' => $variant->id, 'quantity' => 1]], ['shipping_address' => '1 Test Street, Cape Town', 'shipping_name' => 'G'], (string) Str::uuid());
         $payment = $this->startAttempt($order);
     }
 }

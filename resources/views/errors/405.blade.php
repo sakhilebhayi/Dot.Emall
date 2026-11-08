@@ -1,0 +1,1 @@
+<x-error-layout :code="405" heading="That address does not work that way" message="This address takes a form that is sent from a page, not opened as a link. Go back to the page you came from and use its button again." />

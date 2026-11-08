@@ -11,7 +11,7 @@
         @auth
             <p><x-ds.button :href="route('orders.index')" variant="quiet" icon="receipt">Go to your orders</x-ds.button></p>
         @else
-            <p>Bought as a guest? Use the link in your order e-mail. Signed-in orders are under <a href="{{ route('login') }}">your account</a> (accounts come from InfoDot).</p>
+            <p>Bought as a guest? Use the link in your order e-mail, or <a href="{{ route('help.order-link') }}">get it sent again</a>. Signed-in orders are under <a href="{{ route('login') }}">your account</a> (accounts come from InfoDot).</p>
         @endauth
 
         <h2>Everything else</h2>

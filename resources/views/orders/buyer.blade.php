@@ -22,7 +22,7 @@
 
     @if ($guest)
         <x-ds.alert tone="info" title="You are viewing this order without an account" class="co-gap">
-            This page opened from the link in your e-mail. Keep that e-mail private: anyone with it can open this order.
+            You can come back to this order any time from the link in your order e-mail. Keep that e-mail private: anyone with it can open this order.
             <a href="{{ route('login') }}">Sign in with InfoDot</a> using the same e-mail address ({{ $order->guest_email }}) to keep all your orders in one place. Accounts come from InfoDot.
         </x-ds.alert>
     @endif

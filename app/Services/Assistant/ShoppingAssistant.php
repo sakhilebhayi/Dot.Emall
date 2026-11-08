@@ -37,7 +37,10 @@ class ShoppingAssistant
     private const PURPOSE_WORDS = ['university', 'uni', 'college', 'student', 'everyday', 'daily'];
 
     /** Filler of a conversational request. Dropped without comment. */
-    private const FILLER = ['good', 'great', 'nice', 'decent', 'quality', 'recommend', 'suggest', 'something', 'anything', 'looking', 'buy', 'get', 'would', 'like', 'can', 'you', 'could', 'give', 'show', 'help', 'find', 'please'];
+    private const FILLER = ['good', 'great', 'nice', 'decent', 'quality', 'recommend', 'suggest', 'something', 'anything', 'looking', 'buy', 'get', 'would', 'like', 'can', 'you', 'could', 'give', 'show', 'help', 'find', 'please', 'tell', 'need', 'want', 'wanting', 'whats', 'about'];
+
+    /** Things a shopper may ask about that the catalogue holds no record of, so the answer must say it cannot tell them (never guess). */
+    private const NO_RECORD_TOPICS = ['warranty', 'guarantee', 'guaranteed', 'genuine', 'authentic', 'certified'];
 
     /** Phrases a model may not use because the catalogue facts cannot support them. */
     private const UNSUPPORTED = ['warranty', 'guarantee', 'certified', 'genuine', 'authentic', 'waterproof', 'discount', 'on sale', 'free delivery', 'free shipping', 'cheapest', 'fastest', 'lowest price', 'best price', 'award', 'recommended by', 'limited time'];
@@ -65,6 +68,12 @@ class ShoppingAssistant
         [$cleaned, $sort, $purposes] = $this->steer($text);
         $parsed = $this->understanding->parse($cleaned);
 
+        $asked = array_values(array_filter(self::NO_RECORD_TOPICS, fn ($topic) => preg_match('/\b'.preg_quote($topic, '/').'\b/i', $text) === 1));
+
+        if ($asked !== []) {
+            $notes[] = 'The catalogue holds no record of '.implode(', ', $asked).', so I cannot tell you anything about it. Ask the seller before you buy; the listing and the store\'s policy are the only places it would be written.';
+        }
+
         if ($purposes !== []) {
             $notes[] = 'I read "'.implode('", "', $purposes).'" as a wish for '.$this->sortLabel($sort).', not as a product word. The catalogue has no data about how well a product suits a purpose, so I have not claimed any.';
         }
@@ -76,7 +85,9 @@ class ShoppingAssistant
         $request = $request->with(['inStock' => false, 'perPage' => (int) config('discovery.assistant.max_items', 5), 'page' => 1]);
 
         if ($without !== []) {
-            $notes[] = 'You removed what I understood about '.implode(', ', array_map(fn ($k) => match ($k) {'availability' => 'stock', 'attribute' => 'specifications', default => $k}, $without)).'. The search ignores it.';
+            $notes[] = 'You removed what I understood about '.implode(', ', array_map(fn ($k) => match ($k) {
+                'availability' => 'stock', 'attribute' => 'specifications', default => $k
+            }, $without)).'. The search ignores it.';
         }
         $result = $this->engine->search($request->with(['inStock' => ! in_array('availability', $without, true)]));
 
@@ -348,6 +359,12 @@ class ShoppingAssistant
     {
         $count = count($result->items);
         $of = $result->total > $count ? " (the first {$count} of {$result->total})" : '';
+
+        if ($result->relaxed) {
+            return $result->total === 1
+                ? 'No product matches everything you asked for. This 1 matches only some of your words, so it may not be what you want.'
+                : "No product matches everything you asked for. These {$result->total} match only some of your words{$of}, so they may not be what you want.";
+        }
 
         return $result->total === 1
             ? 'I found 1 product in the catalogue that fits.'

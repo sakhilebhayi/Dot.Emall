@@ -43,6 +43,10 @@ class ReviewPhotos
         }
 
         foreach ($files as $file) {
+            if ($file instanceof UploadedFile && in_array($file->getError(), [UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE], true)) {
+                throw ValidationException::withMessages(['photos' => 'Photos can be at most 4 MB each.']);
+            }
+
             if (! $file instanceof UploadedFile || ! $file->isValid()) {
                 throw ValidationException::withMessages(['photos' => 'One of the photos did not upload. Try again.']);
             }

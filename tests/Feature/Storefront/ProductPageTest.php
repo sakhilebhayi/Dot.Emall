@@ -4,6 +4,7 @@ namespace Tests\Feature\Storefront;
 
 use App\Models\Address;
 use App\Models\Product;
+use App\Models\ProductAttribute;
 use App\Models\ProductImage;
 use App\Models\ShippingMethod;
 use App\Services\Cart\CartManager;
@@ -39,6 +40,18 @@ class ProductPageTest extends TestCase
         $this->assertStringContainsString('R249.50', $html);
         $this->assertStringContainsString('No account needed to shop', $html);
         $this->assertStringNotContainsString('Only 12 left', $html, 'a quantity is shown only when it is five or fewer');
+    }
+
+    public function test_a_specification_with_a_unit_prints_the_unit_so_the_number_means_something(): void
+    {
+        $product = $this->makeListing($this->makeSeller(), ['name' => 'Spec Unit Laptop', 'stock' => 9]);
+        ProductAttribute::create(['product_id' => $product->id, 'key' => 'ram', 'label' => 'Memory (RAM)', 'value' => '16', 'value_number' => 16, 'unit' => 'GB', 'is_facetable' => true, 'position' => 1]);
+        ProductAttribute::create(['product_id' => $product->id, 'key' => 'os', 'label' => 'Operating system', 'value' => 'Windows', 'unit' => null, 'is_facetable' => true, 'position' => 2]);
+
+        $html = $this->get(route('products.show', $product))->assertOk()->getContent();
+
+        $this->assertMatchesRegularExpression('#<th[^>]*>Memory \(RAM\)</th><td>16 GB</td>#', $html);
+        $this->assertMatchesRegularExpression('#<th[^>]*>Operating system</th><td>Windows</td>#', $html, 'no stray unit on a text spec');
     }
 
     public function test_a_multi_variant_product_asks_for_the_choice_and_shows_a_from_price(): void

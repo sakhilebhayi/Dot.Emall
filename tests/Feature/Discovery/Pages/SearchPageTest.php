@@ -53,6 +53,13 @@ class SearchPageTest extends TestCase
         $this->get('/products')->assertOk()->assertSee('4 products')->assertSee('No search words');
     }
 
+    public function test_words_that_all_became_filters_are_not_reported_as_no_search_words(): void
+    {
+        $page = $this->get('/search?q=laptops')->assertOk();
+
+        $page->assertSee('Your words became the filters shown above')->assertDontSee('No search words');
+    }
+
     public function test_a_brand_filter_narrows_the_results_and_shows_a_removable_chip(): void
     {
         $page = $this->get('/search?q=notebook&brand[]=HP')->assertOk();
