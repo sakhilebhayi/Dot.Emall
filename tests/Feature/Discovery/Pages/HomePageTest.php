@@ -39,6 +39,16 @@ class HomePageTest extends TestCase
         $page->assertSee('Sell on Emall');
     }
 
+    public function test_the_explainer_label_of_an_empty_shop_stays_in_the_flow_instead_of_hanging_off_the_page(): void
+    {
+        // No listing to photograph: the hero shows the explainer label on its own...
+        $this->get('/')->assertOk()->assertSee('ds-hero__label--solo', false);
+
+        // ...and on wide screens the rule that lays the label over a photograph must not apply to it (it hung off the left edge, over the next band).
+        $css = file_get_contents(resource_path('css/welcome.css'));
+        $this->assertMatchesRegularExpression('/\.ds-hero__label\.ds-hero__label--solo\s*\{[^}]*position:\s*static/', $css);
+    }
+
     public function test_the_sell_path_goes_to_sell_start(): void
     {
         // The home page no longer carries its own sell band (R-43 polish #23): the header's "Sell on Emall" link and the footer column lead to the same page.
