@@ -4,15 +4,13 @@ Everything below is service code with tests. There are no views. Feature agents 
 
 Branch `feat/r43-db`. Decisions D-30 to D-41 in `R43_DECISIONS.md`. Config in `config/discovery.php`.
 
-## 1. Seams to the commerce data workstream
+## 1. Seams to the commerce data workstream (closed by the integration pass, D-50 to D-53)
 
-| Contract | Default | Purpose |
+| Contract | Implementation | Purpose |
 |---|---|---|
-| `App\Contracts\CatalogueSource` | `Services\Discovery\DatabaseCatalogueSource` | `brands(ids)`, `attributes(ids)`, `storeRegions(storeIds)`, `priceHistory(id)`, `deliveryEstimate(id)`. Batch shaped. Checks `Schema::hasTable/hasColumn` and answers "nothing known" for what is absent. Understands `products.brand_id`+`brands` or `products.brand`; `product_attributes` (+ `attribute_definitions`); `stores.region` or `stores.province`; `product_price_history`. **At merge, edit this one class to the real tables.** |
-| `App\Contracts\CategoryTree` | `Services\Discovery\StoreCategoryTree` (`store_categories`) | `withDescendants`, `find`, `findBySlug`, `many`, `path`, `forget`. |
-| `App\Contracts\NotificationPreferences` | `AllowAllNotifications` | `allows(User, category, channel)`. Categories: `back_in_stock`, `price_drop`, `saved_search`, `question_answered`. |
-
-Bind your own in a provider; `DiscoveryServiceProvider` uses `singletonIf`, so a later binding wins.
+| `App\Contracts\CatalogueSource` | `Services\Discovery\DatabaseCatalogueSource` (the real tables) | `brands(ids)`, `attributes(ids)`, `variantOptions(ids)` (option values of active variants), `storeRegions(storeIds)`, `deliveryEstimate(id)` (the store's cheapest delivery method, working days). Batch shaped. Tests bind `Tests\Support\FakeCatalogue`. There is no price history here: there is one, `Catalogue\PriceHistory`. |
+| `App\Contracts\CategoryTree` | `Services\Catalogue\CategoryTree` (data A's tree) | `withDescendants`, `all`, `find`, `findBySlug`, `many`, `path`, `forget`. One tree for the whole app. |
+| notification preferences | `Services\Notifications\NotificationPreferences` (data A's table) | Alerts, saved-search digests and "answered" notices are in the **alerts** category: in the app by default, e-mail opt-in. B's own contract and allow-all default were removed. |
 
 ## 2. Search
 
@@ -62,7 +60,7 @@ Tables `search_documents`, `search_document_attributes`, `search_terms`. Kept cu
 * `Discovery\Wishlists`: `defaultFor`, `add($user, $product, $variantId, $note)`, `remove`, `has`, `productIdsFor`, `items` (flags `available`), `updateNote`, `moveToCart`, `enableSharing` / `disableSharing` (off by default, token minted on enable and cleared on disable), `shared($token)` (buyable products only, no notes).
 * `Discovery\SavedSearches`: `save($user, $name, SearchRequest, 'off|daily|weekly')`, `setFrequency`, `newMatches`, `markSeen`. Limit 20.
 * `Discovery\ProductAlerts`: `subscribe($user, $product, 'back_in_stock'|'price_drop', $target, $variantId)`, `cancel`, `lowestRecentPrice`.
-* `Discovery\AlertEvaluator::run()` (command `emall:alerts-evaluate`, every 15 minutes, `withoutOverlapping`): claims each event with a conditional UPDATE, so a re-run or a concurrent run sends nothing twice. Notifications: `BackInStockNotification`, `PriceDropNotification`, `SavedSearchDigestNotification` (database plus mail, each filtered through `NotificationPreferences`).
+* `Discovery\AlertEvaluator::run()` (command `emall:alerts-evaluate`, every 15 minutes, `withoutOverlapping`): claims each event with a conditional UPDATE, so a re-run or a concurrent run sends nothing twice. Notifications: `BackInStockNotification`, `PriceDropNotification`, `SavedSearchDigestNotification`, all `EmallNotification`s in the alerts category (the in-app row, and an e-mail on the shared layout when the person opted in). The price-drop notice quotes `PriceHistory::lowestSince()` for the last 30 days.
 * Policies: `WishlistPolicy`, `SavedSearchPolicy`, `ProductAlertPolicy` (owner only).
 
 ## 5. Community
@@ -99,8 +97,7 @@ All are registered in `DiscoveryServiceProvider` (not in a route file). Limiters
 
 ## 10. Known gaps
 
-* Brands and attributes come through `CatalogueSource`; until the commerce branch's tables are mapped in `DatabaseCatalogueSource`, search has no brand or attribute facets on a real database.
-* Delivery estimates are never guessed: the assistant omits the line until the shipping workstream binds a source.
+* Delivery estimates are never guessed: the assistant omits the line for a store that has set no delivery method.
 * The `community` limiter has no route yet. Wishlist, alert, Q&A, vote and report endpoints and every view belong to the feature agents.
-* Guest (session) carts are not touched by `Wishlists::moveToCart`; it writes the signed-in cart.
+* Guest (session) carts are not touched by `Wishlists::moveToCart`; it writes the signed-in cart through `CartManager` and answers `needs_variant` when a product has several choices and none was saved.
 * No IP or account-age signal for review integrity (none is recorded).

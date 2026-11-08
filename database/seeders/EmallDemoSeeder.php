@@ -1159,8 +1159,6 @@ class EmallDemoSeeder extends Seeder
         Artisan::call('emall:search-reindex');
         Artisan::call('emall:recommendations-rebuild');
 
-        // Nothing is queued while seeding, but the reservation rule must not hold stock for orders that are already
-        // days old and unpaid: the scheduler would have expired them.
         Vocabulary::forget();
     }
 

@@ -13,7 +13,7 @@ Decisions D-50 to D-62 are in `R43_DECISIONS.md`; the demo is described in `R43_
   when its only line is returned after delivery.
 - **One of each:** price history (`PriceHistory`), notification preferences (`NotificationPreferences`, categories transactional /
   alerts / marketing), completed-line definition (`OrderStatus::completedValues`), store rating (`StoreRatings`), cart (`CartManager`).
-- **Verified:** 1,159 tests on SQLite and PostgreSQL; the signed-in smoke with route, config and event caches passes 43 pages.
+- **Verified:** 1,164 tests: SQLite 1,126 passed and 38 skipped (the PostgreSQL-only ones), PostgreSQL 1,157 passed and 7 skipped, none failed; the signed-in smoke with route, config and event caches passes 43 pages.
 
 ## Registered by this pass (pure aliases, `// --- integration ---` in `routes/web.php`)
 
