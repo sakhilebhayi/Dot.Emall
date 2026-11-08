@@ -105,6 +105,8 @@ class OperatorDecisions
             ListingFlagDismissal::query()->updateOrCreate(['product_id' => $product->id, 'rule' => $rule], ['actor_id' => $operator->id, 'note' => mb_substr($note, 0, 500), 'created_at' => now()]);
             $this->audit->record($operator, 'listing.flag_dismiss', $product, $note, ['rule' => $rule]);
         });
+
+        app(ListingFlags::class)->forgetCount();
     }
 
     // ---- stores ---------------------------------------------------------------------------------------------------

@@ -7,12 +7,12 @@
 @props(['product', 'view' => 'grid', 'why' => null, 'region' => null, 'mine' => null, 'eager' => false])
 <div {{ $attributes->class(['disc-card', 'disc-card--row' => $view === 'row']) }}>
     @if (isset($wishlist))
-        <x-ds.product-card :href="route('products.show', $product)" :title="$product->name" :image="$product->images->first()?->url()" :store="$product->store?->name" :amount="$product->price"
+        <x-ds.product-card :href="route('products.show', $product)" :title="$product->name" :image="$product->images->first()?->cardUrl()" :store="$product->store?->name" :amount="$product->price"
             :rating-value="$product->rating_average ?? 0" :rating-count="$product->rating_count ?? 0" :stock="$product->stock" :variant="$view" :eager="$eager">
             <x-slot:wishlist>{{ $wishlist }}</x-slot:wishlist>
         </x-ds.product-card>
     @else
-        <x-ds.product-card :href="route('products.show', $product)" :title="$product->name" :image="$product->images->first()?->url()" :store="$product->store?->name" :amount="$product->price"
+        <x-ds.product-card :href="route('products.show', $product)" :title="$product->name" :image="$product->images->first()?->cardUrl()" :store="$product->store?->name" :amount="$product->price"
             :rating-value="$product->rating_average ?? 0" :rating-count="$product->rating_count ?? 0" :stock="$product->stock" :variant="$view" :eager="$eager" />
     @endif
     @if ($region && $mine && $region === $mine)<p class="disc-card__near"><x-ds.icon name="pin" :size="14" />Ships from your province</p>@endif

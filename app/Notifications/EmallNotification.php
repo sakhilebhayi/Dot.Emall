@@ -49,10 +49,12 @@ abstract class EmallNotification extends Notification
     {
         $data = $this->toDatabase($notifiable);
 
+        // The mail layout turns Markdown into HTML. What is in a notice is text (a customer's words, a product's name), so none of it may
+        // become a link, an image or a heading in an e-mail that arrives from Dot.Emall.
         $mail = (new MailMessage)
             ->subject((string) $data['title'])
             ->greeting('Hello,')
-            ->line((string) $data['message']);
+            ->line(self::plain((string) $data['message']));
 
         if (! empty($data['url'])) {
             $mail->action((string) ($data['action'] ?? 'View on Dot.Emall'), (string) $data['url']);
@@ -67,6 +69,12 @@ abstract class EmallNotification extends Notification
         }
 
         return $mail->salutation('Dot.Emall');
+    }
+
+    /** Text with every Markdown mark escaped, so the mail layout shows it exactly as written. */
+    public static function plain(string $text): string
+    {
+        return (string) preg_replace('/([\\\\`*_{}\[\]()#+\-.!|~])/', '\\\\$1', $text);
     }
 
     /** One closing sentence for the e-mail only (why the person is getting it). */

@@ -416,7 +416,7 @@ abstract class AbstractSearch implements SearchEngine
             total: $total,
             page: $page,
             perPage: $f->perPage,
-            facets: $this->facets($f, $slots, $mode),
+            facets: $f->facets ? $this->facets($f, $slots, $mode) : [],
             didYouMean: $didYouMean,
             correctedFrom: $correctedFrom,
             relaxed: $relaxed,

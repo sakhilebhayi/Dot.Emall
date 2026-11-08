@@ -54,6 +54,11 @@ class IndexesPostgresTest extends TestCase
             'status history of an order' => ['order_status_histories', 'select * from order_status_histories where order_id = ? order by id', [1]],
             'a persons addresses' => ['addresses', 'select * from addresses where user_id = ? order by is_default_shipping desc', [1]],
             'a persons cart' => ['cart_items', 'select * from cart_items where user_id = ?', [1]],
+            // R-43 secperf: the seller desk asks by store, not by seller.
+            'a stores parcels by status' => ['order_groups', "select * from order_groups where store_id = ? and status = 'pending'", [1]],
+            'the items of a parcel' => ['order_items', 'select * from order_items where order_group_id = ?', [1]],
+            'orders placed in the last month' => ['orders', "select id from orders where created_at >= now() - interval '30 days'", []],
+            'the newest search index time' => ['search_documents', 'select max(indexed_at) from search_documents', []],
         ];
     }
 

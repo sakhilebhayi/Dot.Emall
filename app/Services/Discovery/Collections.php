@@ -92,7 +92,7 @@ class Collections
     public function products(Collection $collection, int $limit = 24): Rows
     {
         if ($collection->type === Collection::DYNAMIC) {
-            $request = SearchRequest::fromArray(['literal' => '1', 'sort' => 'newest'] + (array) $collection->rule)->with(['perPage' => $limit, 'page' => 1]);
+            $request = SearchRequest::fromArray(['literal' => '1', 'sort' => 'newest'] + (array) $collection->rule)->with(['perPage' => $limit, 'page' => 1, 'facets' => false]);
 
             return collect($this->engine->search($request)->items)->map(fn ($hit) => $hit->product)->values();
         }

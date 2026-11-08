@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\URL;
  *
  * A valid link opens ONE order, as its buyer. It grants nothing else: not the e-mail address's other orders, and no
  * account. Following it stores the grant in the session so the guest can pay, confirm receipt or ask for a return from
- * that browser without re-presenting the token.
+ * that browser without re-presenting the token. The grant is tied to the link's version: rotate() ends it, as revoke() and expiry do.
  */
 class GuestOrderAccess
 {
@@ -79,7 +79,9 @@ class GuestOrderAccess
     public function grantSession(Order $order): void
     {
         $granted = (array) session(self::SESSION_KEY, []);
-        $granted[(int) $order->id] = true;
+        // The grant remembers which version of the link opened it, so rotating the link (which is what the person is told to do when a link
+        // leaked) also ends the access a browser already gained with the old one.
+        $granted[(int) $order->id] = (int) $order->guest_token_version;
         session([self::SESSION_KEY => array_slice($granted, -20, null, true)]);
     }
 
@@ -88,7 +90,10 @@ class GuestOrderAccess
     {
         $granted = (array) session(self::SESSION_KEY, []);
 
-        return isset($granted[(int) $order->id]) && $this->linkable($order);
+        // Sessions written before the version was stored hold `true`, which reads as version 1: still honoured until the first rotation.
+        return isset($granted[(int) $order->id])
+            && (int) $granted[(int) $order->id] === max(1, (int) $order->guest_token_version)
+            && $this->linkable($order);
     }
 
     private function linkable(Order $order): bool

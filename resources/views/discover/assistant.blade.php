@@ -69,7 +69,7 @@
                                 @php($pick = $picks->get($item['product_id']))
                                 <li class="disc-pick">
                                     <div class="disc-pick__media">
-                                        @if (($img = $images->get($item['image_id'])) !== null)<img src="{{ $img->url() }}" alt="" width="160" height="160" loading="lazy" decoding="async">@else<span class="disc-pick__noimg"><x-ds.icon name="image" :size="28" /></span>@endif
+                                        @if (($img = $images->get($item['image_id'])) !== null)<img src="{{ $img->cardUrl() }}" alt="" width="160" height="160" loading="lazy" decoding="async">@else<span class="disc-pick__noimg"><x-ds.icon name="image" :size="28" /></span>@endif
                                     </div>
                                     <div class="disc-pick__body">
                                         <h3><a href="{{ route('products.show', $item['product_id']) }}">{{ $item['name'] }}</a></h3>

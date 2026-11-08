@@ -6,8 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Product;
 use App\Models\Store;
 use App\Services\Catalogue\CategoryTree;
-use App\Services\Discovery\HomeSection;
 use App\Services\Discovery\Homepage;
+use App\Services\Discovery\HomeSection;
 use App\Services\Discovery\RecommendedItem;
 use App\Support\Actor;
 use App\Support\ShopperRegion;
@@ -86,7 +86,7 @@ class HomeController extends Controller
                 // Up to four different products per category: the lead tile shows them side by side instead of one picture blown up.
                 $root = $rootOf[$p->category_id];
                 if (count($byCategory[$root] ?? []) < 4) {
-                    $byCategory[$root][] = $p->images->first()->url();
+                    $byCategory[$root][] = $p->images->first()->cardUrl();
                 }
             });
 

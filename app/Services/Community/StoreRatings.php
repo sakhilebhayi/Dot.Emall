@@ -40,16 +40,36 @@ class StoreRatings
     public function summary(Store|int $store): array
     {
         $id = $store instanceof Store ? $store->id : $store;
-        $min = (int) config('discovery.reviews.store_rating_min_reviews', 5);
-        $row = DB::table('store_rating_aggregates')->where('store_id', $id)->first();
-        $count = (int) ($row->review_count ?? 0);
 
-        return [
-            'average' => $count >= $min ? (float) $row->average_rating : null,
-            'count' => $count,
-            'shown' => $count >= $min,
-            'minimum' => $min,
-        ];
+        return $this->summaries([$id])[$id];
+    }
+
+    /**
+     * The summaries of several stores in ONE query (a list of stores must not ask once per store).
+     *
+     * @param  iterable<int>  $storeIds
+     * @return array<int, array{average: float|null, count: int, shown: bool, minimum: int}>
+     */
+    public function summaries(iterable $storeIds): array
+    {
+        $ids = collect($storeIds)->map(fn ($id) => (int) $id)->unique()->values();
+        $min = (int) config('discovery.reviews.store_rating_min_reviews', 5);
+        $rows = $ids->isEmpty() ? collect() : DB::table('store_rating_aggregates')->whereIn('store_id', $ids)->get()->keyBy('store_id');
+        $out = [];
+
+        foreach ($ids as $id) {
+            $row = $rows->get($id);
+            $count = (int) ($row->review_count ?? 0);
+
+            $out[$id] = [
+                'average' => $count >= $min ? (float) $row->average_rating : null,
+                'count' => $count,
+                'shown' => $count >= $min,
+                'minimum' => $min,
+            ];
+        }
+
+        return $out;
     }
 
     /** Recomputes every store; returns the number of stores. */

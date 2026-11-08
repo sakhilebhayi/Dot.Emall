@@ -86,6 +86,6 @@ class SavedSearches
     /** @return list<int> */
     private function currentIds(SavedSearch $saved): array
     {
-        return $this->engine->search($saved->toRequest()->with(['perPage' => 60, 'page' => 1, 'sort' => 'newest']))->productIds();
+        return $this->engine->search($saved->toRequest()->with(['perPage' => 60, 'page' => 1, 'sort' => 'newest', 'facets' => false]))->productIds();
     }
 }

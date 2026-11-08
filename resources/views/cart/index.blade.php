@@ -42,7 +42,7 @@
             <x-ds.section :title="$suggestions['title']" :lead="$suggestions['basis']">
                 <div class="ds-grid">
                     @foreach ($suggestions['products'] as $p)
-                        <x-ds.product-card :href="route('products.show', $p)" :title="$p->name" :image="$p->images->first()?->url()" :store="$p->store->name" :amount="$p->price" :stock="$p->stock" ratio="1 / 1" />
+                        <x-ds.product-card :href="route('products.show', $p)" :title="$p->name" :image="$p->images->first()?->cardUrl()" :store="$p->store->name" :amount="$p->price" :stock="$p->stock" ratio="1 / 1" />
                     @endforeach
                 </div>
             </x-ds.section>
@@ -69,7 +69,7 @@
                             <x-ds.cart-line
                                 :title="$line->product->name"
                                 :href="$line->product->trashed() ? null : route('products.show', $line->product)"
-                                :image="$line->product->images->first()?->url()"
+                                :image="$line->product->images->first()?->cardUrl()"
                                 :option="$line->variant->label()"
                                 :unit-cents="$line->unitCents()"
                                 :quantity="$line->quantity"

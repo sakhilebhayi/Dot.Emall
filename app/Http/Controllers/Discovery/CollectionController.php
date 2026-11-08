@@ -38,7 +38,7 @@ class CollectionController extends Controller
 
         if (! $ended && $collection->type === Collection::DYNAMIC) {
             $rule = (array) $collection->rule;
-            $total = $engine->search(SearchRequest::fromArray(['literal' => '1'] + $rule)->with(['perPage' => 1, 'page' => 1]))->total;
+            $total = $engine->search(SearchRequest::fromArray(['literal' => '1'] + $rule)->with(['perPage' => 1, 'page' => 1, 'facets' => false]))->total;
             $searchParams = $rule + ['literal' => 1];
         }
 
