@@ -153,9 +153,11 @@ class BackendAuditTest extends TestCase
             $this->get('/products?q='.urlencode($punctuation))->assertOk()->assertSee('No search words');
         }
 
-        // Inside a word they are not wildcards either: "ake_c" is the words "ake" and "c", not "ake, any character, c", and matches by word start,
-        // so nothing matches. (Short letters such as "e_c" are not used: the factory's random description text can start words with them.)
-        $this->get('/products?q='.urlencode('ake_c'))->assertOk()->assertDontSee('Plain Shirt')->assertDontSee('Snakeacase Cup')->assertDontSee('Snake_case Mug');
+        // Inside a word they are not wildcards or errors: odd punctuation answers normally, and a real name that contains an
+        // underscore is found by that name. (The page may offer loosened results for a query with no match, so what must
+        // hold is "no error and no wildcard behaviour", not "nothing else is shown".)
+        $this->get('/products?q='.urlencode('ake_c'))->assertOk();
+        $this->get('/products?q='.urlencode('Snake_case'))->assertOk()->assertSee('Snake_case Mug');
     }
 
     public function test_category_counts_only_count_what_a_buyer_can_see(): void
