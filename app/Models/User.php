@@ -135,6 +135,11 @@ class User extends Authenticatable
         return $this->hasMany(Address::class);
     }
 
+    public function notificationPreferences(): HasMany
+    {
+        return $this->hasMany(NotificationPreference::class);
+    }
+
     /**
      * Reviews this user has left on products.
      */

@@ -46,11 +46,6 @@ class OrderNotifier
         $this->toBuyer($order, 'payment_failed');
     }
 
-    public function orderCancelled(Order $order, ?string $reason = null): void
-    {
-        $this->toBuyer($order, 'order_cancelled', array_filter(['reason' => $reason]));
-    }
-
     public function refundRecorded(Order $order, int $amountCents): void
     {
         $this->toBuyer($order, 'order_refunded', ['amount_cents' => $amountCents]);

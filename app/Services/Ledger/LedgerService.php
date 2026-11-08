@@ -50,6 +50,11 @@ class LedgerService
      */
     public function recordSale(Order $order): int
     {
+        // Only money that has really arrived earns anything.
+        if (! $order->payment_status->isSettled()) {
+            return 0;
+        }
+
         $written = 0;
 
         foreach ($order->groups()->get() as $group) {

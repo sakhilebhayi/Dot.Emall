@@ -9,6 +9,7 @@ use App\Services\Notifications\OrderNotifier;
 use App\Services\OrderLifecycle;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Log;
 use InvalidArgumentException;
 
 /**
@@ -34,11 +35,15 @@ class OrderItemCancellationController extends Controller
         $orderItem->refresh();
 
         if (! $wasCancelled) {
-            // Tell the party who did not click.
-            if ($actor->id === $orderItem->order->user_id) {
-                $orderItem->seller?->notify(new OrderLineCancelledNotification($orderItem));
-            } else {
-                app(OrderNotifier::class)->buyer($orderItem->order)?->notify(new OrderItemStatusUpdatedNotification($orderItem));
+            // Tell the party who did not click. A notice failing (mail down) must not fail the cancellation.
+            try {
+                if ($actor->id === $orderItem->order->user_id) {
+                    $orderItem->seller?->notify(new OrderLineCancelledNotification($orderItem));
+                } else {
+                    app(OrderNotifier::class)->buyer($orderItem->order)?->notify(new OrderItemStatusUpdatedNotification($orderItem));
+                }
+            } catch (\Throwable $e) {
+                Log::warning('A cancellation notice could not be sent.', ['order_item_id' => $orderItem->id, 'error' => class_basename($e)]);
             }
         }
 

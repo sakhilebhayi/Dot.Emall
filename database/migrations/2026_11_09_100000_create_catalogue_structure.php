@@ -29,8 +29,16 @@ return new class extends Migration
             $table->boolean('is_active')->default(true)->after('image_path');
 
             $table->index(['parent_id', 'sort_order'], 'store_categories_parent_sort_index');
-            $table->index('path', 'store_categories_path_index');
+            if (DB::getDriverName() !== 'pgsql') {
+                $table->index('path', 'store_categories_path_index');
+            }
         });
+
+        // A prefix match (path LIKE '/1/5/%') can only use a PostgreSQL index built with the pattern operator class
+        // (the default one is for equality and ordering in the database's collation). Elsewhere a plain index serves.
+        if (DB::getDriverName() === 'pgsql') {
+            DB::statement('CREATE INDEX store_categories_path_index ON store_categories (path varchar_pattern_ops)');
+        }
 
         // Categories that existed before the tree: give each its path and depth from the parent column.
         $rows = DB::table('store_categories')->get()->keyBy('id');

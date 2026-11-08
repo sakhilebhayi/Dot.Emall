@@ -189,7 +189,7 @@ finance decisions that have not been made. Sellers are never told or shown that 
    | `PAYSTACK_BASE_URL` | `https://api.paystack.co` | Must be https |
    | `PAYSTACK_ALLOW_LIVE` | `false` | A `sk_live_` key is refused unless this is also `true` |
    | `PAYSTACK_CURRENCY` | unset | Do not set. Paystack charges in `SHOP_CURRENCY` (in its subunit, cents). If it is set and differs, card payments are refused with a message on the operator payments desk and nothing is sent to Paystack |
-   | `PAYSTACK_UNPAID_WINDOW_MINUTES` | `60` | Unpaid orders older than this are cancelled |
+   | `EMALL_STOCK_HOLD_MINUTES` | `30` | Unpaid orders older than this are cancelled (extended while a payment attempt is open, at most twice) |
    | `PAYSTACK_ATTEMPT_TTL_MINUTES` | `30` | How long Pay now reuses an open Paystack attempt |
 
 3. In the Paystack dashboard set the **Webhook URL** to `https://<your-domain>/webhooks/paystack`. The
@@ -227,7 +227,7 @@ finance decisions that have not been made. Sellers are never told or shown that 
 - **Fulfilment.** Sellers see **Awaiting payment** and cannot move the order forward, and are not given
   the buyer's address or a "new order" notification, until it is paid. Orders placed while Paystack was
   not configured (`requires_payment = false`) behave exactly as before and are never auto-cancelled.
-- **Unpaid orders expire.** Past `PAYSTACK_UNPAID_WINDOW_MINUTES` an unpaid order is cancelled through
+- **Unpaid orders expire.** Past `EMALL_STOCK_HOLD_MINUTES` an unpaid order is cancelled through
   `OrderLifecycle` (stock restored, promo use returned) and the buyer is notified. Open attempts are
   checked with Paystack first, and the cancel re-checks under the order lock, so a payment that lands
   first wins. A paid order is never cancelled this way.

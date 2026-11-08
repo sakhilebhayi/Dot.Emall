@@ -158,8 +158,30 @@ class CheckoutService
         }
 
         $this->notifier->orderPlaced($order);
+        $this->warnAboutLowStock($order);
 
         return $order;
+    }
+
+    /**
+     * A sale that takes a variant to or below the seller's low-stock threshold (from above it) tells that seller, once.
+     */
+    private function warnAboutLowStock(Order $order): void
+    {
+        try {
+            $variantIds = $order->items->pluck('variant_id')->filter()->unique();
+
+            ProductVariant::query()->whereIn('id', $variantIds)->with('product')->get()->each(function (ProductVariant $variant) use ($order) {
+                $threshold = (int) ($variant->product?->low_stock_threshold ?? 5);
+                $taken = (int) $order->items->where('variant_id', $variant->id)->sum('quantity');
+
+                if ($variant->stock <= $threshold && $variant->stock + $taken > $threshold) {
+                    $this->notifier->lowStock($variant, (int) $variant->stock);
+                }
+            });
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Low-stock check failed.', ['error' => class_basename($e)]);
+        }
     }
 
     private function orderForToken(?User $buyer, ?string $guestEmail, string $token): ?Order

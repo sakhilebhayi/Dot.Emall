@@ -33,6 +33,7 @@ class Product extends Model
         // mirrors its price, stock and sku; from then on VariantSync keeps the two in step in both directions.
         static::created(function (Product $product): void {
             app(VariantSync::class)->ensureDefaultVariant($product);
+            CategoryTree::forgetCounts();
         });
 
         static::updated(function (Product $product): void {
@@ -54,6 +55,7 @@ class Product extends Model
             // break the cart page; the global user scope is bypassed because
             // this runs on behalf of the seller, not the cart's owner.
             CartItem::withoutGlobalScopes()->where('product_id', $product->id)->delete();
+            CategoryTree::forgetCounts();
         });
 
         // Listing photos go with the listing, files included. Runs BEFORE the
@@ -62,6 +64,12 @@ class Product extends Model
         // (Order history keeps its own snapshot and never needed the photos.)
         static::deleting(function (Product $product): void {
             app(ProductImages::class)->purge($product);
+
+            // A hard delete cascades to the variants while order lines still point at them (and are about to lose their
+            // product link too). Unlink the lines first, in a statement of their own, so history survives on PostgreSQL.
+            if ($product->isForceDeleting()) {
+                \Illuminate\Support\Facades\DB::table('order_items')->where('product_id', $product->id)->update(['variant_id' => null]);
+            }
         });
     }
 

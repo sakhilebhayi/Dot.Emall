@@ -9,6 +9,8 @@
  *   php tests/Support/parallel-worker.php charge   <reference> <startAt> <amountCents> <transactionId> <source>
  *   php tests/Support/parallel-worker.php cancel   <orderItemId> <startAt>
  *   php tests/Support/parallel-worker.php stock    <productId> <startAt> <newStock>
+ *   php tests/Support/parallel-worker.php setstock <variantId> <startAt> <typed> <seen>   (the seller's edit as a delta)
+ *   php tests/Support/parallel-worker.php ledger   <orderId> <startAt>                    (record the sale entries)
  *
  * Not a test and not autoloaded.
  */
@@ -55,6 +57,16 @@ try {
         $wait();
         $app->make(OrderLifecycle::class)->cancelItem($line);
         echo json_encode(['ok' => true]), "\n";
+    } elseif ($mode === 'setstock') {
+        $variant = App\Models\ProductVariant::findOrFail((int) $argv[2]);
+        $wait();
+        $stored = $app->make(App\Services\Catalogue\Inventory::class)->setStock($variant, (int) $argv[4], (int) $argv[5], null);
+        echo json_encode(['ok' => true, 'stored' => $stored]), "\n";
+    } elseif ($mode === 'ledger') {
+        $order = App\Models\Order::findOrFail((int) $argv[2]);
+        $wait();
+        $written = $app->make(App\Services\Ledger\LedgerService::class)->recordSale($order);
+        echo json_encode(['ok' => true, 'written' => $written]), "\n";
     } elseif ($mode === 'stock') {
         // What the seller's edit form does: write the number from the form.
         $product = Product::findOrFail((int) $argv[2]);

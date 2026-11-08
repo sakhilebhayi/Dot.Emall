@@ -21,7 +21,8 @@ class GuestOrders
         return DB::transaction(function () use ($user) {
             $ids = Order::query()
                 ->whereNull('user_id')
-                ->whereRaw('lower(guest_email) = ?', [mb_strtolower($user->email)])
+                // guest_email is always stored lower-case (CheckoutService::placeAsGuest), so this is an exact match the index serves.
+                ->where('guest_email', mb_strtolower($user->email))
                 ->lockForUpdate()
                 ->pluck('id');
 

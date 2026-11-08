@@ -39,7 +39,7 @@ class StoreTrust
 
     public function build(Store $store): array
     {
-        $store->loadMissing('owner:id,infodot_signed_in_at', 'team:id,infodot_team_uuid,infodot_verified_at');
+        $store->loadMissing('owner:id,infodot_signed_in_at', 'team:id,name,infodot_team_uuid,infodot_verified_at');
 
         $min = (int) config('emall.seller.trust_min_sample', 5);
         $team = $store->team;
@@ -48,7 +48,7 @@ class StoreTrust
 
         $ladder = [
             ['key' => 'infodot_sign_in', 'label' => 'Signs in through InfoDot', 'state' => $store->owner?->infodot_signed_in_at !== null ? 'yes' : 'no', 'source' => 'InfoDot', 'detail' => null],
-            ['key' => 'infodot_company', 'label' => 'InfoDot company linked', 'state' => $linked ? 'yes' : 'no', 'source' => 'InfoDot', 'detail' => $linked ? $team->name ?? null : null],
+            ['key' => 'infodot_company', 'label' => 'InfoDot company linked', 'state' => $linked ? 'yes' : 'no', 'source' => 'InfoDot', 'detail' => $linked ? $team->name : null],
         ];
 
         if ($verified) {

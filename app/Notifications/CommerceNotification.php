@@ -12,7 +12,7 @@ use Illuminate\Notifications\AnonymousNotifiable;
  * new event is one entry. $data carries only ids and short facts; the order is re-read when the notice is rendered.
  *
  * kinds: order_placed, order_paid, payment_failed, item_packing, order_shipped, order_ready_for_collection,
- *        order_delivered, order_collected, order_cancelled, order_refunded, return_requested, return_approved,
+ *        order_delivered, order_collected, order_refunded, return_requested, return_approved,
  *        return_declined, return_received, return_refunded, return_escalated, ledger_released, low_stock
  */
 class CommerceNotification extends EmallNotification
@@ -72,7 +72,6 @@ class CommerceNotification extends EmallNotification
             'order_ready_for_collection' => ["Ready for collection: {$item}", "\"{$item}\" from order {$ref} is ready for you to collect.", 'View your order'],
             'order_delivered' => ["Delivered: {$item}", "\"{$item}\" from order {$ref} is marked delivered. If anything is wrong you can ask for a return within ".(int) config('emall.returns.window_days', 7).' days from the order page.', 'View your order'],
             'order_collected' => ["Collected: {$item}", "\"{$item}\" from order {$ref} is marked collected.", 'View your order'],
-            'order_cancelled' => ["Order {$ref} cancelled", (string) ($this->data['reason'] ?? "Order {$ref} was cancelled and the items went back into stock.").($order?->requires_payment && $order?->paid_at ? ' Any money you paid for it is being refunded.' : ''), 'View your order'],
             'order_refunded' => ["Refund on {$ref}", "A refund of {$money((int) ($this->data['amount_cents'] ?? 0))} for order {$ref} has been recorded. It reaches your bank as Paystack processes it.", 'View your order'],
             'return_requested' => ["Return requested: {$item}", "A buyer asked to return \"{$item}\" from order {$ref} ({$this->reason()}). Reply by {$this->when('respond_by')} or it goes to the Emall team.", 'Answer the request'],
             'return_approved' => ["Return approved: {$item}", "The seller approved your return of \"{$item}\" from order {$ref}. Send it back as they ask; the refund follows when they confirm it arrived.", 'View your return'],

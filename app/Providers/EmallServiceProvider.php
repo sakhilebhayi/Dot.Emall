@@ -16,10 +16,16 @@ class EmallServiceProvider extends ServiceProvider
     public function boot(): void
     {
         // Following a guest order link: per IP and, so one address cannot hammer a single order id, per order too.
-        RateLimiter::for('guest-order', fn (Request $request) => [
-            Limit::perMinute(20)->by('guest-order:ip:'.$request->ip()),
-            Limit::perMinute(10)->by('guest-order:order:'.$request->route('order')?->getKey().':'.$request->ip()),
-        ]);
+        // (The throttle runs before route-model binding, so {order} is still the raw id here.)
+        RateLimiter::for('guest-order', function (Request $request) {
+            $order = $request->route('order');
+            $order = is_object($order) ? $order->getKey() : (string) $order;
+
+            return [
+                Limit::perMinute(20)->by('guest-order:ip:'.$request->ip()),
+                Limit::perMinute(10)->by('guest-order:order:'.$order.':'.$request->ip()),
+            ];
+        });
 
         // Guest cart writes (a session-only cart is cheap but not free).
         RateLimiter::for('guest-cart', fn (Request $request) => Limit::perMinute(60)->by('guest-cart:'.$request->ip()));

@@ -10,6 +10,7 @@ use App\Services\OrderLifecycle;
 use App\Services\PaymentService;
 use App\Services\Paystack\PaystackConfig;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Gives up orders that asked for payment and never got it, so their stock
@@ -54,8 +55,11 @@ class ExpireUnpaidOrders extends Command
 
                     if ($lifecycle->cancelUnpaidOrder($order)) {
                         $cancelled++;
-                        $buyer = app(OrderNotifier::class)->buyer($order->refresh());
-                        $buyer?->notify(new UnpaidOrderCancelledNotification($order));
+                        try {
+                            app(OrderNotifier::class)->buyer($order->refresh())?->notify(new UnpaidOrderCancelledNotification($order));
+                        } catch (\Throwable $e) {
+                            Log::warning('An expiry notice could not be sent.', ['order_id' => $order->id, 'error' => class_basename($e)]);
+                        }
                     }
                 }
             });
