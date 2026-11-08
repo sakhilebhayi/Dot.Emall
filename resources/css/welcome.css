@@ -22,6 +22,8 @@
     .ds-hero__grid { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: var(--s-8); }
     .ds-hero__feature { grid-template-columns: minmax(0, 1fr); }
     .ds-hero__label { position: absolute; inset-block-end: var(--s-5); inset-inline-start: calc(var(--s-5) * -1.5); box-shadow: var(--lift-1); --label-behind: var(--photo-ground); }
+    /* With no listing to photograph (a shop with nothing in it yet) the explainer label stands alone in its column: it is never laid over a photograph, so it must not be pulled out of the flow, or it hangs off the left edge of the page over the next band. */
+    .ds-hero__label.ds-hero__label--solo { position: static; inset: auto; box-shadow: none; justify-self: center; }
 }
 .ds-strip-row { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(9.5rem, 44%); gap: var(--s-4); overflow-x: auto; scroll-snap-type: x proximity; padding-bottom: var(--s-3); margin-inline: calc(var(--gutter) * -1); padding-inline: var(--gutter); scrollbar-width: thin; }
 .ds-strip-row > * { scroll-snap-align: start; min-width: 0; }
