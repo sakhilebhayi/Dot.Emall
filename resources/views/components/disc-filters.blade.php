@@ -55,16 +55,16 @@
     @endif
 
     @if (count($brandOptions) > 0)
-        <x-ds.facet-group title="Brand" name="brand" type="checkbox" :options="$brandOptions" />
+        <x-ds.facet-group title="Brand" name="brand" type="checkbox" :options="$brandOptions" :limit="6" />
     @endif
 
     @foreach ($f['attributes'] ?? [] as $key => $attribute)
         @php($options = array_map(fn ($v) => ['value' => $v['value'], 'label' => $v['label'], 'count' => $v['count'], 'checked' => $v['selected']], $attribute['values']))
-        <x-ds.facet-group :title="$attribute['label']" :name="'attr['.$key.']'" type="checkbox" :options="$options" :open="$loop->index < 3 || collect($options)->contains('checked', true)" />
+        <x-ds.facet-group :title="$attribute['label']" :name="'attr['.$key.']'" type="checkbox" :options="$options" :limit="6" :open="$loop->index < 3 || collect($options)->contains('checked', true)" />
     @endforeach
 
     @if (count($storeOptions) > 1 || ($storeOptions && $storeOptions[0]['checked']))
-        <x-ds.facet-group title="Store" name="store" type="checkbox" :options="$storeOptions" :open="false" />
+        <x-ds.facet-group title="Store" name="store" type="checkbox" :options="$storeOptions" :limit="6" :open="false" />
     @endif
 
     @if (count($regionOptions) > 1 || ($regionOptions && $regionOptions[0]['checked']))

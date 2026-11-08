@@ -37,6 +37,15 @@ class CheckoutPage
             return null;
         }
 
+        // A signed-in person with a saved address starts on it: the radio shows it, so the quote must price for it too.
+        if ($user !== null && ! array_key_exists('address_id', $this->draft->all())) {
+            $starting = Address::query()->where('user_id', $user->id)->orderByDesc('is_default_shipping')->orderBy('id')->value('id');
+
+            if ($starting !== null) {
+                $this->draft->merge(['address_id' => (int) $starting]);
+            }
+        }
+
         $draft = $this->draft->all();
         $region = $this->draft->region($user);
         $quote = $this->draft->quote($this->quote, $lines, $user);
@@ -50,8 +59,16 @@ class CheckoutPage
         // Signed-in people with a default address start on it, so the common case is one press.
         $selectedAddress = $draft['address_id'] ?? ($addresses->firstWhere('is_default_shipping', true)?->id ?? $addresses->first()?->id ?? 'new');
 
-        $deliveryDone = $contactDone && ($addressDone || (is_numeric($selectedAddress) && $addresses->contains('id', (int) $selectedAddress)))
-            && ! empty($draft['delivery_confirmed']) && $quote->canCheckout();
+        $savedAddressChosen = $user !== null && is_numeric($selectedAddress) && $addresses->contains('id', (int) $selectedAddress);
+
+        // D-190: a saved address plus a delivery option for every parcel is a complete choice the page already shows with its total, so it
+        // counts as confirmed without a separate press. This only decides what the page DRAWS; placing the order still validates the
+        // address, re-reads every option from the seller's methods and recomputes the total against expected_total_cents.
+        $everyParcelHasAnOption = $quote->groups !== [] && collect($quote->groups)->every(fn (array $g) => $g['can_deliver'] && $g['selected'] !== null);
+        $autoConfirmed = $savedAddressChosen && $everyParcelHasAnOption;
+
+        $deliveryDone = $contactDone && ($addressDone || $savedAddressChosen)
+            && (! empty($draft['delivery_confirmed']) || $autoConfirmed) && $quote->canCheckout();
 
         $gatewayRequired = (bool) config('emall.checkout.requires_gateway');
         $gatewayClosed = $this->paystack->isMisconfigured() || ($gatewayRequired && ! $this->paystack->isUsable());
@@ -68,7 +85,8 @@ class CheckoutPage
             'user' => $user,
             'contactDone' => $contactDone,
             'deliveryDone' => $deliveryDone,
-            'current' => ! $contactDone ? 1 : (! $deliveryDone ? 2 : 4),
+            'autoConfirmed' => $autoConfirmed && empty($draft['delivery_confirmed']),
+            'current' => ! $contactDone ? 1 : (! $deliveryDone ? 2 : 3),
             'steps' => self::STEPS,
             'parcelCount' => count($quote->groups),
             'token' => (string) Str::uuid(),

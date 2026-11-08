@@ -47,7 +47,7 @@
         <div class="co-main">
             {{-- 1 Contact --}}
             <section class="co-step" id="contact" aria-labelledby="h-contact" data-state="{{ $contactDone ? 'done' : 'current' }}">
-                <h2 id="h-contact"><span class="co-step__n">1</span> Contact</h2>
+                <h2 id="h-contact"><span class="co-step__n">@if ($contactDone)<x-ds.icon name="check" :size="16" /><span class="ds-visually-hidden">Done: </span>@else 1 @endif</span> Contact</h2>
                 @if ($signedIn)
                     <p>Signed in as <strong>{{ $user->name }}</strong>. Order updates go to <strong>{{ $user->email }}</strong>.</p>
                 @else
@@ -58,8 +58,8 @@
             </section>
 
             {{-- 2 Delivery --}}
-            <section class="co-step" id="delivery" aria-labelledby="h-delivery" data-state="{{ $deliveryDone ? 'done' : ($contactDone ? 'current' : 'todo') }}">
-                <h2 id="h-delivery"><span class="co-step__n">2</span> Delivery</h2>
+            <section class="co-step co-step--delivery" id="delivery" aria-labelledby="h-delivery" data-state="{{ $deliveryDone ? 'done' : ($contactDone ? 'current' : 'todo') }}">
+                <h2 id="h-delivery"><span class="co-step__n">@if ($deliveryDone)<x-ds.icon name="check" :size="16" /><span class="ds-visually-hidden">Done: </span>@else 2 @endif</span> Delivery</h2>
 
                 @if ($signedIn && $addresses->isNotEmpty())
                     <fieldset class="ds-fieldset">
@@ -79,18 +79,19 @@
                         </label>
                     </fieldset>
                     <p class="ds-muted co-note"><a href="{{ route('account.addresses') }}">Manage your address book</a></p>
-                    <details class="co-newaddr" {{ $useNew || collect($errors->keys())->contains(fn ($k) => str_starts_with($k, 'address.')) ? 'open' : '' }}>
-                        <summary>Enter an address</summary>
+                    {{-- Shown only while "Use a different address" is chosen (CSS :has on the radio, so no script and no heading over a saved address). --}}
+                    <div class="co-newaddr" id="co-newaddr">
                         @include('checkout._address-fields', ['values' => $typed, 'provinces' => $provinces, 'withPhone' => false])
                         <x-ds.checkbox label="Save this address to my address book" name="save_address" value="1" :checked="(bool) old('save_address', $draft['save_address'] ?? false)" />
-                    </details>
+                    </div>
                 @else
                     @include('checkout._address-fields', ['values' => $typed, 'provinces' => $provinces, 'withPhone' => false])
                     @if ($signedIn)<x-ds.checkbox label="Save this address to my address book" name="save_address" value="1" :checked="(bool) old('save_address', $draft['save_address'] ?? true)" />@endif
                 @endif
 
                 <div class="co-stepact">
-                    <x-ds.button type="submit" variant="{{ $deliveryDone ? 'quiet' : 'primary' }}" formaction="{{ route('checkout.delivery') }}" formnovalidate icon="truck">{{ $deliveryDone ? 'Update delivery options' : 'Show delivery options' }}</x-ds.button>
+                    <x-ds.button type="submit" variant="{{ $deliveryDone ? 'quiet' : 'primary' }}" formaction="{{ route('checkout.delivery') }}" formnovalidate icon="truck" data-delivery-update>{{ $deliveryDone ? 'Update delivery options' : 'Show delivery options' }}</x-ds.button>
+                    @if ($autoConfirmed)<p class="ds-muted co-note co-stepact__note">Your saved address and a delivery option for each parcel are selected, and the total is worked out for them. Pick a different one and the total follows.</p>@endif
                 </div>
 
                 @if ($contactDone && $region)
@@ -123,7 +124,7 @@
             </section>
 
             {{-- 3 Payment --}}
-            <section class="co-step" id="payment" aria-labelledby="h-payment" data-state="{{ $deliveryDone ? 'done' : 'todo' }}">
+            <section class="co-step" id="payment" aria-labelledby="h-payment" data-state="{{ $deliveryDone ? 'current' : 'todo' }}">
                 <h2 id="h-payment"><span class="co-step__n">3</span> Payment</h2>
                 @if (! $deliveryDone)
                     <p class="ds-muted">Available once delivery is set.</p>

@@ -12,6 +12,22 @@ document.addEventListener('change', (e) => {
     timers.set(form, setTimeout(() => { if (form.isConnected) form.requestSubmit(); }, e.target.type === 'radio' ? 0 : 500));
 });
 
+/* Checkout: choosing another saved address or another delivery option re-prices the parcels at once, so the total beside Pay is never one
+   the buyer did not choose (the no-script page keeps the Update delivery options button). The server recomputes everything on Pay regardless. */
+document.addEventListener('change', (e) => {
+    const input = e.target;
+    const form = input.closest && input.closest('form[data-checkout-form]');
+    if (!form || input.type !== 'radio') return;
+    const savedAddress = input.name === 'address_id' && input.value !== 'new';
+    if (!savedAddress && !/^shipping_methods\[/.test(input.name)) return;
+    const button = form.querySelector('[data-delivery-update]');
+    if (!button || typeof form.requestSubmit !== 'function') return;
+    let back = form.querySelector('input[name="back"]');
+    if (!back) { back = document.createElement('input'); back.type = 'hidden'; back.name = 'back'; form.appendChild(back); }
+    back.value = 'delivery';
+    form.requestSubmit(button);
+});
+
 /* Checkout: pay once. The pay button locks the moment the form is sent (the server also treats a repeated token as the same order). */
 document.addEventListener('submit', (e) => {
     const form = e.target;

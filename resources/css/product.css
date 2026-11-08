@@ -61,9 +61,17 @@
 .pdp-policy { white-space: pre-line; color: var(--ink-2); font-size: var(--text-sm); }
 
 /* Page sections below the fold */
-.pdp-jump { display: flex; gap: var(--s-1); overflow-x: auto; padding-block: var(--s-2); border-block: 1px solid var(--line); margin-block: var(--s-5) 0; scrollbar-width: thin; }
-.pdp-jump a { flex: none; display: inline-flex; align-items: center; min-height: var(--tap); padding-inline: var(--s-3); color: var(--ink); font-weight: 650; text-decoration: none; border-radius: var(--r-control); }
-.pdp-jump a:hover { background: var(--sunken); }
+.pdp-jump { display: flex; gap: var(--s-1); overflow-x: auto; padding-block: var(--s-2); border-block: 1px solid var(--line); margin-block: var(--s-5) 0; scrollbar-width: none; overscroll-behavior-x: contain; }
+.pdp-jump::-webkit-scrollbar { display: none; }
+.pdp-jump a { flex: none; display: inline-flex; align-items: center; min-height: var(--tap); padding-inline: var(--s-3); color: var(--ink-2); font-weight: 650; text-decoration: none; border-radius: var(--r-control); box-shadow: inset 0 -3px 0 transparent; }
+.pdp-jump a:hover { background: var(--sunken); color: var(--ink); }
+/* The selected tab is the section you are reading: ink, and a brand rule under it, so it is told apart by more than colour. */
+.pdp-jump a[aria-current="true"] { color: var(--ink); box-shadow: inset 0 -3px 0 var(--brand); background: var(--brand-soft); }
+/* More tabs off the edge: a fade on that side, so the cut-off word reads as "scroll", not as broken. */
+.pdp-jump[data-more-end] { mask-image: linear-gradient(to right, #000 calc(100% - 2.5rem), transparent); }
+.pdp-jump[data-more-start] { mask-image: linear-gradient(to left, #000 calc(100% - 2.5rem), transparent); }
+.pdp-jump[data-more-start][data-more-end] { mask-image: linear-gradient(to right, transparent, #000 2.5rem, #000 calc(100% - 2.5rem), transparent); }
+@media (max-width: 30rem) { .pdp-jump a { padding-inline: var(--s-2); } }
 .pdp-section { padding-block: var(--s-6); border-bottom: 1px solid var(--line); scroll-margin-block-start: 8rem; }
 .pdp-section:last-of-type { border-bottom: 0; }
 .pdp-section__head { margin-block-end: var(--s-4); }
@@ -211,3 +219,7 @@
 .ds-label__row small { font-variant-numeric: lining-nums; font-feature-settings: "lnum" 1; }
 .pdp-inline { display: flex; align-items: flex-start; gap: var(--s-2); }
 .pdp-inline .ds-icon { margin-top: 0.2rem; }
+
+/* "How this price is worked out": one fact per line (D-192). */
+.pdp-work { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s-2); font-size: var(--text-sm); color: var(--ink-2); }
+.pdp-work li { max-width: 60ch; }

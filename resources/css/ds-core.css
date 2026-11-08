@@ -214,3 +214,7 @@
 :root.dark .when-light { display: none; }
 :root.dark .when-dark { display: inline-block; }
 @media (prefers-color-scheme: dark) { :root:not(.light) .when-light { display: none; } :root:not(.light) .when-dark { display: inline-block; } }
+/* A finished step says "Done" with a tick, so progress is not carried by the rule colour alone (D-190). */
+.ds-steps li[data-state="done"] .ds-steps__n { display: inline-flex; align-items: center; gap: var(--s-1); color: var(--pos); font-weight: 650; }
+.ds-steps li[data-state="done"] { border-color: var(--pos); }
+@media (max-width: 40rem) { .ds-steps li[data-state="done"] .ds-steps__label { display: block; } }

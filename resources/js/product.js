@@ -201,3 +201,35 @@ document.addEventListener('click', async (e) => {
 
 /* A read-only share link selects itself when focused, so it can be copied by hand. */
 document.addEventListener('focusin', (e) => { if (e.target.matches && e.target.matches('[data-select-on-focus]')) e.target.select(); });
+
+/*
+ * The "On this page" tabs (D-193): the tab whose section is under the top of the window is marked aria-current, and while the row
+ * is wider than the window an edge fade (data-more-end / data-more-start) says there is more to scroll to. Plain anchors without script.
+ */
+(function jumpTabs() {
+    const nav = $('.pdp-jump');
+    if (!nav) return;
+    const links = $$('a[href^="#"]', nav);
+    const pairs = links.map((a) => [a, document.getElementById(a.getAttribute('href').slice(1))]).filter(([, el]) => el);
+    const mark = () => {
+        const line = window.innerHeight * 0.3;
+        let current = null;
+        pairs.forEach(([a, el]) => { if (el.getBoundingClientRect().top <= line) current = a; });
+        links.forEach((a) => { if (a === current) a.setAttribute('aria-current', 'true'); else a.removeAttribute('aria-current'); });
+        if (current && nav.scrollWidth > nav.clientWidth) {
+            const left = current.offsetLeft - nav.clientWidth / 2 + current.offsetWidth / 2;
+            nav.scrollTo({ left, behavior: reduceMotion ? 'auto' : 'smooth' });
+        }
+    };
+    const edges = () => {
+        nav.toggleAttribute('data-more-end', nav.scrollLeft + nav.clientWidth < nav.scrollWidth - 4);
+        nav.toggleAttribute('data-more-start', nav.scrollLeft > 4);
+    };
+    let tick = false;
+    window.addEventListener('scroll', () => { if (tick) return; tick = true; requestAnimationFrame(() => { tick = false; mark(); }); }, { passive: true });
+    nav.addEventListener('scroll', edges, { passive: true });
+    window.addEventListener('resize', edges);
+    nav.addEventListener('click', (e) => { const a = e.target.closest('a'); if (a) { links.forEach((l) => l.removeAttribute('aria-current')); a.setAttribute('aria-current', 'true'); } });
+    edges();
+    mark();
+})();

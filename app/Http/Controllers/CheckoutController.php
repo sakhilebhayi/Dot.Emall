@@ -88,7 +88,7 @@ class CheckoutController extends Controller
 
         $draft->merge(['delivery_confirmed' => true]);
 
-        $redirect = redirect()->to(route('checkout.show').'#review')->with('status', 'Delivery options are ready. Check the total, then pay.');
+        $redirect = redirect()->to(route('checkout.show').($request->input('back') === 'delivery' ? '#delivery' : '#review'))->with('status', 'Delivery options are ready. Check the total, then pay.');
 
         return $promoFailed ? $redirect->withInput()->withErrors(['promo_code' => $problem]) : $redirect;
     }
