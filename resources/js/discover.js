@@ -18,3 +18,14 @@
     const answer = document.getElementById('answer');
     if (answer) answer.focus({ preventScroll: false });
 })();
+
+/* Keep the address clean: a filter form sends only the fields that carry a value (not price_min=&price_max=&rating=). Without script the empty fields are sent and ignored by the server. */
+document.addEventListener('submit', (e) => {
+    const form = e.target;
+    if (!(form instanceof HTMLFormElement) || !form.matches('[data-disc-filters]')) return;
+    form.querySelectorAll('input[name]').forEach((input) => {
+        if ((input.type === 'number' || input.type === 'radio') && input.value === '' && (input.type === 'number' || input.checked)) input.disabled = true;
+    });
+    // The dialog is closed by the navigation; if the browser restores the page from its cache the fields must work again.
+    window.addEventListener('pageshow', () => form.querySelectorAll('input:disabled').forEach((i) => { i.disabled = false; }), { once: true });
+});

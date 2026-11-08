@@ -69,3 +69,9 @@ link renders as `#` with `data-pending-route` (28 on a buyer's page, 7 on the se
 Carrier APIs, automatic payouts, Paystack transfers, a model-written assistant answer without a key, Dot.Notify without its env
 settings, InfoDot company "verified" state (the sign-in payload has no such field), VAT invoices. Owner items from D-1, D-2, D-8,
 D-24 and D-26 still stand.
+
+## W3 discovery pages (branch feat/r43-w3)
+
+Routes in the `// --- w3 ---` block: `home` (`/`), `search`, `categories.index`, `categories.show`, `collections.index`, `collections.show`, `assistant`, `recently-viewed.index`, `recently-viewed.clear`, `region.update`, `account.saved-searches` (+ `.store`, `.update`, `.destroy`). `products.index` is the same controller as `search` (decisions D-70 to D-77).
+
+Reusable pieces for other pages: `<x-disc-rail :set="$recommendationSet" />` (props in its header; the product page adopts it for `Recommender::forProduct()`), `<x-disc-card :product="$p" :why="..." />` (has the `wishlist` slot), `<x-disc-region-chip />` for a layout's `location` slot, `App\Support\ShopperRegion::current()`, `App\Support\SearchLinks`.

@@ -110,7 +110,7 @@ class CategoryAndCollectionPagesTest extends TestCase
         $page = $this->get('/collections/'.$c->slug)->assertOk();
 
         $page->assertSee('Made by a rule')->assertSee('priced up to R7,000')->assertSee('HP Notebook')->assertSee('Galaxy Phone')->assertDontSee('Lenovo Notebook');
-        $page->assertSee('No start or end date is set');
+        $page->assertSee('It has no start or end date');
     }
 
     public function test_dates_decide_what_the_public_sees(): void

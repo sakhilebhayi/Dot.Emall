@@ -17,7 +17,7 @@ final class CollectionText
             $c->starts_at && $c->ends_at => ($c->ends_at->lte(now()) ? 'Ran from ' : 'Runs from ').$fmt($c->starts_at).' to '.$fmt($c->ends_at),
             $c->ends_at !== null => ($c->ends_at->lte(now()) ? 'Ended on ' : 'Ends on ').$fmt($c->ends_at),
             $c->starts_at !== null => 'Started on '.$fmt($c->starts_at).', with no end date set',
-            default => 'No start or end date is set',
+            default => 'It has no start or end date',
         };
     }
 

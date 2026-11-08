@@ -9,7 +9,7 @@
     @if ($live->isNotEmpty())
         <div class="disc-collections">
             @foreach ($live as $row)
-                <x-disc-collection-panel :collection="$row['collection']" :preview="$row['preview']" :large="$loop->first" :basis="$row['collection']->type === 'manual' ? 'Picked by our team' : 'Always up to date with its rule'" />
+                <x-disc-collection-panel :collection="$row['collection']" :preview="$row['preview']" :large="$loop->first" :level="2" :basis="$row['collection']->type === 'manual' ? 'Picked by our team' : 'Always up to date with its rule'" />
             @endforeach
         </div>
     @else
