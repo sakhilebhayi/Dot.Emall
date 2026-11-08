@@ -169,7 +169,9 @@ return [
     |
     */
 
-    'secure' => env('SESSION_SECURE_COOKIE'),
+    // D-156: nothing in the deploy notes sets SESSION_SECURE_COOKIE, so the session cookie went out without the Secure flag on
+    // https://emall.infodot.co.za. It now follows APP_URL (https means Secure) unless the host says otherwise.
+    'secure' => env('SESSION_SECURE_COOKIE', str_starts_with(strtolower((string) env('APP_URL', '')), 'https://')),
 
     /*
     |--------------------------------------------------------------------------

@@ -175,4 +175,33 @@ class SellerQaRegressionTest extends TestCase
         $this->patch(route('seller.store.update'), ['name' => $seller->store->name, 'logo' => $svg])->assertSessionHasErrors('logo');
         $this->assertStringContainsString('JPEG, PNG or WebP', collect(session('errors')->get('logo'))->first());
     }
+
+    /** D-156 */
+    public function test_the_session_cookie_is_secure_when_the_app_url_is_https_unless_the_host_says_otherwise(): void
+    {
+        $load = function (array $env): bool {
+            $keep = [];
+            foreach (['APP_URL', 'SESSION_SECURE_COOKIE'] as $key) {
+                $keep[$key] = [$_ENV[$key] ?? null, $_SERVER[$key] ?? null];
+                unset($_ENV[$key], $_SERVER[$key]);
+            }
+            foreach ($env as $key => $value) {
+                $_ENV[$key] = $_SERVER[$key] = $value;
+            }
+
+            try {
+                return (bool) (require base_path('config/session.php'))['secure'];
+            } finally {
+                foreach ($keep as $key => [$e, $s]) {
+                    unset($_ENV[$key], $_SERVER[$key]);
+                    $e === null || $_ENV[$key] = $e;
+                    $s === null || $_SERVER[$key] = $s;
+                }
+            }
+        };
+
+        $this->assertTrue($load(['APP_URL' => 'https://emall.infodot.co.za']));
+        $this->assertFalse($load(['APP_URL' => 'http://127.0.0.1:8000']), 'a local http site must still get a cookie');
+        $this->assertFalse($load(['APP_URL' => 'https://emall.infodot.co.za', 'SESSION_SECURE_COOKIE' => 'false']), 'an explicit host setting wins');
+    }
 }
