@@ -89,6 +89,34 @@ class SearchPageTest extends TestCase
         $page->assertDontSee('name="category"', false); // the category facet is left out while the words named the category
     }
 
+    public function test_an_exact_match_is_not_apologised_for_and_clear_filters_is_hidden_when_nothing_is_applied(): void
+    {
+        $store = $this->store('Ubuntu Beauty');
+        $care = $this->category('Personal care');
+        $sofas = $this->category('Sofas');
+        $soap = $this->listing($store, 'Charcoal Soap Bar', 49.00, ['category_id' => $care->id, 'stock' => 9], 'Ubuntu');
+        $sofa = $this->listing($store, 'Three-Seater Fabric Sofa', 6499.00, ['category_id' => $sofas->id, 'stock' => 4], 'Ubuntu');
+        $this->catalogue->attribute($sofa->id, 'colour', 'Colour', 'Charcoal', null, null);
+        $this->reindex();
+        CategoryTree::forgetCounts();
+
+        $page = $this->get('/search?q='.urlencode('Charcoal Soap'))->assertOk();
+
+        $page->assertSee('Charcoal Soap Bar')->assertDontSee('No exact matches')->assertDontSee('were left out');
+        $page->assertDontSee('Clear filters');
+        $page->assertSee('Apply filters');
+
+        // With a filter really set, the way back is offered again.
+        $this->get('/search?q=notebook&brand[]=HP')->assertOk()->assertSee('Clear filters');
+    }
+
+    public function test_a_price_limit_read_from_the_words_that_had_to_be_dropped_is_still_said_out_loud(): void
+    {
+        $page = $this->get('/search?q='.urlencode('notebook under R100'))->assertOk();
+
+        $page->assertSee('HP 250 Business Notebook')->assertSee('Nothing matched the price or stock limit read from your search, so that limit was left out.');
+    }
+
     public function test_price_range_and_availability_filters(): void
     {
         $page = $this->get('/search?q=notebook&price_min=7000&price_max=9500')->assertOk();

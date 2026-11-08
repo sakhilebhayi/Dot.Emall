@@ -47,7 +47,6 @@
                     @if ($viewer['isOperator'])<x-ds.dropdown-item :href="emall_route('operator.products.index')" icon="flag">Operator area</x-ds.dropdown-item>
 @endif
                     <x-ds.dropdown-item :href="emall_route('profile.show')" icon="lock">Profile and security</x-ds.dropdown-item>
-                    @include('layouts.partials.team-menu', ['user' => $user])
                     <hr class="ds-dropdown__sep">
                     <x-ds.theme-toggle variant="menu" />
                     <form method="POST" action="{{ route('logout') }}">@csrf<x-ds.dropdown-item type="submit" icon="logout">Sign out</x-ds.dropdown-item></form>

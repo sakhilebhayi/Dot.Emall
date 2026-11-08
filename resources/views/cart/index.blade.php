@@ -5,7 +5,7 @@
     $undeliverable = collect($quote->groups)->contains(fn ($g) => ! $g['can_deliver']);
     $promo = $quote->promo;
 @endphp
-<x-store-layout>
+<x-store-layout :bottom-bar="$lines->isNotEmpty()">
     <x-slot:title>Your cart</x-slot:title>
     <x-slot:description>Your items grouped by seller, with delivery prices and the total to pay before you check out.</x-slot:description>
     <x-slot:heading>Your cart</x-slot:heading>
@@ -176,6 +176,16 @@
                     </form>
                 </x-ds.panel>
             </aside>
+        </div>
+
+        {{-- Phone only (the kit hides .ds-buybar from 48rem): the figure to pay and the way on stay in reach, like the product page's bar. Same total and same blocked rules as the rail. --}}
+        <div class="ds-buybar cart-bar" role="group" aria-label="Total and checkout">
+            <div class="cart-bar__total"><span class="cart-bar__label">Total to pay</span><x-ds.price :cents="$quote->totalCents" size="lg" /></div>
+            @if ($blocked || $undeliverable)
+                <x-ds.button variant="primary" disabled>Go to checkout</x-ds.button>
+            @else
+                <x-ds.button :href="route('checkout.show')" variant="primary" iconRight="arrow-right">Go to checkout</x-ds.button>
+            @endif
         </div>
     @endif
 </x-store-layout>

@@ -63,7 +63,7 @@
                             <span class="sd-select-cell"><input type="checkbox" name="ids[]" value="{{ $p->id }}" aria-label="Select {{ $p->name }}"></span>
                             <div class="sd-item__main">
                                 <div class="sd-cluster">
-                                    <span class="sd-thumb">@if ($cover)<img src="{{ $cover->url() }}" alt="" width="56" height="56" loading="lazy">@else<x-ds.icon name="image" :size="24" />@endif</span>
+                                    <span class="sd-thumb">@if ($cover)<img src="{{ $cover->url() }}" alt="" width="56" height="56" loading="{{ $loop->index < 8 ? 'eager' : 'lazy' }}" decoding="async">@else<x-ds.icon name="image" :size="24" />@endif</span>
                                     <a class="sd-item__title" href="{{ route('seller.products.edit', $p) }}">{{ $p->name }}</a>
                                 </div>
                                 <div class="sd-item__meta">

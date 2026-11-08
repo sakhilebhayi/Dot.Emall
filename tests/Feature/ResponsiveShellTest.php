@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Livewire\NotificationBell;
 use App\Models\Team;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\Concerns\AssertsResponsiveShell;
@@ -66,6 +67,23 @@ class ResponsiveShellTest extends TestCase
         }
     }
 
+    public function test_no_account_menu_offers_teams_but_the_team_routes_still_answer(): void
+    {
+        $seller = $this->makeSeller();
+        $buyer = $this->makeBuyer();
+        $operator = User::factory()->withPersonalTeam()->create(['is_platform_operator' => true]);
+
+        foreach ([[$buyer, route('account.home')], [$buyer, route('cart.index')], [$seller, route('seller.dashboard')], [$operator, route('operator.products.index')]] as [$user, $url]) {
+            $html = $this->actingAs($user)->get($url)->assertOk()->getContent();
+            foreach (['Team settings', 'Create a team', 'Switch team', route('teams.create'), '/teams/'.$user->currentTeam?->id] as $needle) {
+                $this->assertStringNotContainsString($needle, $html, "a marketplace has no teams: {$needle} on {$url}");
+            }
+        }
+
+        // Unlinked, not removed: the Jetstream routes (and the SSO team sync behind them) are untouched.
+        $this->actingAs($buyer)->get(route('teams.create'))->assertOk();
+    }
+
     public function test_the_order_tables_sit_in_labelled_horizontal_scroll_regions(): void
     {
         $seller = $this->makeSeller();
@@ -96,18 +114,17 @@ class ResponsiveShellTest extends TestCase
         $this->assertSame(0, $xpath->query('//a[@href="'.route('seller.products.index').'"]')->length, 'a buyer is not shown the seller desk');
     }
 
-    public function test_the_account_menu_has_sign_out_and_a_team_switcher(): void
+    public function test_the_account_menu_has_sign_out_and_no_team_entries_even_for_a_person_in_two_teams(): void
     {
         $buyer = $this->makeBuyer();
-        $second = Team::factory()->create(['user_id' => $buyer->id, 'personal_team' => false, 'name' => 'Karoo Trading Collective']);
+        Team::factory()->create(['user_id' => $buyer->id, 'personal_team' => false, 'name' => 'Karoo Trading Collective']);
 
         $xpath = $this->assertResponsiveShell($this->actingAs($buyer)->get(route('account.home')));
 
         $menu = '//div[@id="account-menu"]';
         $this->assertSame(1, $xpath->query($menu.'//form[@action="'.route('logout').'"]//button')->length);
-        $this->assertSame(1, $xpath->query($menu.'//a[@href="'.route('teams.show', $buyer->currentTeam).'"]')->length);
-        $this->assertSame(2, $xpath->query($menu.'//form[@action="'.route('current-team.update').'"]//input[@name="team_id"]')->length);
-        $this->assertSame(1, $xpath->query($menu.'//input[@name="team_id"][@value="'.$second->id.'"]')->length);
+        $this->assertSame(0, $xpath->query($menu.'//a[contains(@href, "/teams/")]')->length);
+        $this->assertSame(0, $xpath->query($menu.'//form[@action="'.route('current-team.update').'"]')->length);
     }
 
     public function test_the_notification_panel_opens_as_a_labelled_disclosure(): void

@@ -84,10 +84,10 @@
             </x-ds.empty-state>
         @else
             <p class="ds-toolbar__count" aria-live="polite">{{ number_format($result->total) }} {{ \Illuminate\Support\Str::plural('product', $result->total) }}</p>
-            <div class="ds-grid">
+            <div class="ds-grid ds-grid--phone2">
                 @foreach ($result->items as $hit)
                     @php($p = $hit->product)
-                    <x-ds.product-card :href="route('products.show', ['product' => $p, 'src' => 'search'])" :title="$p->name" :image="$p->images->first()?->cardUrl()" :amount="$p->price" :rating-value="$p->rating_average ?? 0" :rating-count="$p->rating_count ?? 0" :stock="$p->stock">
+                    <x-ds.product-card :eager="$loop->index < 4" :href="route('products.show', ['product' => $p, 'src' => 'search'])" :title="$p->name" :image="$p->images->first()?->cardUrl()" :amount="$p->price" :rating-value="$p->rating_average ?? 0" :rating-count="$p->rating_count ?? 0" :stock="$p->stock">
                         <x-slot:wishlist><x-wish-toggle :product="$p" /></x-slot:wishlist>
                     </x-ds.product-card>
                 @endforeach

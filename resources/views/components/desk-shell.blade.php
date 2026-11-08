@@ -34,7 +34,6 @@
                         <hr class="ds-dropdown__sep">
                         <x-ds.dropdown-item :href="url('/')" icon="store">Back to the shop</x-ds.dropdown-item>
                         <x-ds.dropdown-item :href="emall_route('profile.show')" icon="lock">Profile and security</x-ds.dropdown-item>
-                        @include('layouts.partials.team-menu', ['user' => $user])
                         <hr class="ds-dropdown__sep">
                         <form method="POST" action="{{ route('logout') }}">@csrf<x-ds.dropdown-item type="submit" icon="logout">Sign out</x-ds.dropdown-item></form>
                     </x-ds.dropdown>

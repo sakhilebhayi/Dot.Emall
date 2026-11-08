@@ -102,7 +102,12 @@ abstract class AbstractSearch implements SearchEngine
 
             if ($keys !== [] && $p->fullSlots !== []) {
                 if ($this->count($request, $p->fullSlots, 'all') > 0) {
-                    $notes[] = 'No exact matches with the filters read from your search, so those were left out.';
+                    // Only a limit the words cannot show for themselves is worth a note: a price or stock limit is not matched by any word, so
+                    // dropping it changes what the shopper asked for. A category, brand or attribute read from the words is still matched by
+                    // the words themselves ("Charcoal Soap" read "Charcoal" as a colour), so dropping that says nothing false and needs no note.
+                    if (array_intersect($keys, ['price', 'in_stock']) !== []) {
+                        $notes[] = 'Nothing matched the price or stock limit read from your search, so that limit was left out.';
+                    }
 
                     return ['filters' => $request, 'slots' => $p->fullSlots, 'mode' => 'all', 'inferred' => [], 'parsed' => $p];
                 }

@@ -36,6 +36,8 @@
 .ds-pcard--row .ds-pcard__title { -webkit-line-clamp: 3; line-clamp: 3; }
 .ds-grid { display: grid; gap: var(--s-5) var(--s-4); grid-template-columns: repeat(auto-fill, minmax(min(100%, 12.5rem), 1fr)); }
 .ds-grid--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+/* Phone-only two-up: a long list of one product per row on a phone is a 10,000px page (jury 2 #3); from 40rem the usual auto-fill grid takes over. */
+@media (max-width: 39.99rem) { .ds-grid--phone2 { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-5) var(--s-3); } }
 @media (min-width: 48rem) { .ds-grid { gap: var(--s-6) var(--s-5); grid-template-columns: repeat(auto-fill, minmax(13.5rem, 1fr)); } }
 
 /* Product gallery */
@@ -184,6 +186,8 @@
 }
 .ds-buybar { position: fixed; z-index: 85; inset-inline: 0; inset-block-end: 0; display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); padding: var(--s-3) var(--gutter) calc(var(--s-3) + env(safe-area-inset-bottom)); background: var(--surface); border-top: 1px solid var(--line); }
 @media (min-width: 48rem) { .ds-buybar { display: none; } }
+.cart-bar__total { display: grid; gap: 0; min-width: 0; }
+.cart-bar__label { font-size: var(--text-xs); font-weight: 600; color: var(--ink-3); line-height: 1.2; }
 .has-bottom-bar:not(.ds-ctx-account):not(.ds-ctx-seller):not(.ds-ctx-operator) .ds-app { padding-bottom: 4.5rem; }
 @media (min-width: 48rem) { .has-bottom-bar:not(.ds-ctx-account):not(.ds-ctx-seller):not(.ds-ctx-operator) .ds-app { padding-bottom: 0; } }
 

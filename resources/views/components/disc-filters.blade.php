@@ -16,6 +16,11 @@
     $availability = $f['availability'] ?? null;
     $price = $f['price'] ?? null;
     $carry = $links->carried();
+    // A category page's own category is not a filter the shopper set, so it does not count as one.
+    $applied = $search->filters();
+    if ($links->base() !== route('search')) {
+        unset($applied['category']);
+    }
 @endphp
 <form method="get" action="{{ $links->base() }}" class="disc-filters" id="filters-{{ $uid }}" data-disc-filters>
     @foreach (['q', 'sort', 'view', 'literal'] as $keep)
@@ -73,6 +78,6 @@
 
     <div class="disc-filters__actions">
         <x-ds.button type="submit" size="md">Apply filters</x-ds.button>
-        <x-ds.button :href="$links->url($search->with(['categoryId' => $links->base() === route('search') ? null : $search->categoryId, 'brands' => [], 'priceMin' => null, 'priceMax' => null, 'inStock' => false, 'minRating' => null, 'storeIds' => [], 'regions' => [], 'attributes' => [], 'page' => 1]))" variant="quiet">Clear filters</x-ds.button>
+        @if ($applied !== [])<x-ds.button :href="$links->url($search->with(['categoryId' => $links->base() === route('search') ? null : $search->categoryId, 'brands' => [], 'priceMin' => null, 'priceMax' => null, 'inStock' => false, 'minRating' => null, 'storeIds' => [], 'regions' => [], 'attributes' => [], 'page' => 1]))" variant="quiet">Clear filters</x-ds.button>@endif
     </div>
 </form>

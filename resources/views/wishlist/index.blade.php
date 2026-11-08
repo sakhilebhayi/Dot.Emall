@@ -38,7 +38,7 @@
                 @endphp
                 <li class="wl-item @unless ($item->available) is-gone @endunless">
                     <a class="wl-item__media" href="{{ $link }}" tabindex="-1" aria-hidden="true">
-                        @if ($p->images->first())<img src="{{ $p->images->first()->cardUrl() }}" alt="" width="112" height="112" loading="lazy">@endif
+                        @if ($p->images->first())<img src="{{ $p->images->first()->cardUrl() }}" alt="" width="112" height="112" loading="{{ $loop->index < 6 ? 'eager' : 'lazy' }}" decoding="async">@endif
                     </a>
                     <div class="wl-item__body">
                         <p class="wl-item__title"><a href="{{ $link }}">{{ $p->name }}</a></p>

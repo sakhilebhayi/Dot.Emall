@@ -27,7 +27,7 @@
                 @php($cover = $product->images->first())
                 <li class="op-item">
                     <div class="op-listing">
-                        @if ($cover)<img class="op-thumb" src="{{ $cover->url() }}" alt="" width="72" height="72" loading="lazy">@else<span class="op-thumb" aria-hidden="true"></span>@endif
+                        @if ($cover)<img class="op-thumb" src="{{ $cover->url() }}" alt="" width="72" height="72" loading="{{ $loop->index < 8 ? 'eager' : 'lazy' }}" decoding="async">@else<span class="op-thumb" aria-hidden="true"></span>@endif
                         <div>
                             <div class="op-item__head">
                                 <a class="op-row-link" href="{{ route('operator.products.show', $product) }}">{{ $product->name }}</a>
