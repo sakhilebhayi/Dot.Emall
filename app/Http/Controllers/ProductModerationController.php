@@ -42,7 +42,7 @@ class ProductModerationController extends Controller
             ->when($status !== 'all', fn ($w) => $w->where('status', $status))
             ->when($q !== '', fn ($w) => $w->where('name', 'like', '%'.str_replace(['%', '_'], ['\\%', '\\_'], $q).'%'))
             ->when($request->integer('store'), fn ($w, $store) => $w->where('store_id', $store))
-            ->when($request->integer('category'), fn ($w, $category) => $w->whereIn('category_id', StoreCategory::query()->withDescendantsOf($category)->select('id')))
+            ->when($request->integer('category'), fn ($w, $category) => $w->whereIn('category_id', app(\App\Contracts\CategoryTree::class)->withDescendants($category)))
             ->when($status === 'pending_approval', fn ($w) => $w->oldest(), fn ($w) => $w->latest('reviewed_at')->latest('id'))
             ->paginate(20)->withQueryString();
 

@@ -41,7 +41,7 @@ class CatalogueAdminController extends Controller
             'slug' => ['nullable', 'string', 'max:140', 'regex:/^[a-z0-9]+(?:-[a-z0-9]+)*$/', 'unique:store_categories,slug'],
         ]);
 
-        $category = $tree->create(array_filter(['name' => $data['name'], 'slug' => $data['slug'] ?? null, 'sort_order' => $data['sort_order'] ?? 0], fn ($v) => $v !== null), $data['parent_id'] ? StoreCategory::query()->find($data['parent_id']) : null);
+        $category = $tree->create(array_filter(['name' => $data['name'], 'slug' => $data['slug'] ?? null, 'sort_order' => $data['sort_order'] ?? 0], fn ($v) => $v !== null), ! empty($data['parent_id']) ? StoreCategory::query()->find($data['parent_id']) : null);
         $audit->record($request->user(), 'category.create', $category);
 
         return redirect()->route('operator.catalogue.categories', ['category' => $category->id])->with('status', 'Category created.');
@@ -57,7 +57,7 @@ class CatalogueAdminController extends Controller
             'is_active' => ['nullable', 'boolean'],
         ]);
 
-        return $this->attempt('category', function () use ($data, $category, $tree, $audit, $request) {
+        return $this->attempt('category', fn () => \Illuminate\Support\Facades\DB::transaction(function () use ($data, $category, $tree, $audit, $request) {
             $parentId = $data['parent_id'] ?? null;
             $before = $category->only(['name', 'slug', 'is_active', 'parent_id']);
 
@@ -69,7 +69,7 @@ class CatalogueAdminController extends Controller
 
             CategoryTree::forgetCounts();
             $audit->record($request->user(), 'category.update', $category->refresh(), null, ['was' => $before, 'now' => $category->only(['name', 'slug', 'is_active', 'parent_id'])]);
-        }, 'Category saved.', route('operator.catalogue.categories', ['category' => $category->id]));
+        }), 'Category saved.', route('operator.catalogue.categories', ['category' => $category->id]));
     }
 
     public function storeAttribute(Request $request, StoreCategory $category, OperatorAudit $audit): RedirectResponse
