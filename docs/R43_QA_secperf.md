@@ -65,16 +65,16 @@ What changed (all D-160 to D-164):
 
 | Defect | Test | Commit |
 |---|---|---|
-| Rotating a guest link left existing sessions in | `Security\GuestAccessTest` | see git log |
-| Review and return photos decoded before size check | `Security\UploadLimitsTest` | |
-| 300 search filters took 9 s | `Security\SearchInputLimitsTest` | |
-| Markdown links and images in notification e-mails | `Security\MailContentTest` | |
-| Price rule O(n x m); count recomputed on every operator home | `Performance\HotPathsTest::test_the_price_rule_*` | |
-| Facet queries for collections and digests | `Performance\HotPathsTest::test_a_request_that_wants_only_products_*`, `test_a_dynamic_collection_*` | |
-| N+1 store ratings on the home page | `Performance\HotPathsTest::test_several_stores_ratings_*` | |
-| Missing indexes | `Performance\HotPathsTest::test_the_hot_path_indexes_*`; `Commerce\IndexesPostgresTest` (four new shapes) | |
-| Full-size photos in card grids | `Performance\HotPathsTest::test_an_upload_also_stores_*`, `test_a_photo_that_is_already_small_*`, `test_the_backfill_command_*` | |
-| No cache or compression for assets | Verified with Apache 2.4.68 (`curl -I`), no automated test | |
+| Rotating a guest link left existing sessions in | `Security\GuestAccessTest` | 9944758 |
+| Review and return photos decoded before size check | `Security\UploadLimitsTest` | 9944758 |
+| 300 search filters took 9 s | `Security\SearchInputLimitsTest` | 9944758 |
+| Markdown links and images in notification e-mails | `Security\MailContentTest` | c81b3e2 |
+| Price rule O(n x m); count recomputed on every operator home | `Performance\HotPathsTest::test_the_price_rule_*` |  e7acf8e |
+| Facet queries for collections and digests | `Performance\HotPathsTest::test_a_request_that_wants_only_products_*`, `test_a_dynamic_collection_*` |  e7acf8e |
+| N+1 store ratings on the home page | `Performance\HotPathsTest::test_several_stores_ratings_*` |  e7acf8e |
+| Missing indexes | `Performance\HotPathsTest::test_the_hot_path_indexes_*`; `Commerce\IndexesPostgresTest` (four new shapes) |  e7acf8e |
+| Full-size photos in card grids | `Performance\HotPathsTest::test_an_upload_also_stores_*`, `test_a_photo_that_is_already_small_*`, `test_the_backfill_command_*` |  e7acf8e |
+| No cache or compression for assets | Verified with Apache 2.4.68 (`curl -I`), no automated test |  e7acf8e |
 
 Tests written before the fix and seen failing: `GuestAccessTest` (rotation), `UploadLimitsTest` (both validators), `SearchInputLimitsTest` (attribute and value caps), `MailContentTest` (link, image). The performance tests pin behaviour (identical output, query counts, index existence) and would also have passed on the old code except the facet flag and the card-picture tests.
 
@@ -93,4 +93,4 @@ Tests written before the fix and seen failing: `GuestAccessTest` (rotation), `Up
 
 ## Test counts
 
-See the final report; the run command is `DB_CONNECTION=sqlite DB_DATABASE=:memory: php -d memory_limit=2G vendor/bin/phpunit`, and the PostgreSQL files were run with `phpunit.pgsql.xml` on a throwaway database.
+SQLite (`DB_CONNECTION=sqlite DB_DATABASE=:memory: php -d memory_limit=2G vendor/bin/phpunit`): trunk 1,561 tests (1,523 passed, 38 skipped); this branch 1,588 tests, 1,546 passed, 42 skipped (the four extra skips are the new PostgreSQL index cases), 0 failures. PostgreSQL (`phpunit.pgsql.xml`, throwaway database, clean environment): 1,588 tests, 1,581 passed, 7 skipped, 0 failures. Note for whoever runs the PostgreSQL suite: do not export `EMALL_E2E_FAKE_PAYSTACK`, `CACHE_STORE` or `SESSION_DRIVER` from a demo shell first; a polluted run showed 91 failures (the fake gateway is bound and rate limits persist), all gone in a clean environment.
