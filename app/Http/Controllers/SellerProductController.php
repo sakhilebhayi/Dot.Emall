@@ -2,8 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Brand;
 use App\Models\Product;
+use App\Models\ProductVariant;
 use App\Models\StoreCategory;
+use App\Services\Catalogue\Inventory;
 use App\Services\ProductImages;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -66,6 +69,8 @@ class SellerProductController extends Controller
             'stock' => 'required|integer|min:0|max:'.self::MAX_STOCK,
             'sku' => 'nullable|string|max:255|unique:products,sku',
             'category_id' => 'nullable|exists:store_categories,id',
+            'brand' => 'nullable|string|max:100',
+            'low_stock_threshold' => 'nullable|integer|min:0|max:'.self::MAX_STOCK,
             ...ProductImages::rules(),
         ]);
 
@@ -80,6 +85,8 @@ class SellerProductController extends Controller
                 'compare_price' => $validated['compare_price'] ?? null,
                 'stock' => $validated['stock'],
                 'sku' => $validated['sku'] ?? null,
+                'brand_id' => filled($validated['brand'] ?? null) ? Brand::named($validated['brand'])->id : null,
+                'low_stock_threshold' => $validated['low_stock_threshold'] ?? 5,
                 'status' => 'pending_approval',
             ]);
 
@@ -114,7 +121,7 @@ class SellerProductController extends Controller
      * unusable, and moderation here only ever gated the original listing
      * (ProductModerationController), not every subsequent edit.
      */
-    public function update(Product $product, Request $request): RedirectResponse
+    public function update(Product $product, Request $request, Inventory $inventory): RedirectResponse
     {
         Gate::authorize('update', $product);
 
@@ -124,25 +131,54 @@ class SellerProductController extends Controller
             'price' => 'required|numeric|decimal:0,2|min:0|max:'.self::MAX_PRICE,
             'compare_price' => 'nullable|numeric|decimal:0,2|min:0|max:'.self::MAX_PRICE,
             'stock' => 'required|integer|min:0|max:'.self::MAX_STOCK,
+            // The stock number the edit form was drawn with (a hidden field). Sturdier than the session: it survives an
+            // expired session and two tabs.
+            'stock_was' => 'nullable|integer|min:0|max:'.self::MAX_STOCK,
             'sku' => ['nullable', 'string', 'max:255', 'unique:products,sku,'.$product->id],
             'category_id' => 'nullable|exists:store_categories,id',
+            'brand' => 'nullable|string|max:100',
+            'low_stock_threshold' => 'nullable|integer|min:0|max:'.self::MAX_STOCK,
         ]);
 
-        $adjusted = DB::transaction(function () use ($product, $validated) {
-            // The row lock serialises this with checkout, which decrements stock under the same lock.
+        $adjusted = DB::transaction(function () use ($product, $validated, $request, $inventory) {
+            // The row lock serialises this with checkout, which decrements stock under the same lock (products first,
+            // then variants, always in that order).
             $current = Product::query()->lockForUpdate()->findOrFail($product->id);
 
-            $stock = $this->stockToStore($current, (int) $validated['stock']);
+            $simple = ProductVariant::query()->where('product_id', $current->id)->count() === 1;
+            $variant = $simple ? ProductVariant::query()->where('product_id', $current->id)->lockForUpdate()->first() : null;
 
-            $current->update([
+            $seen = isset($validated['stock_was']) ? (int) $validated['stock_was'] : $this->stockSeenFromSession($current);
+
+            $values = [
                 'name' => $validated['name'],
                 'description' => $validated['description'] ?? null,
-                'price' => $validated['price'],
                 'compare_price' => $validated['compare_price'] ?? null,
-                'stock' => $stock,
                 'sku' => $validated['sku'] ?? null,
                 'category_id' => $validated['category_id'] ?? null,
-            ]);
+            ];
+
+            if ($request->has('brand')) {
+                $values['brand_id'] = filled($validated['brand'] ?? null) ? Brand::named($validated['brand'])->id : null;
+            }
+
+            if (isset($validated['low_stock_threshold'])) {
+                $values['low_stock_threshold'] = (int) $validated['low_stock_threshold'];
+            }
+
+            // Price and stock belong to the variant. A product with options has its own prices and stock per variant (set
+            // there); the product row then only shows the cheapest price and the total stock.
+            if ($variant !== null) {
+                $values['price'] = $validated['price'];
+            }
+
+            $current->update($values);
+
+            if ($variant === null) {
+                return null;
+            }
+
+            $stock = $inventory->setStock($variant, (int) $validated['stock'], $seen, $request->user()->id);
 
             return $stock !== (int) $validated['stock'] ? $stock : null;
         });
@@ -153,20 +189,13 @@ class SellerProductController extends Controller
     }
 
     /**
-     * The form carries an absolute stock number. Written as it is, it overwrites every sale made since the form was
-     * drawn: a seller who only changed the price would put sold units back on the shelf and the shop would oversell.
-     * So the change the seller made (what they typed minus what the form showed) is applied to the stock as it is now.
-     * Without a remembered number (an expired session) the typed number is used as given.
+     * Without the hidden `stock_was` field the form's number is remembered in the session (see edit()).
      */
-    private function stockToStore(Product $current, int $typed): int
+    private function stockSeenFromSession(Product $current): ?int
     {
         $seen = session()->pull(self::stockSeenKey($current));
 
-        if (! is_int($seen)) {
-            return $typed;
-        }
-
-        return max(0, (int) $current->stock + ($typed - $seen));
+        return is_int($seen) ? $seen : null;
     }
 
     private static function stockSeenKey(Product $product): string

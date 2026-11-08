@@ -9,6 +9,9 @@ use App\Events\OrderPaid;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Models\PaymentEvent;
+use App\Services\Guests\GuestOrderAccess;
+use App\Services\Ledger\LedgerService;
+use App\Services\Notifications\OrderNotifier;
 use App\Services\Paystack\PaymentGatewayException;
 use App\Services\Paystack\PaystackClient;
 use App\Services\Paystack\PaystackConfig;
@@ -49,6 +52,8 @@ class PaymentService
         private readonly PaystackClient $client,
         private readonly PaystackConfig $config,
         private readonly RefundService $refunds,
+        private readonly LedgerService $ledger,
+        private readonly OrderNotifier $notifier,
     ) {}
 
     /**
@@ -169,11 +174,11 @@ class PaymentService
         $reference = 'EMALL-'.$order->id.'-'.Str::lower(Str::random(14));
 
         $transaction = $this->client->initializeTransaction(
-            email: $order->user->email,
+            email: (string) $order->buyerEmail(),
             amountCents: $cents,
             currency: $currency,
             reference: $reference,
-            callbackUrl: route('orders.payment.callback', $order),
+            callbackUrl: $this->callbackUrl($order),
             metadata: ['order_id' => $order->id, 'order_reference' => $order->reference()],
         );
 
@@ -194,6 +199,19 @@ class PaymentService
 
             return $payment;
         });
+    }
+
+    /**
+     * Where Paystack sends the buyer back. A guest has no account to sign in to, so theirs is the order's magic-link
+     * payment return (the token in the path is the credential, as for the order link itself).
+     */
+    private function callbackUrl(Order $order): string
+    {
+        if ($order->isGuest() && ($token = app(GuestOrderAccess::class)->tokenFor($order)) !== null) {
+            return route('guest.orders.payment.callback', ['order' => $order->id, 'token' => $token]);
+        }
+
+        return route('orders.payment.callback', $order);
     }
 
     /**
@@ -218,6 +236,7 @@ class PaymentService
             ]);
 
             $locked->forceFill(['payment_status' => PaymentStatus::Paid, 'paid_at' => now()])->save();
+            $this->ledger->recordSale($locked);
             OrderPaid::dispatch($locked);
 
             return $payment;
@@ -385,6 +404,9 @@ class PaymentService
         $payment->forceFill(['status' => PaymentAttemptStatus::Success])->save();
         $order->forceFill(['payment_status' => PaymentStatus::Paid, 'paid_at' => now()])->save();
 
+        // The seller ledger is written in the same transaction as the money: a paid order always has its entries.
+        $this->ledger->recordSale($order);
+
         // The buyer may have cancelled a line between starting and paying:
         // they paid for the old total, so queue the difference back.
         $this->refunds->reconcile($order);
@@ -443,6 +465,8 @@ class PaymentService
                 && $order->payment_status === PaymentStatus::Pending
                 && ! $order->payments()->where('status', PaymentAttemptStatus::Pending->value)->exists()) {
                 $order->forceFill(['payment_status' => PaymentStatus::Failed])->save();
+
+                DB::afterCommit(fn () => $this->notifier->paymentFailed($order));
             }
         });
     }

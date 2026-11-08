@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Enums\OrderStatus;
 use App\Models\Order;
 use App\Models\OrderItem;
-use App\Notifications\OrderItemStatusUpdatedNotification;
 use App\Services\OrderLifecycle;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -48,13 +47,11 @@ class SellerOrderController extends Controller
         ]);
 
         try {
-            $lifecycle->advanceItem($orderItem, OrderStatus::from($validated['status']));
+            // The lifecycle records who did it, enforces the legal transitions and tells the buyer (an account or a guest).
+            $lifecycle->advanceItem($orderItem, OrderStatus::from($validated['status']), $request->user(), null, 'seller');
         } catch (InvalidArgumentException $e) {
             return back()->withErrors(['status' => $e->getMessage()]);
         }
-
-        $orderItem->refresh();
-        $orderItem->order->user?->notify(new OrderItemStatusUpdatedNotification($orderItem));
 
         return back()->with('status', 'Order item updated.');
     }

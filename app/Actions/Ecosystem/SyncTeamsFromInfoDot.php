@@ -84,6 +84,14 @@ class SyncTeamsFromInfoDot
             $team->forceFill(['name' => $info['name']])->save();
         }
 
+        // Only InfoDot's own word marks a company verified; nothing here infers it. (Today's payload carries no such field,
+        // so this stays empty until InfoDot sends it.)
+        if (($info['verified'] ?? false) === true && $team->infodot_verified_at === null) {
+            $team->forceFill(['infodot_verified_at' => now()])->save();
+        } elseif (array_key_exists('verified', $info) && $info['verified'] === false && $team->infodot_verified_at !== null) {
+            $team->forceFill(['infodot_verified_at' => null])->save();
+        }
+
         if ($team->user_id === $user->id) {
             return; // the local owner needs no membership row
         }

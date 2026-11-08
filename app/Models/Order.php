@@ -37,10 +37,14 @@ class Order extends Model
 
     protected $fillable = [
         'user_id', 'status', 'currency', 'subtotal', 'promo_code', 'promo_code_id', 'promo_store_id',
-        'promo_discount_type', 'promo_discount_value', 'promo_released_at',
-        'discount_amount', 'total', 'shipping_name', 'shipping_address', 'shipping_phone',
-        'idempotency_key', 'requires_payment', 'payment_status', 'paid_at',
+        'promo_discount_type', 'promo_discount_value', 'promo_released_at', 'promo_free_shipping',
+        'discount_amount', 'delivery_total', 'vat_total', 'total', 'shipping_name', 'shipping_address',
+        'shipping_phone', 'shipping_snapshot', 'idempotency_key', 'requires_payment', 'payment_status', 'paid_at',
+        'delivered_at', 'guest_email',
     ];
+
+    // The guest token columns are never mass-assignable: only App\Services\Guests\GuestOrderAccess writes them.
+    protected $hidden = ['guest_token_hash'];
 
     protected $casts = [
         'status' => OrderStatus::class,
@@ -52,6 +56,13 @@ class Order extends Model
         'requires_payment' => 'boolean',
         'payment_status' => PaymentStatus::class,
         'paid_at' => 'datetime',
+        'delivered_at' => 'datetime',
+        'promo_free_shipping' => 'boolean',
+        'delivery_total' => 'decimal:2',
+        'vat_total' => 'decimal:2',
+        'shipping_snapshot' => 'array',
+        'guest_token_expires_at' => 'datetime',
+        'guest_attached_at' => 'datetime',
     ];
 
     /**
@@ -96,6 +107,37 @@ class Order extends Model
     public function items(): HasMany
     {
         return $this->hasMany(OrderItem::class);
+    }
+
+    public function groups(): HasMany
+    {
+        return $this->hasMany(OrderGroup::class)->orderBy('id');
+    }
+
+    public function statusHistory(): HasMany
+    {
+        return $this->hasMany(OrderStatusHistory::class)->orderBy('id');
+    }
+
+    public function shipments(): HasMany
+    {
+        return $this->hasMany(Shipment::class)->orderBy('id');
+    }
+
+    public function isGuest(): bool
+    {
+        return $this->user_id === null && $this->guest_email !== null;
+    }
+
+    /** Where this order's e-mail goes: the account's address, or the guest's. */
+    public function buyerEmail(): ?string
+    {
+        return $this->user_id !== null ? $this->user?->email : $this->guest_email;
+    }
+
+    public function deliveryCents(): int
+    {
+        return Money::toCents($this->delivery_total);
     }
 
     public function payments(): HasMany

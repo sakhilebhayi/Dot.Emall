@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Services\Catalogue\CategoryTree;
+use App\Services\Catalogue\VariantSync;
 use App\Services\ProductImages;
 use Database\Factories\ProductFactory;
 use Illuminate\Database\Eloquent\Builder;
@@ -9,7 +11,9 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Deleting a listing is an archive (soft delete): the row stays so order
@@ -26,11 +30,33 @@ class Product extends Model
 
     protected static function booted(): void
     {
+        // Every product is buyable through a variant. A product with no options gets one implicit variant that
+        // mirrors its price, stock and sku; from then on VariantSync keeps the two in step in both directions.
+        static::created(function (Product $product): void {
+            app(VariantSync::class)->ensureDefaultVariant($product);
+            CategoryTree::forgetCounts();
+        });
+
+        static::updated(function (Product $product): void {
+            if (VariantSync::syncing()) {
+                return;
+            }
+
+            if ($product->wasChanged(['price', 'stock', 'sku'])) {
+                app(VariantSync::class)->pushProductToVariants($product);
+            }
+
+            if ($product->wasChanged(['status', 'is_active', 'category_id', 'store_id'])) {
+                CategoryTree::forgetCounts();
+            }
+        });
+
         static::deleted(function (Product $product): void {
             // A cart line for a product nobody can buy any more would only
             // break the cart page; the global user scope is bypassed because
             // this runs on behalf of the seller, not the cart's owner.
             CartItem::withoutGlobalScopes()->where('product_id', $product->id)->delete();
+            CategoryTree::forgetCounts();
         });
 
         // Listing photos go with the listing, files included. Runs BEFORE the
@@ -39,12 +65,18 @@ class Product extends Model
         // (Order history keeps its own snapshot and never needed the photos.)
         static::deleting(function (Product $product): void {
             app(ProductImages::class)->purge($product);
+
+            // A hard delete cascades to the variants while order lines still point at them (and are about to lose their
+            // product link too). Unlink the lines first, in a statement of their own, so history survives on PostgreSQL.
+            if ($product->isForceDeleting()) {
+                DB::table('order_items')->where('product_id', $product->id)->update(['variant_id' => null]);
+            }
         });
     }
 
     protected $fillable = [
         'store_id', 'category_id', 'name', 'slug', 'description',
-        'price', 'compare_price', 'stock', 'sku', 'is_active',
+        'price', 'compare_price', 'stock', 'sku', 'is_active', 'brand_id', 'low_stock_threshold',
         'status', 'rejected_reason', 'reviewed_by', 'reviewed_at',
     ];
 
@@ -65,6 +97,32 @@ class Product extends Model
     public function category(): BelongsTo
     {
         return $this->belongsTo(StoreCategory::class);
+    }
+
+    public function brand(): BelongsTo
+    {
+        return $this->belongsTo(Brand::class);
+    }
+
+    public function variants(): HasMany
+    {
+        return $this->hasMany(ProductVariant::class)->orderByDesc('is_default')->orderBy('position')->orderBy('id');
+    }
+
+    /** The implicit variant of a simple product, or the first one of a product with options. */
+    public function defaultVariant(): HasOne
+    {
+        return $this->hasOne(ProductVariant::class)->orderByDesc('is_default')->orderBy('position')->orderBy('id');
+    }
+
+    public function options(): HasMany
+    {
+        return $this->hasMany(ProductOption::class)->orderBy('position')->orderBy('id');
+    }
+
+    public function attributeValues(): HasMany
+    {
+        return $this->hasMany(ProductAttribute::class)->orderBy('position')->orderBy('id');
     }
 
     public function images(): HasMany

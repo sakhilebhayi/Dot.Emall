@@ -38,7 +38,9 @@ class OrderPlacedListenerTest extends TestCase
 
         $this->assertSame(1, $a->notifications()->where('type', NewOrderNotification::class)->count());
         $this->assertSame(1, $b->notifications()->where('type', NewOrderNotification::class)->count());
-        $this->assertSame(0, $buyer->notifications()->count());
+        // The buyer gets their own "we have your order" notice, and nothing meant for sellers.
+        $this->assertSame(0, $buyer->notifications()->where('type', NewOrderNotification::class)->count());
+        $this->assertSame(['order_placed'], $buyer->notifications()->get()->pluck('data.type')->all());
     }
 
     public function test_the_notification_describes_only_that_sellers_share_and_never_the_order_total(): void

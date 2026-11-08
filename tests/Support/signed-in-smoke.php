@@ -65,11 +65,20 @@ foreach ($smoke->pages() as $page) {
 // alias (a missing one is a 500 for the operator, a 403 for everyone else); these prove the limiters.
 $app['session.store']->flush();
 Auth::forgetGuards();
-foreach (['checkout', 'webhooks', 'suggest', 'assistant', 'community'] as $limiter) {
+foreach (['checkout', 'webhooks', 'suggest', 'assistant', 'community', 'guest-order', 'guest-cart'] as $limiter) {
     $ok = RateLimiter::limiter($limiter) !== null;
     $failures += $ok ? 0 : 1;
     printf("%-9s %-46s %s\n", 'limiter', $limiter, $ok ? 'registered' : 'MISSING   <-- FAIL');
 }
+
+// The guest order link (D-9): a wrong token is the same 404 whatever the order id, and its throttle (defined in a provider,
+// never in the routes file) survives route:cache. A 500 here would mean the limiter or the route was lost.
+$request = Request::create('https://'.$host.'/guest/orders/1/'.str_repeat('a', 43), 'GET');
+$response = $kernel->handle($request);
+$kernel->terminate($request, $response);
+$ok = $response->getStatusCode() === 404;
+$failures += $ok ? 0 : 1;
+printf("%-9s %-46s %d%s\n", 'anyone', 'GET /guest/orders/1/<wrong token>', $response->getStatusCode(), $ok ? '  (expected 404)' : '   <-- FAIL (expected 404)');
 
 // A webhook without a signature is refused by the application itself (the route and its limiter are cached too).
 $request = Request::create('https://'.$host.'/webhooks/paystack', 'POST', [], [], [], ['CONTENT_TYPE' => 'application/json'], '{"event":"charge.success"}');

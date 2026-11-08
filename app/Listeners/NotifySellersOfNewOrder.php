@@ -7,6 +7,7 @@ use App\Events\OrderPlaced;
 use App\Models\Store;
 use App\Models\User;
 use App\Notifications\NewOrderNotification;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Tells each seller on a new order, once, that they have something to
@@ -39,7 +40,12 @@ class NotifySellersOfNewOrder
                 continue;
             }
 
-            $seller->notify(new NewOrderNotification($order, $store));
+            // E-mail is now one of the channels: a mail outage must not turn a placed order into an error page.
+            try {
+                $seller->notify(new NewOrderNotification($order, $store));
+            } catch (\Throwable $e) {
+                Log::warning('A new-order notice could not be sent.', ['seller_id' => $sellerId, 'error' => class_basename($e)]);
+            }
         }
     }
 }

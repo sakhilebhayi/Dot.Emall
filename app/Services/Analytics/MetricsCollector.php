@@ -178,7 +178,7 @@ class MetricsCollector
 
         $totals = [];
 
-        $delivered = $lines->where('status', OrderStatus::Delivered->value)
+        $delivered = $lines->whereIn('status', OrderStatus::completedValues())
             ->select(['id', 'total', 'discount_amount'])
             ->addSelect(['order_currency' => Order::query()->select('currency')->whereColumn('orders.id', 'order_items.order_id')->limit(1)])
             ->cursor();

@@ -68,7 +68,7 @@ class EmallDemoSeedTest extends TestCase
 
         // Stock and rating aggregates are what the services leave behind, never negative.
         $this->assertSame(0, Product::query()->where('stock', '<', 0)->count());
-        $this->assertTrue(Order::query()->whereHas('items', fn ($q) => $q->select('order_id')->groupBy('seller_id')->havingRaw('COUNT(DISTINCT seller_id) >= 1'))->exists());
+        $this->assertTrue(Order::query()->whereHas('items')->exists());
         $multiSeller = Order::query()->withCount(['items as sellers' => fn ($q) => $q->select(\DB::raw('COUNT(DISTINCT seller_id)'))])->get()->max('sellers');
         $this->assertGreaterThanOrEqual(3, $multiSeller);
     }

@@ -107,6 +107,9 @@ class EcosystemAuthController extends Controller
 
         abort_if(! $user, 403);
 
+        // Real data for the seller trust ladder ("signs in through InfoDot"): recorded only here, never inferred.
+        $user->forceFill(['infodot_signed_in_at' => now()])->save();
+
         Auth::login($user);
         $request->session()->regenerate();
 

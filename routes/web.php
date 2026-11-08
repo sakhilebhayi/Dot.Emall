@@ -6,6 +6,7 @@ use App\Http\Controllers\CartController;
 use App\Http\Controllers\CspReportController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\HealthController;
+use App\Http\Controllers\GuestOrderAccessController;
 use App\Http\Controllers\OperatorPaymentController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\OrderItemCancellationController;
@@ -142,6 +143,19 @@ Route::middleware([
         Route::post('/refunds/{refund}/mark-done', [OperatorPaymentController::class, 'markRefundDone'])->name('refunds.mark-done');
     });
 });
+
+// --- data-a ---
+// The magic link in a guest's order e-mail (D-9). Public by design: the signed token is the credential. Throttled by the
+// 'guest-order' limiter, which App\Providers\EmallServiceProvider defines (never in a routes file).
+Route::get('/guest/orders/{order}/{token}', GuestOrderAccessController::class)
+    ->middleware('throttle:guest-order')
+    ->where('token', '[A-Za-z0-9_\-]{20,128}')
+    ->name('guest.orders.access');
+Route::get('/guest/orders/{order}/{token}/payment', [GuestOrderAccessController::class, 'paymentReturn'])
+    ->middleware('throttle:guest-order')
+    ->where('token', '[A-Za-z0-9_\\-]{20,128}')
+    ->name('guest.orders.payment.callback');
+// --- end data-a ---
 
 // --- dev ---
 // Local-only sign-in for design and audit sessions (docs/R43_DEMO.md). Registered only in the

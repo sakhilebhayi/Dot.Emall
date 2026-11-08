@@ -44,6 +44,7 @@ class Team extends JetstreamTeam
     {
         return [
             'personal_team' => 'boolean',
+            'infodot_verified_at' => 'datetime',
         ];
     }
 }
