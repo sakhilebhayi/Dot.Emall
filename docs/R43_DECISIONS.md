@@ -1,0 +1,19 @@
+# R-43 decisions taken without the owner
+
+The owner asked for an uninterrupted build. Each decision below is the safest, most reversible choice, with how to reverse it. Add new ones at the end with the reasoning.
+
+| # | Question (source) | Decision | Reverse by |
+|---|---|---|---|
+| D-1 | Refuse checkout in production while Paystack is not configured? (audit R-02) | **Yes.** `config('emall.checkout.requires_gateway')` defaults to true in production; without a usable key checkout answers "Payments are not open yet" and no unpaid order can be shipped. | env `EMALL_CHECKOUT_REQUIRES_GATEWAY=false` |
+| D-2 | Seller money, commission, payouts (R-01) | **Internal ledger, no automated payouts.** Each seller group in a paid order writes a ledger entry (gross, platform commission, net, status held/released). Commission is `config('emall.commission.percent')`, **default 0** (no business term is invented); the seller sees the full fee before publishing and on every order; entries release 7 days after delivery. Paystack transfers/subaccounts and KYC are an owner item. | set the percent; build payouts later |
+| D-3 | VAT and shipping (R-03) | Displayed prices are **VAT inclusive**. Stores have `vat_registered` and a claimed `vat_number` (default off); when registered, order documents show the VAT component at `config('emall.vat.rate')` (0.15). Shipping is **per-store methods** (flat, free over a threshold, collection) with optional region rules; the cart shows delivery per seller group and a total before payment. | config / seller settings |
+| D-4 | Stock hold and unpaid-order cap (R-05, R-06) | Stock is held **30 minutes** (`EMALL_STOCK_HOLD_MINUTES`), extended while a payment attempt is open; at most **3 unpaid orders** per buyer or guest e-mail at once (`EMALL_MAX_UNPAID_ORDERS`). | env |
+| D-5 | What "Delivered" means (R-08) | A seller must mark **Shipped** (with optional carrier and tracking number) before **Delivered**; collection orders go Ready for collection then Collected. The **buyer may confirm receipt**. Reviews unlock and the return window starts at Delivered; ledger release is 7 days after Delivered. No direct Pending to Delivered jump. | state machine |
+| D-6 | Returns (R-10) | Return request **within 7 days of delivery** per order item (adopted from ECTA s44 as a standard, not a legal claim); reasons: faulty/not as described (seller pays return) or changed mind (buyer pays); seller approves or declines **with a stated reason**; unanswered for 10 days it escalates to the operator queue; an approved return, once the seller marks it received, refunds through the existing refund service. | config |
+| D-7 | Account deletion (R-12) | Refused while orders, returns or refunds are open; otherwise anonymise the person and keep order and financial records. | policy |
+| D-8 | Second hostname (R-?) | `TRUSTED_HOSTS` defaults to the `APP_URL` host (emall.infodot.co.za). If `emall.infodot.app` is also served, add it to the host `.env` before deploying. | env |
+| D-9 | Guests | Guests browse, keep a session cart and check out with an e-mail; they follow the order by a signed magic link; orders attach to an account when someone signs in through InfoDot with the same verified e-mail. | middleware |
+| D-10 | Reference prices | "Was" price = lowest recorded price in the previous 30 days from `product_price_history`, shown only when it is higher than today's price and the history is at least 30 days old; never a seller-typed original price. | feature flag |
+| D-11 | Recommendations | Only from real orders and views, with minimum counts (default 3 co-purchases), labelled with the real basis and number. | config |
+| D-12 | Registration | Stays closed; accounts come from InfoDot. CTAs say so. | feature |
+| D-13 | Dependencies | Patch-level `composer update` of the Symfony packages flagged by `composer audit`, and `npm audit fix` without `--force`. | revert lock |
