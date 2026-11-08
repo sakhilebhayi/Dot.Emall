@@ -50,7 +50,7 @@ class ShoppingAssistant
     ) {}
 
     /**
-     * @param  array{region?: string|null}  $context
+     * @param  array{region?: string|null, without?: list<string>}  $context  `without` lists understood kinds (price, availability, brand, category, attribute) the shopper removed
      */
     public function ask(string $text, array $context = []): AssistantAnswer
     {
@@ -69,8 +69,16 @@ class ShoppingAssistant
             $notes[] = 'I read "'.implode('", "', $purposes).'" as a wish for '.$this->sortLabel($sort).', not as a product word. The catalogue has no data about how well a product suits a purpose, so I have not claimed any.';
         }
 
-        $request = SearchRequest::fromArray(['q' => $cleaned, 'sort' => $sort])->with(['inStock' => false, 'perPage' => (int) config('discovery.assistant.max_items', 5), 'page' => 1]);
-        $result = $this->engine->search($request->with(['inStock' => true]));
+        $without = array_values(array_intersect((array) ($context['without'] ?? []), ['price', 'availability', 'brand', 'category', 'attribute']));
+        $request = $without === []
+            ? SearchRequest::fromArray(['q' => $cleaned, 'sort' => $sort])
+            : $this->explicit($parsed, $sort, $without);
+        $request = $request->with(['inStock' => false, 'perPage' => (int) config('discovery.assistant.max_items', 5), 'page' => 1]);
+
+        if ($without !== []) {
+            $notes[] = 'You removed what I understood about '.implode(', ', array_map(fn ($k) => match ($k) {'availability' => 'stock', 'attribute' => 'specifications', default => $k}, $without)).'. The search ignores it.';
+        }
+        $result = $this->engine->search($request->with(['inStock' => ! in_array('availability', $without, true)]));
 
         if ($result->isEmpty()) {
             $result = $this->engine->search($request);
@@ -126,6 +134,49 @@ class ShoppingAssistant
         }
 
         return new AssistantAnswer($mode, $text, $result->understood, $result->appliedFilters, $result->total, $catalogue, $suggestion, $notes);
+    }
+
+    /**
+     * The request with some of what was understood taken away. The engine applies what it infers unless the shopper set it, so the kept parts become explicit
+     * filters, the search turns literal, and the words behind a removed brand or category go back into the text.
+     *
+     * @param  list<string>  $without
+     */
+    private function explicit(ParsedQuery $parsed, string $sort, array $without): SearchRequest
+    {
+        $inferred = $parsed->inferred;
+        $words = [$parsed->residualText()];
+
+        foreach ($parsed->detected as $found) {
+            if (in_array($found['kind'], ['brand', 'category'], true) && in_array($found['kind'], $without, true)) {
+                $words[] = $found['text'];
+            }
+        }
+
+        $request = new SearchRequest(text: trim(implode(' ', array_filter($words))), sort: $sort, understand: false);
+
+        if (isset($inferred['category_id']) && ! in_array('category', $without, true)) {
+            $request->categoryId = (int) $inferred['category_id'];
+        }
+
+        if (isset($inferred['brand']) && ! in_array('brand', $without, true)) {
+            $request->brands = [$inferred['brand']];
+        }
+
+        if (! in_array('price', $without, true)) {
+            $request->priceMin = isset($inferred['price_min']) ? (float) $inferred['price_min'] : null;
+            $request->priceMax = isset($inferred['price_max']) ? (float) $inferred['price_max'] : null;
+        }
+
+        if (! empty($inferred['in_stock']) && ! in_array('availability', $without, true)) {
+            $request->inStock = true;
+        }
+
+        if (! in_array('attribute', $without, true)) {
+            $request->attributes = array_map(fn ($v) => array_map('strval', (array) $v), $inferred['attributes'] ?? []);
+        }
+
+        return $request;
     }
 
     // --- understanding ------------------------------------------------------------------------------------------

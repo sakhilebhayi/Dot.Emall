@@ -23,81 +23,13 @@ use Illuminate\View\View;
 class ProductController extends Controller
 {
     /**
-     * Searchable, filterable product marketplace. Only products belonging
-     * to an active store, and themselves active, are browsable — see
-     * Product::scopeBrowsable().
+     * The shop's front door is the search page: the same controller answers /search, /products and the category pages
+     * (Discovery\SearchController), with filters, facets, sorts and "did you mean". Only approved listings from active
+     * stores appear, see Product::scopeBrowsable() and the search engine's visibility rules.
      */
-    public function index(Request $request, CategoryTree $tree): View
+    public function index(Request $request): View
     {
-        $validated = $request->validate([
-            'q' => ['nullable', 'string', 'max:100'],
-            // Category taxonomy validation (wiki.md §6/§7 gap): a category
-            // filter must reference a real StoreCategory row rather than
-            // accepting an arbitrary value.
-            'category' => ['nullable', 'integer', 'exists:store_categories,id'],
-        ]);
-
-        $search = trim((string) ($validated['q'] ?? ''));
-        $category = $validated['category'] ?? null;
-
-        $products = Product::query()
-            ->browsable()
-            ->with(['store', 'category', 'images'])
-            ->when($search !== '', fn ($q) => $this->whereNameContains($q, $search))
-            // A category includes everything beneath it (Electronics shows its laptops and phones).
-            ->when($category, fn ($q) => $q->whereIn('category_id', $tree->withDescendants((int) $category)))
-            ->latest()
-            ->paginate(12)
-            ->withQueryString();
-
-        // The category tree's own counts: only listings a buyer can see (pending, rejected, switched off, closed store do not
-        // count), a parent counting everything beneath it. Categories with nothing to show are not offered as a filter.
-        $categories = $this->categoryOptions($tree, $category !== null ? (int) $category : null);
-
-        return view('products.index', [
-            'products' => $products,
-            'categories' => $categories,
-            'search' => $search,
-            'category' => $category,
-        ]);
-    }
-
-    /**
-     * The category facet: the top-level categories with listings, and the children of the one the shopper is in.
-     *
-     * @return list<array{value: int, label: string, count: int, checked: bool}>
-     */
-    private function categoryOptions(CategoryTree $tree, ?int $selected): array
-    {
-        $roots = $tree->tree();
-        $selectedRoot = null;
-
-        if ($selected !== null) {
-            $rootId = (int) (array_values(array_filter(explode('/', (string) ($tree->find($selected)['path'] ?? ''))))[0] ?? 0);
-            $selectedRoot = $rootId ?: null;
-        }
-
-        $options = [];
-
-        foreach ($roots as $root) {
-            $keep = $root['rollup_count'] > 0 || $root['id'] === $selected;
-
-            if (! $keep) {
-                continue;
-            }
-
-            $options[] = ['value' => $root['id'], 'label' => $root['name'], 'count' => $root['rollup_count'], 'checked' => $selected === $root['id']];
-
-            if ($root['id'] === $selectedRoot) {
-                foreach ($root['children'] as $child) {
-                    if ($child['rollup_count'] > 0 || $child['id'] === $selected) {
-                        $options[] = ['value' => $child['id'], 'label' => '- '.$child['name'], 'count' => $child['rollup_count'], 'checked' => $selected === $child['id']];
-                    }
-                }
-            }
-        }
-
-        return $options;
+        return app(\App\Http\Controllers\Discovery\SearchController::class)->index($request);
     }
 
     /**

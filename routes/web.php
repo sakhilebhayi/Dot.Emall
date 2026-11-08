@@ -5,6 +5,14 @@ use App\Http\Controllers\Auth\EcosystemAuthController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\CspReportController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\Discovery\AssistantPageController;
+use App\Http\Controllers\Discovery\CategoryController;
+use App\Http\Controllers\Discovery\CollectionController;
+use App\Http\Controllers\Discovery\HomeController;
+use App\Http\Controllers\Discovery\RecentlyViewedController;
+use App\Http\Controllers\Discovery\RegionController;
+use App\Http\Controllers\Discovery\SavedSearchController;
+use App\Http\Controllers\Discovery\SearchController as DiscoverySearchController;
 use App\Http\Controllers\GuestOrderAccessController;
 use App\Http\Controllers\HealthController;
 use App\Http\Controllers\OperatorPaymentController;
@@ -60,8 +68,6 @@ Route::post('/csp-report', CspReportController::class)
 // Paystack's server-to-server notifications. No session, no CSRF: the HMAC
 // signature header is the authentication (see PaystackWebhookController).
 Route::post('/webhooks/paystack', PaystackWebhookController::class)->middleware('throttle:webhooks')->name('webhooks.paystack');
-
-Route::view('/', 'welcome')->name('home');
 
 // Cookie Policy — Jetstream's termsAndPrivacyPolicy feature covers terms.show/policy.show
 // natively. There's no Jetstream equivalent for a Cookie Policy, so this one is wired by hand,
@@ -161,7 +167,6 @@ Route::get('/guest/orders/{order}/{token}/payment', [GuestOrderAccessController:
 // Pure aliases of pages that already exist, so the shell's navigation resolves (DESIGN.md, "Route names feature work must
 // register"). A feature agent that builds the real page for one of these names deletes its line here and registers the real
 // route. Nothing is registered here that is not an existing controller action: no aliases, limiters or bindings (those live in providers).
-Route::get('/search', [ProductController::class, 'index'])->name('search');
 
 Route::middleware([
     'auth:sanctum',
@@ -173,6 +178,32 @@ Route::middleware([
     Route::get('/sell/start', [StoreController::class, 'create'])->name('sell.start');
 });
 // --- end integration ---
+
+// --- w3 ---
+// Discovery pages (R-43 feature agent W3): the home page, search (and /products, which is the same controller), categories, collections, the shopping
+// assistant, saved searches, recently viewed and the shopper's province. Rate limiters live in DiscoveryServiceProvider, never here.
+Route::get('/', HomeController::class)->name('home');
+Route::get('/search', [DiscoverySearchController::class, 'index'])->name('search');
+Route::get('/categories', [CategoryController::class, 'index'])->name('categories.index');
+Route::get('/categories/{category}', [DiscoverySearchController::class, 'category'])->where('category', '[a-z0-9\-]+')->name('categories.show');
+Route::get('/collections', [CollectionController::class, 'index'])->name('collections.index');
+Route::get('/collections/{slug}', [CollectionController::class, 'show'])->where('slug', '[a-z0-9\-]+')->name('collections.show');
+Route::get('/assistant', AssistantPageController::class)->name('assistant');
+Route::get('/recently-viewed', [RecentlyViewedController::class, 'index'])->name('recently-viewed.index');
+Route::delete('/recently-viewed', [RecentlyViewedController::class, 'clear'])->name('recently-viewed.clear');
+Route::post('/region', [RegionController::class, 'update'])->name('region.update');
+
+Route::middleware([
+    'auth:sanctum',
+    config('jetstream.auth_session'),
+    'verified',
+])->group(function () {
+    Route::get('/account/saved-searches', [SavedSearchController::class, 'index'])->name('account.saved-searches');
+    Route::post('/account/saved-searches', [SavedSearchController::class, 'store'])->name('account.saved-searches.store');
+    Route::patch('/account/saved-searches/{savedSearch}', [SavedSearchController::class, 'update'])->name('account.saved-searches.update');
+    Route::delete('/account/saved-searches/{savedSearch}', [SavedSearchController::class, 'destroy'])->name('account.saved-searches.destroy');
+});
+// --- end w3 ---
 
 // --- dev ---
 // Local-only sign-in for design and audit sessions (docs/R43_DEMO.md). Registered only in the
