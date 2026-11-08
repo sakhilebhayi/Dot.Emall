@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Address;
 use App\Models\Order;
 use App\Services\Addresses\AddressBook;
 use App\Services\Addresses\AddressRules;
@@ -12,11 +13,13 @@ use App\Services\Checkout\CheckoutDraft;
 use App\Services\Checkout\CheckoutPage;
 use App\Services\CheckoutException;
 use App\Services\CheckoutService;
+use App\Services\Discovery\Track;
 use App\Services\Guests\GuestOrderAccess;
 use App\Services\PaymentService;
+use App\Services\Paystack\PaymentGatewayException;
 use App\Services\PriceChangedException;
 use App\Services\PromoRejectedException;
-use App\Services\Paystack\PaymentGatewayException;
+use App\Support\Actor;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
@@ -33,7 +36,7 @@ use InvalidArgumentException;
  */
 class CheckoutController extends Controller
 {
-    public function show(Request $request, CheckoutPage $page): View|RedirectResponse
+    public function show(Request $request, CheckoutPage $page, Track $track): View|RedirectResponse
     {
         $data = $page->for($request);
 
@@ -45,6 +48,10 @@ class CheckoutController extends Controller
         if ($data['quote']->problems !== []) {
             return redirect()->route('cart.index')->with('error', 'Something in your cart needs fixing before you can check out. It is marked below.');
         }
+
+        // D-153: CommerceMetrics reads "checkout started" for the checkout-completion rate, but nothing ever wrote it, so the rate
+        // could never have a denominator. One record per person per day is all the metric counts (it counts person-days).
+        $track->checkoutStarted(Actor::forRequest($request));
 
         return view('checkout.show', $data);
     }
@@ -239,7 +246,7 @@ class CheckoutController extends Controller
 
         if ($usesSaved) {
             $rules['address_id'] = ['required', 'integer', function ($attribute, $value, $fail) use ($user) {
-                if (! \App\Models\Address::query()->where('user_id', $user->id)->whereKey((int) $value)->exists()) {
+                if (! Address::query()->where('user_id', $user->id)->whereKey((int) $value)->exists()) {
                     $fail('That saved address was not found. Choose another.');
                 }
             }];

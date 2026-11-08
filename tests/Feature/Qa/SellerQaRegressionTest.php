@@ -16,6 +16,7 @@ use Tests\Concerns\BuildsMarketplace;
 use Tests\Concerns\BuildsOperatorWorld;
 use Tests\Concerns\BuildsPayments;
 use Tests\Concerns\BuildsSellerDesk;
+use Tests\Concerns\BuildsShopFlows;
 use Tests\TestCase;
 
 /**
@@ -29,6 +30,7 @@ class SellerQaRegressionTest extends TestCase
     use BuildsOperatorWorld;
     use BuildsPayments;
     use BuildsSellerDesk;
+    use BuildsShopFlows;
     use RefreshDatabase;
 
     /** D-150 */
@@ -114,5 +116,27 @@ class SellerQaRegressionTest extends TestCase
         $this->actingAs($w['operator'])->post(route('operator.refunds.mark-done', $owed), ['note' => 'Refunded by hand, ref PSK-77.'])->assertSessionHasNoErrors();
         $this->assertSame(RefundStatus::Refunded, $owed->fresh()->status);
         $this->assertSame(1, OperatorAuditEntry::query()->where('action', 'refund.mark_done')->count());
+    }
+
+    /** D-153 */
+    public function test_opening_the_checkout_records_checkout_started_so_the_completion_rate_can_have_a_denominator(): void
+    {
+        [, $product] = $this->shippingSeller();
+        $buyer = $this->makeBuyer();
+        $this->enablePaystack();
+        $this->addToCart($buyer, $product, 1);
+
+        $this->assertSame(0, \DB::table('commerce_events')->where('name', 'checkout_started')->count());
+
+        $this->actingAs($buyer)->get(route('checkout.show'))->assertOk();
+
+        $this->assertSame(1, \DB::table('commerce_events')->where('name', 'checkout_started')->count());
+        $row = \DB::table('commerce_events')->where('name', 'checkout_started')->first();
+        $this->assertNotSame((string) $buyer->id, (string) $row->actor_hash, 'a keyed hash is stored, never the user id');
+
+        // An empty cart is bounced to the cart page and is not a started checkout.
+        $other = $this->makeBuyer();
+        $this->actingAs($other)->get(route('checkout.show'))->assertRedirect(route('cart.index'));
+        $this->assertSame(1, \DB::table('commerce_events')->where('name', 'checkout_started')->count());
     }
 }
