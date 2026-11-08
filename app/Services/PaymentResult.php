@@ -34,7 +34,7 @@ final readonly class PaymentResult
         return match ($this->outcome) {
             self::PAID => 'Payment received. Thank you: your order is now with the seller.',
             self::ALREADY_PAID => 'This order is already paid. Nothing more is needed.',
-            self::FAILED, self::NOT_COMPLETED => 'Your payment was not completed. Press Pay now to try again.',
+            self::FAILED, self::NOT_COMPLETED => 'Your payment was not completed. Press Try payment again to retry.',
             self::REVIEW => 'We received a payment but could not match it to this order automatically. It has been flagged for review: please do not pay again.',
             self::UNAVAILABLE => 'We could not confirm your payment with Paystack just now. If you paid, this page will update shortly; otherwise press Pay now to try again.',
             default => 'We could not find that payment for this order.',

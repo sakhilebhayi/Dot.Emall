@@ -100,7 +100,7 @@ class InfoDotRedeemTest extends TestCase
             $this->assertFalse(Hash::check($guess, $user->password));
         }
 
-        $this->get(route('dashboard'))->assertOk();
+        $this->get(route('account.home'))->assertOk();
     }
 
     public function test_the_secret_and_platform_go_in_the_request_and_the_token_never_in_the_url(): void

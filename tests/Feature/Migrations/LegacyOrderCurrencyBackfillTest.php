@@ -64,8 +64,8 @@ class LegacyOrderCurrencyBackfillTest extends TestCase
         $this->migrateRest();
 
         $after = (array) DB::table('orders')->find($id);
-        unset($after['currency']);
-        $this->assertEquals($before, $after);
+        // Only the columns that existed before are compared: later migrations add columns with neutral defaults.
+        $this->assertEquals($before, array_intersect_key($after, $before));
     }
 
     public function test_a_later_config_change_does_not_move_stamped_orders(): void
@@ -115,7 +115,8 @@ class LegacyOrderCurrencyBackfillTest extends TestCase
         $id = $this->legacyOrder($this->insertUser());
         $this->migrateRest();
 
-        Artisan::call('migrate:rollback', ['--step' => 1, '--force' => true]);
+        // Every migration from the currency column onward, however many newer ones other work has added since.
+        Artisan::call('migrate:rollback', ['--step' => $this->migrationsFrom('2026_10_21_100000'), '--force' => true]);
 
         $this->assertFalse(Schema::hasColumn('orders', 'currency'));
         $this->assertSame(1, DB::table('orders')->where('id', $id)->count());
@@ -129,5 +130,13 @@ class LegacyOrderCurrencyBackfillTest extends TestCase
         $this->migrateRest();
 
         $this->assertSame('ZAR', DB::table('orders')->find($id)->currency);
+    }
+
+    private function migrationsFrom(string $prefix): int
+    {
+        return count(array_filter(
+            array_map('basename', glob(database_path('migrations/*.php'))),
+            fn (string $file) => strcmp(substr($file, 0, strlen($prefix)), $prefix) >= 0,
+        ));
     }
 }

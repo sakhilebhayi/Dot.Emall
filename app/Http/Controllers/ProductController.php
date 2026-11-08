@@ -2,12 +2,16 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Discovery\SearchController;
 use App\Models\Product;
-use App\Models\Review;
-use App\Models\StoreCategory;
-use App\Services\ReviewService;
+use App\Services\Community\ProductQuestions;
+use App\Services\Discovery\RecentlyViewed;
+use App\Services\Discovery\Recommender;
+use App\Services\Storefront\ProductPage;
+use App\Services\Storefront\ProductReviews;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Gate;
+use Illuminate\Http\Response;
 use Illuminate\View\View;
 
 /**
@@ -22,73 +26,42 @@ use Illuminate\View\View;
 class ProductController extends Controller
 {
     /**
-     * Searchable, filterable product marketplace. Only products belonging
-     * to an active store, and themselves active, are browsable — see
-     * Product::scopeBrowsable().
+     * The shop's front door is the search page: the same controller answers /search, /products and the category pages
+     * (Discovery\SearchController), with filters, facets, sorts and "did you mean". Only approved listings from active
+     * stores appear, see Product::scopeBrowsable() and the search engine's visibility rules.
      */
     public function index(Request $request): View
     {
-        $validated = $request->validate([
-            'q' => ['nullable', 'string', 'max:100'],
-            // Category taxonomy validation (wiki.md §6/§7 gap): a category
-            // filter must reference a real StoreCategory row rather than
-            // accepting an arbitrary value.
-            'category' => ['nullable', 'integer', 'exists:store_categories,id'],
-        ]);
-
-        $search = trim((string) ($validated['q'] ?? ''));
-        $category = $validated['category'] ?? null;
-
-        $products = Product::query()
-            ->browsable()
-            ->with(['store', 'category', 'images'])
-            ->when($search !== '', fn ($q) => $q->where('name', 'like', "%{$search}%"))
-            ->when($category, fn ($q) => $q->where('category_id', $category))
-            ->latest()
-            ->paginate(12)
-            ->withQueryString();
-
-        $categories = StoreCategory::withCount('products')->orderBy('name')->get();
-
-        return view('products.index', [
-            'products' => $products,
-            'categories' => $categories,
-            'search' => $search,
-            'category' => $category,
-        ]);
+        return app(SearchController::class)->index($request);
     }
 
     /**
-     * Product detail page: gallery, store info, reviews, add-to-cart form.
-     * Inactive products / products under an inactive store 404 for
-     * everyone except the owning seller (matches AuctionPolicy's draft
-     * handling for the equivalent buyer-facing case).
+     * A name search that behaves the same on every database: case-insensitive (PostgreSQL's LIKE is case sensitive, so
+     * "samsung" found nothing in production while SQLite found "Samsung"), and a literal % or _ typed by the buyer is
+     * matched as itself instead of acting as a wildcard.
      */
-    public function show(Product $product, ReviewService $reviews): View
+    private function whereNameContains(Builder $query, string $search): Builder
     {
-        $isOwner = auth()->check() && auth()->id() === $product->store->owner_id;
+        $operator = $query->getConnection()->getDriverName() === 'pgsql' ? 'ilike' : 'like';
+        $escaped = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $search);
 
-        abort_unless(
-            $isOwner || ($product->is_active && $product->status === 'approved' && $product->store->is_active),
-            404
+        return $query->whereRaw("name {$operator} ? escape '\\'", ['%'.$escaped.'%']);
+    }
+
+    /**
+     * Product detail page. The page itself is built by ProductPageController and the Storefront services (R-43 W4); this stays
+     * as the target of the products.show route so the route table and every link keep working.
+     */
+    public function show(Request $request, Product $product): View|Response
+    {
+        return app(ProductPageController::class)->show(
+            $request,
+            $product,
+            app(ProductPage::class),
+            app(ProductReviews::class),
+            app(ProductQuestions::class),
+            app(Recommender::class),
+            app(RecentlyViewed::class),
         );
-
-        $product->load(['store', 'category', 'images', 'reviews.user']);
-
-        $user = auth()->user();
-
-        // A guest who clicks "Sign in to buy" should land back on this page.
-        if ($user === null) {
-            session(['url.intended' => url()->current()]);
-        }
-
-        $hasReviewed = $user !== null && $reviews->hasReviewed($user, $product);
-        $canReview = $user !== null && ! $hasReviewed && Gate::forUser($user)->allows('create', [Review::class, $product]);
-
-        return view('products.show', [
-            'product' => $product,
-            'hasReviewed' => $hasReviewed,
-            'canReview' => $canReview,
-        ]);
     }
 }

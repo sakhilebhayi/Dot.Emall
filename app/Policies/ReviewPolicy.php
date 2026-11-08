@@ -5,6 +5,7 @@ namespace App\Policies;
 use App\Models\Product;
 use App\Models\Review;
 use App\Models\User;
+use App\Services\Community\StoreMembers;
 use App\Services\ReviewService;
 use Illuminate\Auth\Access\HandlesAuthorization;
 
@@ -34,6 +35,37 @@ class ReviewPolicy
         }
 
         return app(ReviewService::class)->hasPurchased($user, $product);
+    }
+
+    /** The author edits their own review inside the edit window. */
+    public function update(User $user, Review $review): bool
+    {
+        return $user->id === $review->user_id && app(ReviewService::class)->canEdit($review);
+    }
+
+    /** The store that sold the product replies, once. */
+    public function respond(User $user, Review $review): bool
+    {
+        $review->loadMissing('product.store');
+
+        return $review->status === Review::PUBLISHED && app(StoreMembers::class)->canSpeakFor($user, $review->product->store);
+    }
+
+    /** Helpful votes: anyone signed in but the author, on a published review. */
+    public function vote(User $user, Review $review): bool
+    {
+        return $user->id !== $review->user_id && $review->status === Review::PUBLISHED;
+    }
+
+    public function report(User $user, Review $review): bool
+    {
+        return $user->id !== $review->user_id && $review->status === Review::PUBLISHED;
+    }
+
+    /** Releasing or removing a held or reported review: the operator. */
+    public function moderate(User $user, Review $review): bool
+    {
+        return app(StoreMembers::class)->isOperator($user);
     }
 
     /**

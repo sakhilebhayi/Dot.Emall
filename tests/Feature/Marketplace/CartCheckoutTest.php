@@ -93,7 +93,7 @@ class CartCheckoutTest extends TestCase
         $cartItem = CartItem::create(['user_id' => $owner->id, 'product_id' => $product->id, 'quantity' => 1]);
 
         $this->actingAs($intruder)
-            ->delete(route('cart.destroy', $cartItem))
+            ->delete(route('cart.destroy', $cartItem->variant_id))
             ->assertNotFound();
 
         $this->assertDatabaseHas('cart_items', ['id' => $cartItem->id]);

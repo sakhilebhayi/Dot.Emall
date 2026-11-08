@@ -2,11 +2,13 @@
 
 namespace App\Providers;
 
+use App\Models\PersonalAccessToken;
 use App\Support\Shop;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
+use Laravel\Sanctum\Sanctum;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -26,6 +28,8 @@ class AppServiceProvider extends ServiceProvider
         // A mistyped SHOP_CURRENCY would print wrong prices and ask Paystack
         // for the wrong money, so the app refuses to start instead.
         Shop::assertConfigured();
+
+        Sanctum::usePersonalAccessTokenModel(PersonalAccessToken::class);
 
         // Placing an order is the one expensive, stateful action a buyer can
         // repeat: 10 submissions a minute per signed-in user, and a looser

@@ -38,7 +38,9 @@ class OrderPlacedListenerTest extends TestCase
 
         $this->assertSame(1, $a->notifications()->where('type', NewOrderNotification::class)->count());
         $this->assertSame(1, $b->notifications()->where('type', NewOrderNotification::class)->count());
-        $this->assertSame(0, $buyer->notifications()->count());
+        // The buyer gets their own "we have your order" notice, and nothing meant for sellers.
+        $this->assertSame(0, $buyer->notifications()->where('type', NewOrderNotification::class)->count());
+        $this->assertSame(['order_placed'], $buyer->notifications()->get()->pluck('data.type')->all());
     }
 
     public function test_the_notification_describes_only_that_sellers_share_and_never_the_order_total(): void
@@ -58,7 +60,8 @@ class OrderPlacedListenerTest extends TestCase
         $this->assertStringContainsString('1 item worth R180.00', $data['message']);
         $this->assertStringNotContainsString('7,977', $data['message']);
         $this->assertStringNotContainsString('7,777', $data['message']);
-        $this->assertSame(route('orders.show', $order), $data['url']);
+        // The link opens the seller's own parcel on the seller desk (the buyer's order page is not the seller's page).
+        $this->assertSame(route('seller.orders.show', $order->groups()->where('store_id', $a->store->id)->firstOrFail()), $data['url']);
     }
 
     public function test_no_notification_is_sent_when_checkout_fails(): void

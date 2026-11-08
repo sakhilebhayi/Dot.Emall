@@ -1,12 +1,8 @@
-<x-app-layout>
-    <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">
-            {{ __('Team Settings') }}
-        </h2>
-    </x-slot>
-
+<x-account-layout>
+    <x-slot:title>Team settings</x-slot:title>
+    <x-slot:heading>Team settings</x-slot:heading>
     <div>
-        <div class="max-w-7xl mx-auto py-10 sm:px-6 lg:px-8">
+        <div>
             @livewire('teams.update-team-name-form', ['team' => $team])
 
             @livewire('teams.team-member-manager', ['team' => $team])
@@ -20,4 +16,4 @@
             @endif
         </div>
     </div>
-</x-app-layout>
+</x-account-layout>

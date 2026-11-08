@@ -4,13 +4,16 @@ namespace App\Http\Controllers;
 
 use App\Enums\PaymentAttemptStatus;
 use App\Enums\RefundStatus;
+use App\Http\Controllers\Operator\Concerns\AnswersDecisions;
 use App\Models\Payment;
 use App\Models\PaymentEvent;
 use App\Models\Refund;
+use App\Services\Operator\OperatorDecisions;
 use App\Services\Paystack\PaystackConfig;
-use App\Services\RefundService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 /**
@@ -25,6 +28,8 @@ use Illuminate\View\View;
  */
 class OperatorPaymentController extends Controller
 {
+    use AnswersDecisions;
+
     public function index(PaystackConfig $config): View
     {
         return view('operator.payments.index', [
@@ -58,30 +63,48 @@ class OperatorPaymentController extends Controller
                 ->latest('id')
                 ->limit(25)
                 ->get(),
+            'paidTwice' => $this->paidTwice(),
         ]);
     }
 
-    public function review(Request $request, Payment $payment): RedirectResponse
+    /** The payment events log: every notice Paystack (webhook or callback) gave us and what we did with it. */
+    public function events(Request $request): View
+    {
+        $outcome = in_array($request->query('outcome'), ['applied', 'duplicate', 'unmatched', 'needs_review'], true) ? $request->query('outcome') : null;
+
+        return view('operator.payments.events', [
+            'events' => PaymentEvent::query()->when($outcome, fn ($q) => $q->where('outcome', $outcome))->latest('id')->paginate(30)->withQueryString(),
+            'outcome' => $outcome,
+            'counts' => PaymentEvent::query()->selectRaw('outcome, count(*) as n')->groupBy('outcome')->pluck('n', 'outcome'),
+        ]);
+    }
+
+    /**
+     * Orders with more than one successful payment: the duplicate-payment indicator. Each extra successful charge is money the buyer paid twice.
+     *
+     * @return Collection<int, object{order_id: int, payments: int, total_cents: int}>
+     */
+    private function paidTwice()
+    {
+        return Payment::query()->where('status', PaymentAttemptStatus::Success->value)->whereNotNull('order_id')
+            ->groupBy('order_id')->havingRaw('count(*) > 1')
+            ->selectRaw('order_id, count(*) as payments, sum(amount_cents) as total_cents')->orderByDesc('order_id')->limit(25)->get();
+    }
+
+    public function review(Request $request, Payment $payment, OperatorDecisions $decisions): RedirectResponse
     {
         $validated = $request->validate(['note' => ['required', 'string', 'max:500']]);
 
-        $payment->forceFill([
-            'reviewed_at' => now(),
-            'reviewed_by' => $request->user()->id,
-            'review_note' => $validated['note'],
-        ])->save();
-
-        return redirect()->route('operator.payments.index')->with('status', 'Review recorded.');
+        return $this->attempt('payment-'.$payment->id, fn () => $decisions->reviewPayment($payment, $request->user(), $validated['note']), 'Review recorded.', route('operator.payments.index'));
     }
 
-    public function retryRefund(Refund $refund, RefundService $refunds): RedirectResponse
+    public function retryRefund(Refund $refund, Request $request, OperatorDecisions $decisions): RedirectResponse
     {
-        if ($refund->status === RefundStatus::Failed) {
-            // Paystack gave up on it; try the API again from the start.
-            $refund->forceFill(['status' => RefundStatus::Pending, 'provider_refund_id' => null])->save();
+        try {
+            $refund = $decisions->retryRefund($refund, $request->user());
+        } catch (ValidationException $e) {
+            return redirect()->route('operator.payments.index')->with('error', collect($e->errors())->flatten()->first());
         }
-
-        $refund = $refunds->submit($refund);
 
         return redirect()->route('operator.payments.index')->with(
             $refund->status === RefundStatus::Pending ? 'error' : 'status',
@@ -91,12 +114,10 @@ class OperatorPaymentController extends Controller
         );
     }
 
-    public function markRefundDone(Request $request, Refund $refund, RefundService $refunds): RedirectResponse
+    public function markRefundDone(Request $request, Refund $refund, OperatorDecisions $decisions): RedirectResponse
     {
         $validated = $request->validate(['note' => ['required', 'string', 'max:500']]);
 
-        $refunds->markDoneByOperator($refund, $request->user(), $validated['note']);
-
-        return redirect()->route('operator.payments.index')->with('status', 'Marked as refunded by you.');
+        return $this->attempt('refund-'.$refund->id, fn () => $decisions->markRefundDone($refund, $request->user(), $validated['note']), 'Marked as refunded by you.', route('operator.payments.index'));
     }
 }

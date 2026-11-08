@@ -1,22 +1,28 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-[x-cloak] {
-    display: none;
-}
-
 /*
- * Reduced motion (WCAG 2.3.3): people who ask the system for less motion get none of it from
- * transitions, animations or smooth scrolling, whichever file or utility class declares them.
+ * Entry stylesheet for every page (storefront, account, seller desk, operator, auth, errors, Jetstream, the legacy pages still being rebuilt).
+ * Order: Tailwind base (preflight and forms), tokens, fonts, element defaults, the design system, the layouts, the page files, then Tailwind's utilities last
+ * so a utility class on an element still wins over a component rule. Tokens first: nothing below this line may name a literal colour (DESIGN.md).
  */
-@media (prefers-reduced-motion: reduce) {
-    *,
-    *::before,
-    *::after {
-        animation-duration: 0.01ms !important;
-        animation-iteration-count: 1 !important;
-        transition-duration: 0.01ms !important;
-        scroll-behavior: auto !important;
-    }
-}
+@import "tailwindcss/base";
+@import "./tokens.css";
+@import "./fonts.css";
+@import "./base.css";
+@import "./ds-core.css";
+@import "./ds-forms.css";
+@import "./ds-ui.css";
+@import "./ds-commerce.css";
+@import "./shell.css";
+@import "./auth.css";
+@import "./welcome.css";
+@import "./discover.css";
+@import "./jetstream.css";
+@import "./legacy.css";
+@import "./kit.css";
+@import "./operator.css";
+@import "./checkout.css";
+@import "./seller.css";
+@import "./product.css";
+@import "tailwindcss/components";
+@import "tailwindcss/utilities";
+
+[x-cloak] { display: none; }

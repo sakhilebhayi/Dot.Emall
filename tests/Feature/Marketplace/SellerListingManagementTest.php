@@ -54,7 +54,7 @@ class SellerListingManagementTest extends TestCase
                 'price' => 30,
                 'stock' => 12,
             ])
-            ->assertRedirect(route('seller.products.index'));
+            ->assertRedirect(route('seller.products.edit', $product));
 
         $product->refresh();
         $this->assertSame('Updated Widget', $product->name);

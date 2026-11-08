@@ -2,23 +2,29 @@
 
 use App\Http\Middleware\EnsurePlatformOperator;
 use App\Http\Middleware\SecurityHeaders;
+use App\Http\Middleware\TrustedHostList;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Middleware\SubstituteBindings;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         web: __DIR__.'/../routes/web.php',
         api: __DIR__.'/../routes/api.php',
         commands: __DIR__.'/../routes/console.php',
-        health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias(['operator' => EnsurePlatformOperator::class]);
+        // Decide who may enter before a route parameter is resolved, so a non-operator gets the same refusal for an id that exists and one that does not.
+        $middleware->prependToPriorityList(before: SubstituteBindings::class, prepend: EnsurePlatformOperator::class);
 
         // Baseline browser protections (enforced headers plus a report-only CSP) on every response.
         $middleware->append(SecurityHeaders::class);
+
+        // Pin the Host header to the production host(s) (config security.trusted_hosts, default the APP_URL host).
+        $middleware->trustHosts(at: fn () => TrustedHostList::patterns(), subdomains: false);
 
         // Paystack's server posts here with no session or CSRF token; the
         // request is authenticated by its HMAC signature instead. The browser

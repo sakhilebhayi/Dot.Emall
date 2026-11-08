@@ -25,11 +25,9 @@ class DashboardTest extends TestCase
     {
         $user = User::factory()->withPersonalTeam()->create();
 
-        $this->actingAs($user)
-            ->get('/dashboard')
-            ->assertOk()
-            ->assertViewIs('dashboard')
-            ->assertSee('Seller desk');
+        // /dashboard is only a doorway: someone with no store lands on their account overview.
+        $this->actingAs($user)->get('/dashboard')->assertRedirect(route('account.home'));
+        $this->actingAs($user)->get(route('account.home'))->assertOk()->assertViewIs('account.home')->assertSee('Recent orders');
     }
 
     public function test_dashboard_shows_review_and_low_stock_widgets_for_the_sellers_own_products(): void
@@ -52,11 +50,14 @@ class DashboardTest extends TestCase
         $reviewer = User::factory()->create();
         Review::create(['product_id' => $product->id, 'user_id' => $reviewer->id, 'rating' => 5]);
 
-        $response = $this->actingAs($seller)->get('/dashboard');
+        $this->actingAs($seller)->get('/dashboard')->assertRedirect(route('seller.dashboard'));
+        $response = $this->actingAs($seller)->get(route('seller.dashboard'));
 
         $response->assertOk();
-        $response->assertSee('1 listing low on stock.');
+        $response->assertSee('Product at or below your low-stock level');
+        $response->assertSee('Low Stock Widget (2 left)');
         $response->assertSee('5.0'); // average rating from the single 5-star review
+        $response->assertSee('from 1 review');
     }
 
     public function test_dashboard_lists_the_sellers_recent_orders(): void
@@ -85,7 +86,7 @@ class DashboardTest extends TestCase
         ]);
         OrderItem::factory()->forProduct($product)->status(OrderStatus::Delivered)->create(['order_id' => $order->id]);
 
-        $response = $this->actingAs($seller)->get('/dashboard');
+        $response = $this->actingAs($seller)->get(route('seller.dashboard'));
 
         $response->assertOk();
         $response->assertSee('R30.00');

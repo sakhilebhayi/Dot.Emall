@@ -1,36 +1,14 @@
-<x-guest-layout>
-    <x-authentication-card>
-        <x-slot name="logo">
-            <x-authentication-card-logo />
-        </x-slot>
+<x-auth-layout>
+    <x-slot:title>Choose a new password</x-slot:title>
+    <x-slot:heading>Choose a new password</x-slot:heading>
 
-        <x-validation-errors class="mb-4" />
-
-        <form method="POST" action="{{ route('password.update') }}">
-            @csrf
-
-            <input type="hidden" name="token" value="{{ $request->route('token') }}">
-
-            <div class="block">
-                <x-label for="email" value="{{ __('Email') }}" />
-                <x-input id="email" class="block mt-1 w-full" type="email" name="email" :value="old('email', $request->email)" required autofocus autocomplete="username" />
-            </div>
-
-            <div class="mt-4">
-                <x-label for="password" value="{{ __('Password') }}" />
-                <x-input id="password" class="block mt-1 w-full" type="password" name="password" required autocomplete="new-password" />
-            </div>
-
-            <div class="mt-4">
-                <x-label for="password_confirmation" value="{{ __('Confirm Password') }}" />
-                <x-input id="password_confirmation" class="block mt-1 w-full" type="password" name="password_confirmation" required autocomplete="new-password" />
-            </div>
-
-            <div class="flex items-center justify-end mt-4">
-                <x-button>
-                    {{ __('Reset Password') }}
-                </x-button>
-            </div>
-        </form>
-    </x-authentication-card>
-</x-guest-layout>
+    <x-validation-errors />
+    <form method="POST" action="{{ route('password.update') }}" class="ds-stack" style="--stack: var(--s-4);">
+        @csrf
+        <input type="hidden" name="token" value="{{ $request->route('token') }}">
+        <x-ds.input name="email" label="Email" type="email" :value="old('email', $request->email)" required autofocus autocomplete="username" />
+        <x-ds.input name="password" label="New password" type="password" required autocomplete="new-password" :reveal="true" />
+        <x-ds.input name="password_confirmation" label="Confirm new password" type="password" required autocomplete="new-password" />
+        <x-ds.button type="submit">Save new password</x-ds.button>
+    </form>
+</x-auth-layout>

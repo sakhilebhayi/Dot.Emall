@@ -9,7 +9,9 @@ use App\Models\Order;
 use App\Models\Payment;
 use App\Models\PaymentEvent;
 use App\Models\Refund;
+use App\Models\ReturnRequest;
 use App\Models\User;
+use App\Services\Notifications\OrderNotifier;
 use App\Services\Paystack\PaymentGatewayException;
 use App\Services\Paystack\PaystackClient;
 use Illuminate\Support\Facades\Cache;
@@ -36,7 +38,7 @@ use Illuminate\Support\Facades\DB;
  */
 class RefundService
 {
-    public function __construct(private readonly PaystackClient $client) {}
+    public function __construct(private readonly PaystackClient $client, private readonly OrderNotifier $notifier) {}
 
     /**
      * Records what is owed. Call inside the transaction that locked $order
@@ -60,7 +62,9 @@ class RefundService
         }
 
         $owed = $payment->amount_cents - $order->totalCents();
-        $recorded = (int) Refund::query()->where('payment_id', $payment->id)->sum('amount_cents');
+        // Refunds of RETURNED (delivered) lines are accounted separately: those lines stay in the order's total, so they must
+        // not count against what is owed for cancelled lines.
+        $recorded = (int) Refund::query()->where('payment_id', $payment->id)->where('kind', '!=', 'return')->sum('amount_cents');
         $delta = $owed - $recorded;
 
         if ($delta <= 0) {
@@ -73,7 +77,50 @@ class RefundService
             'amount_cents' => $delta,
             'currency' => $payment->currency,
             'status' => RefundStatus::Pending,
+            'kind' => 'cancellation',
             'reason' => "Order {$order->reference()}: items cancelled before shipping",
+        ]);
+    }
+
+    /**
+     * Records what a received return is worth back to the buyer: the line's value after its discount share (delivery is not
+     * refunded). Nothing to refund (an order that never took payment) returns null. Capped so refunds can never total more
+     * than the buyer paid. The Paystack call happens after commit in submitPending(), as for any refund.
+     */
+    public function refundReturn(ReturnRequest $return): ?Refund
+    {
+        $order = Order::query()->lockForUpdate()->find($return->order_id);
+
+        if ($order === null || ! $order->requires_payment
+            || ! in_array($order->payment_status, [PaymentStatus::Paid, PaymentStatus::PartiallyRefunded], true)) {
+            return null;
+        }
+
+        $payment = $order->payments()
+            ->where('status', PaymentAttemptStatus::Success->value)
+            ->where('provider', 'paystack')
+            ->orderBy('id')
+            ->first();
+
+        if ($payment === null) {
+            return null;
+        }
+
+        $already = (int) Refund::query()->where('payment_id', $payment->id)->where('status', '!=', RefundStatus::Failed->value)->sum('amount_cents');
+        $amount = min($return->refund_cents, max(0, $payment->amount_cents - $already));
+
+        if ($amount <= 0) {
+            return null;
+        }
+
+        return Refund::create([
+            'payment_id' => $payment->id,
+            'order_id' => $order->id,
+            'amount_cents' => $amount,
+            'currency' => $payment->currency,
+            'status' => RefundStatus::Pending,
+            'kind' => 'return',
+            'reason' => "Order {$order->reference()}: return of {$return->item->displayName()}",
         ]);
     }
 
@@ -115,7 +162,7 @@ class RefundService
                     $payment->reference,
                     $refund->amount_cents,
                     $refund->currency,
-                    "Refund for {$ref}: items cancelled before shipping",
+                    $refund->kind === 'return' ? "Refund for {$ref}: returned item" : "Refund for {$ref}: items cancelled before shipping",
                     "Dot.Emall refund #{$refund->id} for {$ref}",
                 );
             } catch (PaymentGatewayException $e) {
@@ -207,6 +254,15 @@ class RefundService
             ])->save();
 
             $this->refreshOrderPaymentStatus($locked);
+
+            if ($locked->order_id !== null) {
+                $order = Order::query()->find($locked->order_id);
+                $amount = $locked->amount_cents;
+
+                if ($order !== null) {
+                    DB::afterCommit(fn () => $this->notifier->refundRecorded($order, $amount));
+                }
+            }
         });
     }
 

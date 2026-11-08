@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Enums\OrderStatus;
 use App\Models\Order;
 use App\Support\Money;
+use App\Support\Vat;
 
 /**
  * The single place an order's money is worked out -- used by checkout to
@@ -23,6 +24,9 @@ use App\Support\Money;
  *    stored on each line. A seller's revenue is therefore
  *    sum(line total - line discount) over their own lines and always
  *    reconciles with what the buyer owes.
+ *  - Delivery is per seller group (App\Models\OrderGroup): the total is
+ *    items - discount + the delivery of every group that still has a live
+ *    line; the VAT component of VAT-registered stores is recorded per group.
  */
 class OrderPricing
 {
@@ -57,10 +61,40 @@ class OrderPricing
             }
         }
 
+        // Delivery and VAT are per seller group. A group's delivery counts while it still has a live line (cancel all of a
+        // seller's lines and their delivery fee goes back too); its VAT part is the VAT already inside what the buyer
+        // pays that seller (their lines after discount, plus their delivery), for stores that are VAT registered.
+        $deliveryCents = 0;
+        $vatCents = 0;
+
+        foreach ($order->groups()->get() as $group) {
+            $groupLines = $active->where('order_group_id', $group->id);
+
+            if ($groupLines->isEmpty()) {
+                if ($group->vat_cents !== 0) {
+                    $group->forceFill(['vat_cents' => 0])->save();
+                }
+
+                continue;
+            }
+
+            $netCents = $groupLines->sum(fn ($line) => Money::toCents($line->total) - ($shares[$line->id] ?? 0));
+            $groupVat = $group->vat_registered ? Vat::includedIn($netCents + $group->delivery_cents) : 0;
+
+            if ($group->vat_cents !== $groupVat) {
+                $group->forceFill(['vat_cents' => $groupVat])->save();
+            }
+
+            $deliveryCents += $group->delivery_cents;
+            $vatCents += $groupVat;
+        }
+
         $order->forceFill([
             'subtotal' => Money::fromCents($subtotalCents),
             'discount_amount' => Money::fromCents($discountCents),
-            'total' => Money::fromCents($subtotalCents - $discountCents),
+            'delivery_total' => Money::fromCents($deliveryCents),
+            'vat_total' => Money::fromCents($vatCents),
+            'total' => Money::fromCents($subtotalCents - $discountCents + $deliveryCents),
         ])->save();
 
         return $order;

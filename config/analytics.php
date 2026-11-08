@@ -25,6 +25,11 @@ return [
     // three-uppercase-letter ISO 4217 code.
     'currency' => env('ANALYTICS_CURRENCY') ?: null,
 
+    // Also publish aggregate engagement counts (product_views_7d, add_to_cart_7d, wishlist_adds_7d).
+    // Off by default: turn it on only after Dot.Analytics accepts those keys for the `emall` platform, or it
+    // may refuse the whole snapshot. Counts of events on the company's own stores; nothing row-level.
+    'commerce_metrics' => (bool) env('ANALYTICS_COMMERCE_METRICS', false),
+
     // Seconds, for connecting and for the whole request.
     'timeout' => 5,
 

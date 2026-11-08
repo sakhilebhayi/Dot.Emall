@@ -1,5 +1,5 @@
 @props(['for'])
 
 @error($for)
-    <p {{ $attributes->merge(['class' => 'text-sm text-red-600 dark:text-red-400']) }}>{{ $message }}</p>
+    <p {{ $attributes->merge(['class' => 'ds-field__error']) }}><x-ds.icon name="alert-triangle" :size="16" /><span>{{ $message }}</span></p>
 @enderror

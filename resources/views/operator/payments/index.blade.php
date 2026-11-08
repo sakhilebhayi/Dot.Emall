@@ -28,152 +28,96 @@
         $stateLine = 'Nothing needs you.';
     }
 
-    $label = 'font-size:0.65rem;font-weight:700;color:#71717a;text-transform:uppercase;letter-spacing:0.1em;';
-    $th = 'padding:0.7rem 1.1rem;text-align:left;'.$label;
-    $td = 'padding:0.8rem 1.1rem;font-size:0.78rem;color:#a1a1aa;vertical-align:top;';
 @endphp
-<x-app-layout>
-<div style="padding:2rem 2.5rem 3rem;max-width:1100px;">
+<x-operator-layout>
+    <x-slot:title>Payments</x-slot:title>
+    <x-slot:heading>Payments</x-slot:heading>
+    <x-slot:lead>{{ $stateLine }}</x-slot:lead>
+    <x-slot:actions><x-ds.button variant="quiet" :href="route('operator.payments.events')" icon="list">Payment events log</x-ds.button></x-slot:actions>
 
-    <div style="margin-bottom:1.5rem;">
-        <h1 style="margin:0;font-family:'Syne',sans-serif;font-size:1.5rem;font-weight:800;color:#f4f4f5;">Payments desk</h1>
-        <p style="margin:0.35rem 0 0;font-size:0.9rem;font-weight:600;color:{{ ($needAction > 0 || $gateway['problem']) ? '#f59e0b' : '#a1a1aa' }};" role="status">{{ $stateLine }}</p>
-    </div>
+    @if (session('error'))<x-ds.alert tone="crit">{{ session('error') }}</x-ds.alert>@endif
 
-    @if (session('status'))
-    <div style="margin-bottom:1.25rem;padding:0.65rem 1rem;border-radius:0.6rem;background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.25);color:#4ade80;font-size:0.8rem;">{{ session('status') }}</div>
-    @endif
-    @if (session('error'))
-    <div style="margin-bottom:1.25rem;padding:0.65rem 1rem;border-radius:0.6rem;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.25);color:#f87171;font-size:0.8rem;" role="alert">{{ session('error') }}</div>
-    @endif
-    @if($errors->any())
-    <div style="margin-bottom:1.25rem;padding:0.65rem 1rem;border-radius:0.6rem;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.25);color:#f87171;font-size:0.8rem;" role="alert">
-        @foreach($errors->all() as $error)<div>{{ $error }}</div>@endforeach
-    </div>
-    @endif
+    <div class="ds-stack">
+        <section class="op-block" aria-labelledby="gateway-h">
+            <h2 id="gateway-h">Gateway</h2>
+            <x-ds.dl>
+                <dt>State</dt>
+                <dd>
+                    @if (! $gateway['configured'])<x-ds.badge tone="cau" icon="alert-triangle">Not configured</x-ds.badge>
+                    @elseif ($gateway['problem'])<x-ds.badge tone="crit" icon="x-octagon">Refused</x-ds.badge>
+                    @elseif ($gateway['testMode'])<x-ds.badge tone="cau" icon="alert-triangle">TEST MODE</x-ds.badge>
+                    @else<x-ds.badge tone="pos" icon="check-circle">Live</x-ds.badge>@endif
+                </dd>
+                <dt>Detail</dt><dd>{{ $gateway['problem'] ?? ($gateway['configured'] ? 'Charging in '.$gateway['currency'].'.' : 'Set PAYSTACK_SECRET_KEY (a test key) to enable card payments.') }}</dd>
+            </x-ds.dl>
+        </section>
 
-    {{-- Gateway state: shared edges, one ruled readout --}}
-    <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:rgba(255,255,255,0.09);border:1px solid rgba(255,255,255,0.09);border-radius:4px;overflow:hidden;margin-bottom:2rem;">
-        <div style="background:#141416;padding:1rem 1.2rem;">
-            <div style="{{ $label }}">Gateway</div>
-            <div style="margin-top:0.35rem;font-size:0.9rem;font-weight:700;color:#f4f4f5;">
-                @if(! $gateway['configured']) Not configured
-                @elseif($gateway['problem']) Refused
-                @elseif($gateway['testMode']) <span style="color:#f59e0b;">TEST MODE</span>
-                @else Live @endif
-            </div>
-            <div style="font-size:0.68rem;color:#71717a;margin-top:0.3rem;">{{ $gateway['problem'] ?? ($gateway['configured'] ? 'Charging in '.$gateway['currency'].'.' : 'Set PAYSTACK_SECRET_KEY (a test key) to enable card payments.') }}</div>
-        </div>
-        <div style="background:#141416;padding:1rem 1.2rem;">
-            <div style="{{ $label }}">Payments to review</div>
-            <div class="metric-val" style="font-size:1.4rem;color:{{ $reviews->isNotEmpty() ? '#f59e0b' : '#f4f4f5' }};margin-top:0.35rem;">{{ $reviews->count() }}</div>
-            <div style="font-size:0.68rem;color:#71717a;margin-top:0.3rem;">Money that did not fit an order.</div>
-        </div>
-        <div style="background:#141416;padding:1rem 1.2rem;">
-            <div style="{{ $label }}">Refunds owed</div>
-            <div class="metric-val" style="font-size:1.4rem;color:{{ $refundsToAction->isNotEmpty() ? '#f59e0b' : '#f4f4f5' }};margin-top:0.35rem;">{{ $refundsToAction->count() }}</div>
-            <div style="font-size:0.68rem;color:#71717a;margin-top:0.3rem;">{{ $refundsInFlight->count() }} with Paystack, not yet confirmed.</div>
-        </div>
-    </div>
-
-    {{-- Payments needing review --}}
-    <h2 style="margin:0 0 0.8rem;font-family:'Syne',sans-serif;font-size:1rem;font-weight:700;color:#f4f4f5;">Needs review</h2>
-    <div class="dot-card" style="overflow:hidden;margin-bottom:2rem;">
-        @forelse($reviews as $payment)
-        @php $reason = $payment->events->sortByDesc('id')->pluck('reason')->filter()->first(); @endphp
-        <div style="padding:1rem 1.25rem;{{ ! $loop->last ? 'border-bottom:1px solid rgba(255,255,255,0.06);' : '' }}">
-            <div style="display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap;">
-                <div>
-                    <div style="font-size:0.85rem;font-weight:700;color:#f4f4f5;">
-                        @if($payment->order)<a href="{{ route('orders.show', $payment->order) }}" style="color:inherit;text-decoration:none;">Order {{ $payment->order->reference() }}</a>@else Order removed @endif
-                        · {{ $money($payment->amount_cents, $payment->currency) }}
-                    </div>
-                    <div style="font-size:0.7rem;color:#71717a;margin-top:0.2rem;font-family:'JetBrains Mono',monospace;">{{ $payment->reference }}</div>
-                </div>
-                <div style="font-size:0.7rem;color:#71717a;">{{ $payment->updated_at->format('d M Y, H:i') }}</div>
-            </div>
-            <div style="font-size:0.78rem;color:#f59e0b;margin-top:0.5rem;">{{ $reasons[$reason] ?? 'Something about this payment did not add up. Check it in the Paystack dashboard.' }}</div>
-            <form method="POST" action="{{ route('operator.payments.review', $payment) }}" style="display:flex;gap:0.5rem;margin-top:0.7rem;flex-wrap:wrap;">
-                @csrf
-                <label for="review-note-{{ $payment->id }}" style="position:absolute;left:-9999px;">What you did about this payment</label>
-                <input id="review-note-{{ $payment->id }}" type="text" name="note" required maxlength="500" placeholder="What you did (refunded in dashboard, buyer contacted...)" class="dot-input" style="flex:1;min-width:260px;">
-                <button type="submit" class="dot-btn dot-btn-ghost">Close review</button>
-            </form>
-        </div>
-        @empty
-        <div style="padding:1.6rem;text-align:center;font-size:0.82rem;color:#71717a;">No payments waiting for review.</div>
-        @endforelse
-    </div>
-
-    {{-- Refunds --}}
-    <h2 style="margin:0 0 0.8rem;font-family:'Syne',sans-serif;font-size:1rem;font-weight:700;color:#f4f4f5;">Refunds owed to buyers</h2>
-    <div class="dot-card" style="overflow:hidden;margin-bottom:0.8rem;">
-        @forelse($refundsToAction as $refund)
-        <div style="padding:1rem 1.25rem;{{ ! $loop->last ? 'border-bottom:1px solid rgba(255,255,255,0.06);' : '' }}">
-            <div style="display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap;">
-                <div style="font-size:0.85rem;font-weight:700;color:#f4f4f5;">
-                    {{ $refund->order ? 'Order '.$refund->order->reference() : 'Order removed' }} · {{ $money($refund->amount_cents, $refund->currency) }}
-                </div>
-                <div style="font-size:0.7rem;color:#71717a;">{{ $refund->payment?->reference }}</div>
-            </div>
-            <div style="font-size:0.78rem;color:#f59e0b;margin-top:0.5rem;">
-                Refund required: {{ $refund->status === RefundStatus::Failed ? 'Paystack reported this refund failed.' : 'Paystack has not accepted this refund yet.' }}
-                Retry it here, or do it in the Paystack dashboard and mark it done. The buyer has not been refunded.
-            </div>
-            @if($refund->last_error)<div style="font-size:0.7rem;color:#71717a;margin-top:0.25rem;">Last error: {{ $refund->last_error }}</div>@endif
-            <div style="display:flex;gap:0.6rem;margin-top:0.7rem;flex-wrap:wrap;align-items:center;">
-                <form method="POST" action="{{ route('operator.refunds.retry', $refund) }}">
-                    @csrf
-                    <button type="submit" class="dot-btn dot-btn-primary">Retry with Paystack</button>
-                </form>
-                <form method="POST" action="{{ route('operator.refunds.mark-done', $refund) }}" style="display:flex;gap:0.5rem;flex:1;min-width:280px;">
-                    @csrf
-                    <label for="done-note-{{ $refund->id }}" style="position:absolute;left:-9999px;">Where you refunded it</label>
-                    <input id="done-note-{{ $refund->id }}" type="text" name="note" required maxlength="500" placeholder="Refunded by hand: Paystack dashboard ref..." class="dot-input">
-                    <button type="submit" class="dot-btn dot-btn-ghost">Mark refunded</button>
-                </form>
-            </div>
-        </div>
-        @empty
-        <div style="padding:1.6rem;text-align:center;font-size:0.82rem;color:#71717a;">No refunds are waiting on you.</div>
-        @endforelse
-    </div>
-    @if($refundsInFlight->isNotEmpty())
-    <div style="font-size:0.75rem;color:#a1a1aa;margin-bottom:2rem;">
-        With Paystack, not yet confirmed:
-        @foreach($refundsInFlight as $refund){{ $refund->order?->reference() }} ({{ $money($refund->amount_cents, $refund->currency) }}){{ ! $loop->last ? ', ' : '' }}@endforeach.
-        These are requests, not refunds, until Paystack reports them processed.
-    </div>
-    @else
-    <div style="margin-bottom:2rem;"></div>
-    @endif
-
-    {{-- Unmatched events --}}
-    <h2 style="margin:0 0 0.8rem;font-family:'Syne',sans-serif;font-size:1rem;font-weight:700;color:#f4f4f5;">Unmatched Paystack events</h2>
-    <div class="dot-card" style="overflow:hidden;">
-        @if($unmatched->isEmpty())
-        <div style="padding:1.6rem;text-align:center;font-size:0.82rem;color:#71717a;">None recorded.</div>
-        @else
-        <div style="overflow-x:auto;">
-            <table style="width:100%;border-collapse:collapse;">
-                <thead><tr style="border-bottom:1px solid rgba(67,70,86,0.3);">
-                    @foreach(['When', 'Event', 'Reference', 'Amount', 'Why'] as $heading)<th style="{{ $th }}">{{ $heading }}</th>@endforeach
-                </tr></thead>
-                <tbody>
-                    @foreach($unmatched as $event)
-                    <tr style="border-bottom:1px solid rgba(67,70,86,0.15);">
-                        <td style="{{ $td }}white-space:nowrap;">{{ $event->created_at->format('d M, H:i') }}</td>
-                        <td style="{{ $td }}">{{ $event->event }}</td>
-                        <td style="{{ $td }}font-family:'JetBrains Mono',monospace;font-size:0.7rem;">{{ $event->reference ?? '—' }}</td>
-                        <td style="{{ $td }}white-space:nowrap;">{{ $event->amount_cents !== null ? $money($event->amount_cents, $event->currency) : '—' }}</td>
-                        <td style="{{ $td }}">{{ $reasons[$event->reason] ?? ($event->reason ?? '—') }}</td>
-                    </tr>
-                    @endforeach
-                </tbody>
-            </table>
-        </div>
+        @if ($paidTwice->isNotEmpty())
+            <x-ds.alert tone="crit" title="Paid more than once">
+                These orders have more than one successful payment. Check each in the Paystack dashboard and refund the extra charge:
+                @foreach ($paidTwice as $row)<a href="{{ route('operator.people.order', $row->order_id) }}">order {{ $row->order_id }}</a> ({{ $row->payments }} payments, {{ $money((int) $row->total_cents) }} in all){{ ! $loop->last ? ', ' : '.' }}@endforeach
+            </x-ds.alert>
         @endif
-    </div>
 
-</div>
-</x-app-layout>
+        <section class="op-block" aria-labelledby="review-h">
+            <h2 id="review-h">Needs review ({{ $reviews->count() }})</h2>
+            <p class="op-muted">Money that did not fit an order.</p>
+            @forelse ($reviews as $payment)
+                @php $reason = $payment->events->sortByDesc('id')->pluck('reason')->filter()->first(); @endphp
+                <article class="op-item" aria-label="Payment {{ $payment->reference }}">
+                    <div class="op-item__head">
+                        <strong>@if ($payment->order)<a class="op-row-link" href="{{ route('operator.people.order', $payment->order) }}">Order {{ $payment->order->reference() }}</a>@else Order removed @endif · <span class="op-num">{{ $money($payment->amount_cents, $payment->currency) }}</span></strong>
+                        <span class="op-muted"><x-op.age :at="$payment->updated_at" /> ago</span>
+                    </div>
+                    <p class="op-code">{{ $payment->reference }}</p>
+                    <p>{{ $reasons[$reason] ?? 'Something about this payment did not add up. Check it in the Paystack dashboard.' }}</p>
+                    <x-op.decide :bag="'payment-'.$payment->id" :action="route('operator.payments.review', $payment)" summary="Close the review" tone="quiet" field="note" label="What you did about this payment" hint="Refunded in the dashboard, buyer contacted, and so on. Kept in the audit trail." />
+                </article>
+            @empty
+                <p class="op-muted">No payments waiting for review.</p>
+            @endforelse
+        </section>
+
+        <section class="op-block" aria-labelledby="refunds-h">
+            <h2 id="refunds-h">Refunds owed to buyers ({{ $refundsToAction->count() }})</h2>
+            @forelse ($refundsToAction as $refund)
+                <article class="op-item" aria-label="Refund {{ $refund->id }}">
+                    <div class="op-item__head">
+                        <strong>{{ $refund->order ? 'Order '.$refund->order->reference() : 'Order removed' }} · <span class="op-num">{{ $money($refund->amount_cents, $refund->currency) }}</span></strong>
+                        <span class="op-code">{{ $refund->payment?->reference }}</span>
+                    </div>
+                    <x-ds.alert tone="cau" title="Refund required">{{ $refund->status === RefundStatus::Failed ? 'Paystack reported this refund failed.' : 'Paystack has not accepted this refund yet.' }} Retry it here, or do it in the Paystack dashboard and mark it done. The buyer has not been refunded.@if ($refund->last_error) Last error: {{ $refund->last_error }}@endif</x-ds.alert>
+                    <div class="op-decisions">
+                        <form method="POST" action="{{ route('operator.refunds.retry', $refund) }}">@csrf<x-ds.button type="submit" size="sm">Retry with Paystack</x-ds.button></form>
+                        <x-op.decide :bag="'refund-'.$refund->id" :action="route('operator.refunds.mark-done', $refund)" summary="Mark refunded by hand" tone="quiet" field="note" label="Where you refunded it" hint="The Paystack dashboard reference, so the books can be checked." />
+                    </div>
+                </article>
+            @empty
+                <p class="op-muted">No refunds are waiting on you.</p>
+            @endforelse
+            @if ($refundsInFlight->isNotEmpty())
+                <p class="op-muted">With Paystack, not yet confirmed: @foreach ($refundsInFlight as $refund){{ $refund->order?->reference() }} ({{ $money($refund->amount_cents, $refund->currency) }}){{ ! $loop->last ? ', ' : '' }}@endforeach. These are requests, not refunds, until Paystack reports them processed.</p>
+            @endif
+        </section>
+
+        <section class="op-block" aria-labelledby="unmatched-h">
+            <h2 id="unmatched-h">Unmatched Paystack events</h2>
+            @if ($unmatched->isEmpty())
+                <p class="op-muted">None recorded.</p>
+            @else
+                <x-ds.table caption="Unmatched Paystack events">
+                    <x-slot:head><tr><th scope="col">When</th><th scope="col">Event</th><th scope="col">Reference</th><th scope="col" class="is-num">Amount</th><th scope="col">Why</th></tr></x-slot:head>
+                    @foreach ($unmatched as $event)
+                        <tr>
+                            <td data-label="When">{{ $event->created_at->format('d M, H:i') }}</td>
+                            <td data-label="Event">{{ $event->event }}</td>
+                            <td data-label="Reference"><span class="op-code">{{ $event->reference ?? 'None' }}</span></td>
+                            <td data-label="Amount" class="is-num">{{ $event->amount_cents !== null ? $money($event->amount_cents, $event->currency) : 'None' }}</td>
+                            <td data-label="Why">{{ $reasons[$event->reason] ?? ($event->reason ?? 'None') }}</td>
+                        </tr>
+                    @endforeach
+                </x-ds.table>
+            @endif
+        </section>
+    </div>
+</x-operator-layout>

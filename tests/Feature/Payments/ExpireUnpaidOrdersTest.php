@@ -39,6 +39,12 @@ class ExpireUnpaidOrdersTest extends TestCase
         parent::tearDown();
     }
 
+    /** The "cancelled: not paid" notices only: the buyer also has their own order-placed notice. */
+    private function cancelNotices()
+    {
+        return $this->buyer->fresh()->notifications->filter(fn ($n) => ($n->data['type'] ?? null) === 'order_unpaid_cancelled')->values();
+    }
+
     private function order(int $stock = 10, int $qty = 3): array
     {
         $listing = $this->makeListing($this->seller, ['price' => 50, 'stock' => $stock]);
@@ -59,7 +65,7 @@ class ExpireUnpaidOrdersTest extends TestCase
         $this->assertSame(PaymentStatus::Unpaid, $order->payment_status);
         $this->assertSame(10, $listing->fresh()->stock);
         $this->assertTrue($order->items->every(fn ($l) => $l->status === OrderStatus::Cancelled));
-        $notes = $this->buyer->fresh()->notifications;
+        $notes = $this->cancelNotices();
         $this->assertCount(1, $notes);
         $this->assertStringContainsString('was not paid', $notes->first()->data['message']);
         $this->assertStringContainsString($order->reference(), $notes->first()->data['message']);
@@ -112,7 +118,7 @@ class ExpireUnpaidOrdersTest extends TestCase
         $this->artisan('orders:expire-unpaid');
 
         $this->assertSame(10, $listing->fresh()->stock);
-        $this->assertCount(1, $this->buyer->fresh()->notifications);
+        $this->assertCount(1, $this->cancelNotices());
     }
 
     public function test_a_paid_order_is_never_auto_cancelled(): void
@@ -179,7 +185,7 @@ class ExpireUnpaidOrdersTest extends TestCase
         $this->assertSame(PaymentStatus::Paid, $order->fresh()->payment_status);
         $this->assertSame(OrderStatus::Pending, $order->fresh()->status);
         $this->assertSame(7, $listing->fresh()->stock);
-        $this->assertCount(0, $this->buyer->fresh()->notifications);
+        $this->assertCount(0, $this->cancelNotices());
     }
 
     public function test_failed_payment_orders_expire_too(): void

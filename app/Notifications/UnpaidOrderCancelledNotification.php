@@ -4,23 +4,14 @@ namespace App\Notifications;
 
 use App\Models\Order;
 use App\Services\Paystack\PaystackConfig;
-use Illuminate\Notifications\Notification;
 
 /**
  * Database-channel notice to a buyer whose order was cancelled because it
  * was not paid within the window (App\Console\Commands\ExpireUnpaidOrders).
  */
-class UnpaidOrderCancelledNotification extends Notification
+class UnpaidOrderCancelledNotification extends EmallNotification
 {
     public function __construct(public Order $order) {}
-
-    /**
-     * @return array<int, string>
-     */
-    public function via(object $notifiable): array
-    {
-        return ['database'];
-    }
 
     /**
      * @return array<string, mixed>

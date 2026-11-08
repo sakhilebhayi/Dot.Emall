@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
 use Tests\TestCase;
 
-/** Baseline browser protections are on every response; the CSP only reports; a route's own header is kept. */
+/** Baseline browser protections are on every response; the nonce-based CSP is enforced (and can be switched to report-only); a route's own header is kept. */
 class SecurityHeadersTest extends TestCase
 {
     public function test_every_response_carries_the_enforced_baseline_headers(): void
@@ -27,27 +27,33 @@ class SecurityHeadersTest extends TestCase
         $this->get('/does-not-exist')->assertNotFound()->assertHeader('X-Frame-Options', 'SAMEORIGIN');
     }
 
-    public function test_the_csp_is_report_only_and_reports_to_the_csp_report_endpoint(): void
+    public function test_the_csp_is_enforced_nonce_based_and_reports_to_the_csp_report_endpoint(): void
     {
+        config(['security.csp_report_only' => false]);
         $r = $this->get('/');
 
-        $policy = (string) $r->headers->get('Content-Security-Policy-Report-Only');
-        $this->assertFalse($r->headers->has('Content-Security-Policy'), 'nothing is enforced yet');
+        $policy = (string) $r->headers->get('Content-Security-Policy');
+        $this->assertFalse($r->headers->has('Content-Security-Policy-Report-Only'), 'enforced, not just reported');
         $this->assertStringContainsString("default-src 'self'", $policy);
         $this->assertStringContainsString('report-uri /csp-report', $policy);
         $this->assertStringContainsString("frame-ancestors 'self'", $policy);
         $this->assertStringContainsString("object-src 'none'", $policy);
         $this->assertStringContainsString("base-uri 'self'", $policy);
         $this->assertStringContainsString('connect-src', $policy);
-        $this->assertStringContainsString('https://cdn.tailwindcss.com', $policy, 'the Tailwind CDN the app layout loads');
-        $this->assertStringContainsString('https://fonts.googleapis.com', $policy);
-        $this->assertStringContainsString('https://fonts.gstatic.com', $policy);
+        // R-43: every asset is self-hosted, so no third-party origin is allowed any more, and inline script and style carry a per-request nonce.
+        $this->assertStringNotContainsString('cdn.tailwindcss.com', $policy);
+        $this->assertStringNotContainsString('fonts.googleapis.com', $policy);
+        $this->assertStringNotContainsString('fonts.gstatic.com', $policy);
+        $this->assertStringNotContainsString('unsplash', $policy);
+        $this->assertMatchesRegularExpression("/script-src 'self' 'nonce-[A-Za-z0-9+\\/=]+'/", $policy);
+        $this->assertMatchesRegularExpression("/style-src 'self' 'nonce-[A-Za-z0-9+\\/=]+'/", $policy);
+        $this->assertDoesNotMatchRegularExpression("/(script-src|style-src) [^;]*'unsafe-inline'/", $policy, 'no unsafe-inline for style elements or scripts');
         $this->assertStringNotContainsString('paystack', $policy, 'Paystack is a redirect to its hosted page, so no script or frame allowance is needed');
-        // The switch turns the same policy into an enforced one, with no deploy.
-        config(['security.csp_report_only' => false]);
-        $enforced = $this->get('/');
-        $this->assertStringContainsString("default-src 'self'", (string) $enforced->headers->get('Content-Security-Policy'));
-        $this->assertFalse($enforced->headers->has('Content-Security-Policy-Report-Only'));
+        // The switch turns the same policy into a report-only one, with no deploy.
+        config(['security.csp_report_only' => true]);
+        $reporting = $this->get('/');
+        $this->assertStringContainsString("default-src 'self'", (string) $reporting->headers->get('Content-Security-Policy-Report-Only'));
+        $this->assertFalse($reporting->headers->has('Content-Security-Policy'));
     }
 
     public function test_hsts_is_sent_on_https_only_and_can_be_switched_off(): void

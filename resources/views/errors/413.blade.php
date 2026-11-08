@@ -1,0 +1,1 @@
+<x-error-layout :code="413" heading="That upload is too big" message="What you sent is larger than this site accepts in one go. Photos can be up to 4 MB each, and up to 4 photos. Nothing was saved. Go back, choose smaller or fewer photos, and send it again." />

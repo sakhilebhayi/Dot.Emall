@@ -1,0 +1,188 @@
+/* Layout contexts: store (public), account (customer), seller desk, operator. One language, four postures.
+   Context cue: the strip across the very top of the page. Store and account hang the awning, the seller desk is a plain yellow strip, the operator area is ink. */
+
+.ds-app { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr auto; min-height: 100vh; min-height: 100dvh; }
+.ds-main { display: block; min-width: 0; outline: none; }
+.ds-main:focus-visible { outline: none; }
+
+/* The awning: scallops hanging from a flat yellow edge. Decorative, hidden from assistive technology. */
+.ds-awning { height: 0.875rem; background:
+    radial-gradient(circle at 50% 0, var(--awning) 0 0.4375rem, transparent calc(0.4375rem + 0.5px)) 0 0 / 1.75rem 0.875rem repeat-x; position: relative; }
+.ds-awning::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 0.25rem; background: var(--awning); }
+.ds-strip { height: 0.375rem; background: var(--awning); }
+.ds-strip--ink { background: var(--ink); }
+.ds-strip--brand { background: var(--brand); }
+
+/* Utility row (store): delivery location chip, help, sell. */
+.ds-util { background: var(--sunken); font-size: var(--text-sm); color: var(--ink-2); }
+.ds-util__row { display: flex; align-items: center; justify-content: space-between; gap: var(--s-4); min-height: 2.25rem; }
+.ds-util__links { display: none; align-items: center; gap: var(--s-4); }
+.ds-util a { color: var(--ink-2); text-decoration: none; display: inline-flex; align-items: center; min-height: 2rem; }
+.ds-util a:hover { color: var(--ink); text-decoration: underline; }
+.ds-util__loc:empty { display: none; }
+.ds-util__loc, .ds-util__test { display: flex; align-items: center; gap: var(--s-2); min-width: 0; }
+.ds-util .disc-region { white-space: nowrap; }
+.ds-util__test .ds-badge { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+/* On a phone the province chip and the test-mode pill wrap onto two lines rather than clip each other (jury 2 #11). */
+@media (max-width: 29.99rem) { .ds-util__row { flex-wrap: wrap; gap: 0 var(--s-4); } .ds-util__test .ds-badge { overflow: visible; white-space: normal; } }
+@media (min-width: 48rem) { .ds-util__links { display: flex; } }
+.ds-util:not(:has(.ds-util__loc > *, .ds-util__test > *)) .ds-util__row { justify-content: flex-end; }
+@media (max-width: 47.99rem) { .ds-util:not(:has(.ds-util__loc > *, .ds-util__test > *)) { display: none; } }
+
+/* Store header */
+.ds-header { position: sticky; inset-block-start: 0; z-index: 80; background: var(--ground); border-bottom: 1px solid var(--line); --hdr-search-h: 3.25rem; }
+.ds-header__bar { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "menu brand actions" "search search search"; align-items: center; gap: var(--s-2) var(--s-3); padding-block: var(--s-2); }
+.ds-header__menu { grid-area: menu; margin-inline-start: calc(var(--s-2) * -1); }
+.ds-header__brand { grid-area: brand; justify-self: start; }
+.ds-header__search { grid-area: search; min-width: 0; }
+.ds-header__actions { grid-area: actions; display: flex; align-items: center; gap: 0; }
+/* Phones (R-43 polish #6, D-181): the first row (menu, logo, account, bell, cart) stays; the search row folds away once the page has moved and a search icon takes its place. */
+.ds-header__searchbtn { display: none; }
+@media (max-width: 63.99rem) {
+    .ds-header__search { min-height: 2.75rem; }
+    :root.is-scrolled .ds-header__searchbtn { display: inline-grid; }
+    /* Once the page has moved, the header is clipped to its first row. The layout height does not change (no jump); the clipped part shows the page beneath, and the search row leaves the tab order. */
+    :root.is-scrolled .ds-header { clip-path: inset(0 0 var(--hdr-search-h) 0); border-bottom-color: transparent; }
+    :root.is-scrolled .ds-header::after { content: ""; position: absolute; inset-inline: 0; inset-block-end: var(--hdr-search-h); height: 1px; background: var(--line); }
+    :root.is-scrolled .ds-header__search { visibility: hidden; }
+    .ds-header__actions .ds-dropdown > .ds-header__link > .ds-icon:last-child { display: none; }
+    .ds-header__actions .ds-dropdown > .ds-header__link { padding-inline: 0; min-width: var(--tap); justify-content: center; }
+}
+@media (min-width: 64rem) {
+    .ds-header__bar { grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "brand search actions"; gap: var(--s-6); padding-block: var(--s-3); }
+    .ds-header__menu { display: none; }
+    .ds-header__search { max-width: 44rem; width: 100%; justify-self: center; }
+}
+.ds-logo { display: inline-flex; align-items: center; gap: var(--s-2); text-decoration: none; min-height: var(--tap); }
+.ds-logo img { display: block; flex: none; }
+.ds-logo__mark { width: 2.25rem; height: 2.25rem; border-radius: 50%; }
+/* The wordmark is live type (D-180): heavy enough that "emall" cannot be misread as "email", with the ll left tight. */
+.ds-logo__word { display: inline-flex; align-items: baseline; gap: 0.06em; font-size: 1.375rem; font-weight: 800; font-stretch: var(--width-price); line-height: 1; letter-spacing: -0.035em; white-space: nowrap; }
+.ds-logo__dot { color: var(--ink); }
+.ds-logo__emall { color: var(--brand); }
+.ds-logo__stop { align-self: baseline; flex: none; width: 0.3em; height: 0.3em; border-radius: 50%; background: var(--awning); box-shadow: 0 0 0 0.075em var(--ink); margin-inline: 0.12em 0.1em; }
+@media (max-width: 29.99rem) { .ds-logo { gap: var(--s-1); } .ds-logo__mark { width: 2rem; height: 2rem; } .ds-logo__word { font-size: 1.1875rem; } }
+@media (min-width: 64rem) { .ds-logo__mark { width: 2.75rem; height: 2.75rem; } .ds-logo__word { font-size: 1.625rem; } }
+.ds-header__link { display: inline-flex; align-items: center; gap: var(--s-2); min-height: var(--tap); padding: 0 var(--s-2); color: var(--ink); text-decoration: none; font-weight: 600; border-radius: var(--r-control); }
+.ds-header__link:hover { background: var(--sunken); color: var(--ink); }
+.ds-header__link .ds-label-text { display: none; }
+@media (max-width: 63.99rem) { .ds-cart-link { justify-content: center; min-width: var(--tap); padding-inline: 0; } }
+@media (min-width: 64rem) { .ds-header__link .ds-label-text { display: inline; } .ds-header__link { padding: 0 var(--s-3); } }
+/* On a phone the account button is its icon (the name stays for screen readers): a first name beside the bell and the cart pushes the logo underneath them. */
+@media (max-width: 63.99rem) { .ds-header__actions .ds-dropdown > .ds-header__link > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; } }
+.ds-cart-link { position: relative; }
+/* The count is drawn in place on first paint (no fade: a half-transparent "3" read as a glitch, D-181). Phones pin it to the top right of the icon, inside its own 44px box. */
+.ds-icon-btn > .ds-count, .ds-header__actions .ds-count { position: absolute; z-index: 1; inset-block-start: 0.15rem; inset-inline-end: 0; min-width: 1.2rem; height: 1.2rem; font-size: 0.6875rem; box-shadow: 0 0 0 2px var(--ground); }
+.ds-header__actions .ds-cart-link .ds-count { inset-inline-end: -0.1rem; }
+@media (min-width: 64rem) { .ds-header__actions .ds-cart-link .ds-count { position: static; box-shadow: none; min-width: 1.35rem; height: 1.35rem; font-size: 0.75rem; } }
+@keyframes ds-stamp { from { transform: scale(1.5); opacity: 0; } 60% { transform: scale(0.94); opacity: 1; } to { transform: none; } }
+.ds-count.is-stamped { animation: ds-stamp var(--t-base) var(--ease) both; }
+.ds-header__hide-sm { display: none; }
+@media (min-width: 40rem) { .ds-header__hide-sm { display: inline-flex; } }
+
+/* Category navigation (desktop) with the mega panel */
+.ds-catnav { display: none; border-top: 1px solid var(--line); }
+@media (min-width: 64rem) { .ds-catnav { display: block; } }
+.ds-catnav__row { display: flex; align-items: center; gap: var(--s-1); min-height: 3rem; position: relative; }
+.ds-catnav a, .ds-catnav__btn { display: inline-flex; align-items: center; gap: var(--s-2); min-height: 2.5rem; padding: 0 var(--s-3); border-radius: var(--r-control); color: var(--ink); font: inherit; font-weight: 600; font-size: var(--text-sm); text-decoration: none; background: none; border: 0; cursor: pointer; white-space: nowrap; }
+.ds-catnav a:hover, .ds-catnav__btn:hover, .ds-catnav__btn[aria-expanded="true"] { background: var(--sunken); color: var(--ink); }
+.ds-catnav__spacer { flex: 1; }
+.ds-catnav a[aria-current="page"] { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 0.45em; }
+.ds-mega { position: absolute; z-index: 85; inset-inline: 0; inset-block-start: 100%; background: var(--raised); border: 1px solid var(--line); border-radius: 0 0 var(--r-sheet) var(--r-sheet); box-shadow: var(--lift-1); padding: var(--s-5) var(--s-5) var(--s-5); display: grid; grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); gap: var(--s-5); animation: ds-pop var(--t-base) var(--ease) both; transform-origin: top; }
+.ds-mega[hidden] { display: none; }
+.ds-mega h2 { font-size: var(--text-base); margin-block-end: var(--s-2); letter-spacing: 0; }
+.ds-mega h2 a { padding: 0; min-height: 0; font-size: inherit; }
+.ds-mega ul { list-style: none; margin: 0; padding: 0; display: grid; }
+.ds-mega li a { font-weight: 450; min-height: 2.25rem; padding-inline: 0; color: var(--ink-2); }
+.ds-mega li a:hover { background: none; color: var(--ink); text-decoration: underline; }
+
+/* Drawer content (phone menu) */
+.ds-drawer-nav { display: grid; gap: 0; }
+.ds-drawer-nav a, .ds-drawer-nav summary { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); min-height: var(--tap); padding: 0 var(--s-2); color: var(--ink); text-decoration: none; font-weight: 600; border-radius: var(--r-control); cursor: pointer; list-style: none; }
+.ds-drawer-nav summary::-webkit-details-marker { display: none; }
+.ds-drawer-nav a:hover, .ds-drawer-nav summary:hover { background: var(--sunken); }
+.ds-drawer-nav details[open] > summary .ds-icon { transform: rotate(180deg); }
+.ds-drawer-nav details > div { padding-inline-start: var(--s-4); display: grid; }
+.ds-drawer-nav details a { font-weight: 450; color: var(--ink-2); }
+.ds-drawer-nav hr { margin: var(--s-2) 0; }
+.ds-drawer-note { font-size: var(--text-sm); color: var(--ink-2); padding: var(--s-2); }
+
+/* Banner and flash region */
+.ds-banners:empty { display: none; }
+.ds-banners { display: grid; }
+
+/* Footer */
+.ds-footer { margin-block-start: var(--s-8); background: var(--sunken); border-top: 1px solid var(--line); color: var(--ink-2); }
+.ds-footer__grid { display: grid; gap: var(--s-6) var(--s-5); padding-block: var(--s-7) var(--s-6); grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.ds-footer__about { grid-column: 1 / -1; display: grid; gap: var(--s-3); max-width: 28rem; }
+.ds-footer h2 { font-size: var(--text-base); letter-spacing: 0; margin-block-end: var(--s-2); }
+.ds-footer ul { list-style: none; margin: 0; padding: 0; display: grid; }
+.ds-footer a { color: var(--ink-2); text-decoration: none; display: inline-flex; align-items: center; min-height: 2.25rem; }
+.ds-footer a:hover { color: var(--ink); text-decoration: underline; }
+.ds-footer__base { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s-3) var(--s-5); padding-block: var(--s-4); border-top: var(--perf); font-size: var(--text-sm); }
+@media (min-width: 48rem) { .ds-footer__grid { grid-template-columns: minmax(0, 1.5fr) repeat(4, minmax(0, 1fr)); } .ds-footer__about { grid-column: auto; } }
+@media (pointer: coarse) { .ds-footer a { min-height: var(--tap); } }
+
+/* Desk shell: account, seller and operator. A rail on wide screens, a bottom bar and a menu sheet on phones. */
+.ds-desk { display: grid; grid-template-columns: minmax(0, 1fr); min-width: 0; }
+.ds-deskbar { position: sticky; inset-block-start: 0; z-index: 80; background: var(--ground); border-bottom: 1px solid var(--line); }
+.ds-deskbar__row { display: flex; align-items: center; gap: var(--s-2); min-height: 3.5rem; padding-inline: var(--gutter); }
+.ds-deskbar__context { display: flex; flex-direction: column; line-height: 1.2; min-width: 0; margin-inline-start: var(--s-2); padding-inline-start: var(--s-3); border-inline-start: 1px solid var(--line); }
+.ds-deskbar__context { flex: 0 1 auto; overflow: hidden; }
+.ds-deskbar__context strong { font-size: var(--text-base); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 39.99rem) { .ds-deskbar__context span { display: none; } .ds-deskbar__context { margin-inline-start: 0; border-inline-start: 0; padding-inline-start: 0; } }
+.ds-deskbar__context span { font-size: var(--text-xs); color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ds-deskbar__space { flex: 1; }
+.ds-deskbar__menu { margin-inline-start: calc(var(--s-2) * -1); }
+.ds-desk__body { display: grid; grid-template-columns: minmax(0, 1fr); min-width: 0; }
+.ds-rail { display: none; }
+.ds-rail__nav { display: grid; gap: 2px; }
+.ds-rail__nav a { display: flex; align-items: center; gap: var(--s-3); min-height: var(--tap); padding: 0 var(--s-3); border-radius: var(--r-control); color: var(--ink-2); text-decoration: none; font-weight: 600; }
+.ds-rail__nav a:hover { background: var(--sunken); color: var(--ink); }
+.ds-rail__nav a[aria-current="page"] { background: var(--ink); color: var(--ground); }
+.ds-rail__nav a[aria-current="page"] .ds-icon { color: inherit; }
+.ds-rail__nav .ds-icon { color: var(--ink-3); }
+.ds-rail__group { padding: var(--s-4) var(--s-3) var(--s-1); font-size: var(--text-xs); font-weight: 650; color: var(--ink-3); }
+.ds-rail__foot { margin-block-start: var(--s-5); padding-block-start: var(--s-3); border-top: 1px solid var(--line); display: grid; gap: var(--s-1); }
+@media (min-width: 64rem) {
+    .ds-desk__body { grid-template-columns: 15.5rem minmax(0, 1fr); }
+    .ds-rail { display: block; position: sticky; inset-block-start: 3.5rem; align-self: start; height: calc(100dvh - 3.5rem); overflow-y: auto; padding: var(--s-4) var(--s-3) var(--s-5); border-inline-end: 1px solid var(--line); background: var(--ground); }
+    .ds-deskbar__menu, .ds-bottombar { display: none; }
+}
+.ds-desk__main { min-width: 0; padding-block-end: var(--s-7); }
+.has-bottom-bar .ds-desk__main { padding-block-end: calc(var(--bottom-bar-h) + var(--s-6)); }
+@media (min-width: 64rem) { .has-bottom-bar .ds-desk__main { padding-block-end: var(--s-7); } }
+
+/* Account: the store header on top, a rail beside the content. */
+.ds-account { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s-5); padding-block: var(--s-4) 0; }
+.ds-account__rail { display: none; }
+@media (min-width: 64rem) { .ds-account { grid-template-columns: 14rem minmax(0, 1fr); gap: var(--s-7); padding-block-start: var(--s-6); } .ds-account__rail { display: block; position: sticky; inset-block-start: 9rem; align-self: start; } }
+.ds-subnav { display: flex; gap: var(--s-1); overflow-x: auto; margin-inline: calc(var(--gutter) * -1); padding-inline: var(--gutter); border-bottom: 1px solid var(--line); scrollbar-width: none; }
+.ds-subnav a { flex: none; display: inline-flex; align-items: center; min-height: var(--tap); padding: 0 var(--s-3); color: var(--ink-2); font-weight: 600; text-decoration: none; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.ds-subnav a[aria-current="page"] { color: var(--ink); border-bottom-color: var(--brand); font-weight: 750; }
+@media (min-width: 64rem) { .ds-subnav { display: none; } }
+
+/* Bottom bar (phones) */
+.ds-bottombar { position: fixed; z-index: 85; inset-inline: 0; inset-block-end: 0; background: var(--surface); border-top: 1px solid var(--line); padding-block-end: env(safe-area-inset-bottom); }
+.ds-bottombar ul { list-style: none; margin: 0; padding: 0; display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; }
+.ds-bottombar a, .ds-bottombar button { position: relative; display: grid; justify-items: center; align-content: center; gap: 2px; width: 100%; min-height: var(--bottom-bar-h); padding: var(--s-1) 2px; color: var(--ink-2); font: inherit; font-size: 0.75rem; font-weight: 600; text-decoration: none; background: none; border: 0; cursor: pointer; }
+.ds-bottombar [aria-current="page"] { color: var(--ink); font-weight: 750; }
+.ds-bottombar [aria-current="page"]::before { content: ""; position: absolute; inset-block-start: -1px; inset-inline: 22%; height: 2px; background: var(--brand); }
+.ds-bottombar .ds-count { position: absolute; inset-block-start: 0.35rem; inset-inline-start: calc(50% + 0.4rem); }
+
+/* Auth and error shell: a single column with the label motif. */
+.ds-auth { min-height: 100dvh; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr auto; }
+.ds-auth__top { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); padding-block: var(--s-3); }
+.ds-auth__main { display: grid; align-content: start; justify-items: center; padding-block: var(--s-6) var(--s-7); }
+.ds-auth__card { width: min(100%, 28rem); }
+.ds-auth__card .ds-label { --label-behind: var(--ground); }
+.ds-auth__body { padding: var(--s-5); display: grid; gap: var(--s-4); }
+.ds-auth__foot { padding-block: var(--s-4); font-size: var(--text-sm); color: var(--ink-3); display: flex; flex-wrap: wrap; gap: var(--s-2) var(--s-5); }
+.ds-auth__foot a { color: var(--ink-2); display: inline-flex; align-items: center; min-height: 2rem; }
+@media (pointer: coarse) { .ds-auth__foot a { min-height: var(--tap); } }
+
+/* On phones the desk's account button keeps only its icon (the name stays for screen readers). */
+@media (max-width: 39.99rem) {
+    .ds-deskbar .ds-header__link > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+    .ds-deskbar .ds-header__link > .ds-icon:last-child { display: none; }
+}

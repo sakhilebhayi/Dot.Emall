@@ -5,10 +5,12 @@ namespace App\Console\Commands;
 use App\Enums\OrderStatus;
 use App\Models\Order;
 use App\Notifications\UnpaidOrderCancelledNotification;
+use App\Services\Notifications\OrderNotifier;
 use App\Services\OrderLifecycle;
 use App\Services\PaymentService;
 use App\Services\Paystack\PaystackConfig;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Gives up orders that asked for payment and never got it, so their stock
@@ -16,7 +18,7 @@ use Illuminate\Console\Command;
  *
  * An order qualifies when it requires payment, is not paid (unpaid, pending
  * or failed), is not already cancelled, and is older than
- * paystack.unpaid_window_minutes (default 60). Before cancelling, any
+ * paystack.unpaid_window_minutes (default 30, D-4), or since its latest open payment attempt (never more than twice that). Before cancelling, any
  * attempt still open at Paystack is checked, so a buyer who paid a moment
  * ago is not cancelled; and the cancel itself re-checks under the order lock
  * (OrderLifecycle::cancelUnpaidOrder). Orders placed without Paystack and
@@ -30,7 +32,9 @@ class ExpireUnpaidOrders extends Command
 
     public function handle(OrderLifecycle $lifecycle, PaymentService $payments, PaystackConfig $config): int
     {
-        $cutoff = now()->subMinutes($config->unpaidWindowMinutes());
+        $window = $config->unpaidWindowMinutes();
+        $cutoff = now()->subMinutes($window);
+        $hardCutoff = now()->subMinutes($window * max(1, (int) config('emall.checkout.hold_extension_cap', 2)));
         $cancelled = 0;
 
         Order::query()
@@ -39,13 +43,23 @@ class ExpireUnpaidOrders extends Command
             ->where('status', '!=', OrderStatus::Cancelled->value)
             ->where('created_at', '<=', $cutoff)
             ->orderBy('id')
-            ->chunkById(100, function ($orders) use ($lifecycle, $payments, &$cancelled) {
+            ->chunkById(100, function ($orders) use ($lifecycle, $payments, $cutoff, $hardCutoff, &$cancelled) {
                 foreach ($orders as $order) {
+                    // D-4: stock is held for the window measured from the order, and while a payment attempt is open from the
+                    // attempt (the buyer is at Paystack right now), but never longer than the cap.
+                    if ($order->created_at->gt($hardCutoff) && $order->payments()->where('status', 'pending')->where('created_at', '>', $cutoff)->exists()) {
+                        continue;
+                    }
+
                     $payments->verifyOpenAttempts($order);
 
                     if ($lifecycle->cancelUnpaidOrder($order)) {
                         $cancelled++;
-                        $order->refresh()->user?->notify(new UnpaidOrderCancelledNotification($order));
+                        try {
+                            app(OrderNotifier::class)->buyer($order->refresh())?->notify(new UnpaidOrderCancelledNotification($order));
+                        } catch (\Throwable $e) {
+                            Log::warning('An expiry notice could not be sent.', ['order_id' => $order->id, 'error' => class_basename($e)]);
+                        }
                     }
                 }
             });

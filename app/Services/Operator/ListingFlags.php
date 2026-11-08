@@ -1,0 +1,223 @@
+<?php
+
+namespace App\Services\Operator;
+
+use App\Models\ListingFlagDismissal;
+use App\Models\Product;
+use App\Support\Money;
+use App\Support\Shop;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
+
+/**
+ * Listings the simple rules below would like a person to look at. A REVIEW AID: every flag carries the rule that raised it and the
+ * evidence, nothing here unlists, bans or hides anything, and a listing an operator has judged fine stays dismissed for that rule.
+ *
+ *   price_anomaly   the price is far below or far above the median of its category (config emall.flags: ratios, minimum peers)
+ *   prohibited_term the name or description contains a word from config emall.prohibited_terms (whole words)
+ *   new_store_value a store younger than N days with many listings priced above a threshold
+ *
+ * A flag is a question ("is this a counterfeit?"), not an answer. The page says so.
+ */
+class ListingFlags
+{
+    private const COUNT_KEY = 'operator.flags.count';
+
+    public const RULES = [
+        'price_anomaly' => 'Price far from the category median',
+        'prohibited_term' => 'Contains a word from the prohibited-items list',
+        'new_store_value' => 'New store with many high-value listings',
+    ];
+
+    /** @return Collection<int, array{product: Product, rule: string, rule_label: string, detail: string}> */
+    public function all(?string $rule = null): Collection
+    {
+        $candidates = $this->candidates();
+
+        if ($candidates->isEmpty()) {
+            return collect();
+        }
+
+        $flags = collect();
+
+        if ($rule === null || $rule === 'price_anomaly') {
+            $flags = $flags->concat($this->priceAnomalies($candidates));
+        }
+
+        if ($rule === null || $rule === 'prohibited_term') {
+            $flags = $flags->concat($this->prohibited($candidates));
+        }
+
+        if ($rule === null || $rule === 'new_store_value') {
+            $flags = $flags->concat($this->newStoreValue($candidates));
+        }
+
+        $dismissed = ListingFlagDismissal::query()->whereIn('product_id', $candidates->pluck('id'))->get(['product_id', 'rule'])
+            ->map(fn ($d) => $d->product_id.':'.$d->rule)->flip();
+
+        return $flags->reject(fn (array $f) => $dismissed->has($f['product']->id.':'.$f['rule']))->values();
+    }
+
+    /**
+     * How many listings are flagged, for the operator home. Computing it reads up to 2,000 listings and their categories' prices, so in
+     * production the number is kept for a minute (config emall.flags.count_cache_seconds; 0 anywhere else, so tests and local demos
+     * always see their own changes). The flags page itself is never cached, and a dismissal forgets the number at once.
+     */
+    public function count(): int
+    {
+        $ttl = (int) config('emall.flags.count_cache_seconds', 0);
+
+        if ($ttl <= 0) {
+            return $this->all()->count();
+        }
+
+        return (int) Cache::remember(self::COUNT_KEY, $ttl, fn () => $this->all()->count());
+    }
+
+    public function forgetCount(): void
+    {
+        Cache::forget(self::COUNT_KEY);
+    }
+
+    /** @return array<string, string> rule => the rule in words, with the numbers in force */
+    public function describe(): array
+    {
+        $c = config('emall.flags');
+
+        return [
+            'price_anomaly' => sprintf('Priced under %s%% or over %s times the median of its category, when the category has at least %d other listings.', rtrim(rtrim(number_format($c['low_ratio'] * 100, 1), '0'), '.'), rtrim(rtrim(number_format($c['high_ratio'], 1), '0'), '.'), $c['min_peers']),
+            'prohibited_term' => 'Name or description contains a whole word from the prohibited-items list ('.count((array) config('emall.prohibited_terms')).' words, set in config).',
+            'new_store_value' => sprintf('Store opened in the last %d days with at least %d listings priced at %s or more.', $c['new_store_days'], $c['high_value_count'], Shop::money($c['high_value_cents'])),
+        ];
+    }
+
+    /** Pending listings, plus those listed or edited recently: a bounded scan, never the whole catalogue. */
+    private function candidates(): Collection
+    {
+        $since = now()->subDays((int) config('emall.flags.scan_days', 60));
+
+        return Product::query()
+            ->whereIn('status', ['pending_approval', 'approved'])
+            ->where(fn ($q) => $q->where('status', 'pending_approval')->orWhere('updated_at', '>=', $since))
+            ->with('store:id,name,owner_id,created_at')
+            ->orderByDesc('id')->limit(2000)->get();
+    }
+
+    private function priceAnomalies(Collection $candidates): Collection
+    {
+        $c = config('emall.flags');
+        $categories = $candidates->pluck('category_id')->filter()->unique()->values();
+
+        if ($categories->isEmpty()) {
+            return collect();
+        }
+
+        // One pass: each category's approved prices sorted once, with where every listing sits in that order. The median of a
+        // listing's OTHER listings is then read straight off the sorted list (skipping its own place), not rebuilt per listing.
+        $sorted = [];
+        $place = [];
+
+        foreach (DB::table('products')->whereIn('category_id', $categories)->where('status', 'approved')->whereNull('deleted_at')
+            ->orderBy('category_id')->orderBy('price')->orderBy('id')->get(['id', 'category_id', 'price']) as $row) {
+            $sorted[$row->category_id][] = (float) $row->price;
+            $place[$row->category_id][$row->id] = count($sorted[$row->category_id]) - 1;
+        }
+
+        $out = collect();
+
+        foreach ($candidates as $product) {
+            if ($product->category_id === null) {
+                continue;
+            }
+
+            $prices = $sorted[$product->category_id] ?? [];
+            $own = $place[$product->category_id][$product->id] ?? null;
+            $peerCount = count($prices) - ($own === null ? 0 : 1);
+
+            if ($peerCount < $c['min_peers']) {
+                continue;
+            }
+
+            $median = $this->medianWithout($prices, $own);
+            $price = (float) $product->price;
+
+            if ($median > 0 && $price < $median * $c['low_ratio']) {
+                $out->push($this->flag($product, 'price_anomaly', sprintf('%s is %s of the category median of %s (%d other listings). Unusually cheap goods are a counterfeit signal; it may also be a pricing slip.', Shop::amount($price), $this->percent($price / $median), Shop::amount($median), $peerCount)));
+            } elseif ($median > 0 && $price > $median * $c['high_ratio']) {
+                $out->push($this->flag($product, 'price_anomaly', sprintf('%s is %s times the category median of %s (%d other listings). It may be a typing slip, or a different class of product.', Shop::amount($price), rtrim(rtrim(number_format($price / $median, 1), '0'), '.'), Shop::amount($median), $peerCount)));
+            }
+        }
+
+        return $out;
+    }
+
+    private function prohibited(Collection $candidates): Collection
+    {
+        $terms = array_values(array_filter(array_map(fn ($t) => mb_strtolower(trim((string) $t)), (array) config('emall.prohibited_terms'))));
+
+        if ($terms === []) {
+            return collect();
+        }
+
+        $pattern = '/(?<![\p{L}\p{N}])('.implode('|', array_map(fn ($t) => preg_quote($t, '/'), $terms)).')(?![\p{L}\p{N}])/iu';
+        $out = collect();
+
+        foreach ($candidates as $product) {
+            if (preg_match_all($pattern, $product->name."\n".$product->description, $m) > 0) {
+                $found = collect($m[1])->map(fn ($w) => mb_strtolower($w))->unique()->take(5)->implode('", "');
+                $out->push($this->flag($product, 'prohibited_term', "The listing text contains \"{$found}\". The launch rules allow no alcohol, tobacco, firearms, medicines or adult goods, and \"replica\" is how counterfeit sellers describe goods. Check what is actually being sold."));
+            }
+        }
+
+        return $out;
+    }
+
+    private function newStoreValue(Collection $candidates): Collection
+    {
+        $c = config('emall.flags');
+        $young = $candidates->filter(fn (Product $p) => $p->store && $p->store->created_at && $p->store->created_at->gte(now()->subDays($c['new_store_days'])));
+
+        if ($young->isEmpty()) {
+            return collect();
+        }
+
+        $counts = DB::table('products')->whereIn('store_id', $young->pluck('store_id')->unique())->whereNull('deleted_at')
+            ->where('price', '>=', Money::fromCents($c['high_value_cents']))->whereIn('status', ['pending_approval', 'approved'])
+            ->groupBy('store_id')->selectRaw('store_id, count(*) as n')->pluck('n', 'store_id');
+
+        // One flag per store, not one per listing: the representative is the store's lowest-numbered high-value listing, so a dismissal sticks.
+        return $young->filter(fn (Product $p) => (float) $p->price >= $c['high_value_cents'] / 100 && ($counts[$p->store_id] ?? 0) >= $c['high_value_count'])
+            ->groupBy('store_id')
+            ->map(function (Collection $products) use ($c, $counts) {
+                $p = $products->sortBy('id')->first();
+
+                return $this->flag($p, 'new_store_value', sprintf('%s opened %s ago and has %d listings priced at %s or more (%s is the first of them). New stores with expensive stock are where identity abuse and counterfeits start; most are honest. Check the store\'s details first, then its listings.', $p->store->name, $p->store->created_at->diffForHumans(null, true), $counts[$p->store_id], Shop::money($c['high_value_cents']), $p->name));
+            })
+            ->values();
+    }
+
+    private function flag(Product $product, string $rule, string $detail): array
+    {
+        return ['product' => $product, 'rule' => $rule, 'rule_label' => self::RULES[$rule], 'detail' => $detail];
+    }
+
+    /**
+     * The median of a sorted list with the entry at index $skip left out (null: leave nothing out), without copying the list.
+     *
+     * @param  list<float>  $sorted
+     */
+    private function medianWithout(array $sorted, ?int $skip): float
+    {
+        $n = count($sorted) - ($skip === null ? 0 : 1);
+        $at = fn (int $k): float => $sorted[$skip !== null && $k >= $skip ? $k + 1 : $k];
+        $mid = intdiv($n, 2);
+
+        return $n % 2 ? $at($mid) : ($at($mid - 1) + $at($mid)) / 2;
+    }
+
+    private function percent(float $ratio): string
+    {
+        return number_format($ratio * 100, $ratio < 0.1 ? 1 : 0).'%';
+    }
+}

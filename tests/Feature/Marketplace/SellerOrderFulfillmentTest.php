@@ -162,8 +162,12 @@ class SellerOrderFulfillmentTest extends TestCase
         $itemA = OrderItem::factory()->forProduct($productA)->create(['order_id' => $order->id]);
         $itemB = OrderItem::factory()->forProduct($productB)->create(['order_id' => $order->id]);
 
+        // A line cannot jump from pending to delivered (D-5): each seller ships it first.
+        $this->actingAs($sellerA)->patch(route('seller.order-items.update-status', $itemA), ['status' => 'delivered'])->assertSessionHasErrors('status');
+        $this->actingAs($sellerA)->patch(route('seller.order-items.update-status', $itemA), ['status' => 'shipped']);
+        $this->actingAs($sellerB)->patch(route('seller.order-items.update-status', $itemB), ['status' => 'shipped']);
         $this->actingAs($sellerA)->patch(route('seller.order-items.update-status', $itemA), ['status' => 'delivered']);
-        $this->assertSame(OrderStatus::Processing, $order->fresh()->status);
+        $this->assertSame(OrderStatus::Shipped, $order->fresh()->status);
 
         $this->actingAs($sellerB)->patch(route('seller.order-items.update-status', $itemB), ['status' => 'delivered']);
         $this->assertSame(OrderStatus::Delivered, $order->fresh()->status);

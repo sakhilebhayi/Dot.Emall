@@ -11,7 +11,7 @@ use App\Services\InfoDot\InfoDotUnavailable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Laravel\Sanctum\PersonalAccessToken;
+use Laravel\Sanctum\Sanctum;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 class EcosystemAuthController extends Controller
@@ -107,6 +107,9 @@ class EcosystemAuthController extends Controller
 
         abort_if(! $user, 403);
 
+        // Real data for the seller trust ladder ("signs in through InfoDot"): recorded only here, never inferred.
+        $user->forceFill(['infodot_signed_in_at' => now()])->save();
+
         Auth::login($user);
         $request->session()->regenerate();
 
@@ -136,7 +139,7 @@ class EcosystemAuthController extends Controller
     /** A token minted in a database we share (the original design): found, checked, spent. */
     private function userFromLocalToken(string $token): ?User
     {
-        $accessToken = PersonalAccessToken::findToken($token);
+        $accessToken = Sanctum::$personalAccessTokenModel::findToken($token);
 
         if (
             ! $accessToken

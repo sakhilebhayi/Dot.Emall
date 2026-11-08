@@ -1,31 +1,79 @@
 <?php
 
+use App\Http\Controllers\AccountController;
+use App\Http\Controllers\AddressController;
+use App\Http\Controllers\AssistantController;
 use App\Http\Controllers\Auth\EcosystemAuthController;
 use App\Http\Controllers\CartController;
+use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\CspReportController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DeliveryRegionController;
+use App\Http\Controllers\DevFakePaystackController;
+use App\Http\Controllers\Discovery\AssistantPageController;
+use App\Http\Controllers\Discovery\CategoryController;
+use App\Http\Controllers\Discovery\CollectionController;
+use App\Http\Controllers\Discovery\HomeController;
+use App\Http\Controllers\Discovery\RecentlyViewedController;
+use App\Http\Controllers\Discovery\RegionController;
+use App\Http\Controllers\Discovery\SavedSearchController;
+use App\Http\Controllers\Discovery\SearchController as DiscoverySearchController;
+use App\Http\Controllers\GuestOrderAccessController;
+use App\Http\Controllers\GuestOrderController;
+use App\Http\Controllers\HealthController;
+use App\Http\Controllers\HelpController;
+use App\Http\Controllers\NotFoundController;
+use App\Http\Controllers\NotificationPreferenceController;
+use App\Http\Controllers\Operator\AuditController;
+use App\Http\Controllers\Operator\CatalogueAdminController;
+use App\Http\Controllers\Operator\ContentModerationController;
+use App\Http\Controllers\Operator\FlagController;
+use App\Http\Controllers\Operator\LedgerController;
+use App\Http\Controllers\Operator\MetricsController;
+use App\Http\Controllers\Operator\PeopleController;
+use App\Http\Controllers\Operator\SearchTuningController;
+use App\Http\Controllers\Operator\StoreReviewController;
 use App\Http\Controllers\OperatorPaymentController;
+use App\Http\Controllers\OrderActionsController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\OrderItemCancellationController;
 use App\Http\Controllers\OrderPaymentController;
 use App\Http\Controllers\PaystackWebhookController;
+use App\Http\Controllers\PrivacyController;
+use App\Http\Controllers\ProductAlertController;
+use App\Http\Controllers\ProductCartController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProductImageController;
 use App\Http\Controllers\ProductModerationController;
+use App\Http\Controllers\ProductQuestionController;
 use App\Http\Controllers\PromoCodeController;
+use App\Http\Controllers\ReportController;
+use App\Http\Controllers\ReturnController;
+use App\Http\Controllers\ReturnPhotoController;
+use App\Http\Controllers\ReviewActionController;
 use App\Http\Controllers\ReviewController;
+use App\Http\Controllers\ReviewPhotoController;
+use App\Http\Controllers\SearchSuggestController;
+use App\Http\Controllers\Seller;
 use App\Http\Controllers\SellerOrderController;
 use App\Http\Controllers\SellerProductController;
 use App\Http\Controllers\StoreController;
+use App\Http\Controllers\StorefrontController;
+use App\Http\Controllers\WishlistController;
+use App\Models\User;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
+use Illuminate\Http\Request;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 use Laravel\Fortify\Features;
 use Laravel\Jetstream\Jetstream;
+
+// Health check for the deploy smoke test and uptime monitors (see HealthController).
+Route::get('/up', HealthController::class)->name('health');
 
 Route::post('/auth/ecosystem', [EcosystemAuthController::class, 'handle'])
     ->withoutMiddleware(['Illuminate\Foundation\Http\Middleware\PreventRequestForgery', 'Illuminate\Foundation\Http\Middleware\VerifyCsrfToken', 'Illuminate\Foundation\Http\Middleware\ValidateCsrfToken'])->middleware('throttle:10,1')->name('ecosystem.auth');
@@ -51,10 +99,6 @@ Route::post('/csp-report', CspReportController::class)
 // signature header is the authentication (see PaystackWebhookController).
 Route::post('/webhooks/paystack', PaystackWebhookController::class)->middleware('throttle:webhooks')->name('webhooks.paystack');
 
-Route::get('/', function () {
-    return view('welcome');
-});
-
 // Cookie Policy — Jetstream's termsAndPrivacyPolicy feature covers terms.show/policy.show
 // natively. There's no Jetstream equivalent for a Cookie Policy, so this one is wired by hand,
 // following the exact same Markdown-source convention.
@@ -69,6 +113,14 @@ Route::get('/cookies', function () {
 Route::get('/products', [ProductController::class, 'index'])->name('products.index');
 Route::get('/products/{product}', [ProductController::class, 'show'])->name('products.show');
 
+// --- data-b ---
+// JSON endpoints for discovery. Their rate limiters (suggest, assistant) are defined in DiscoveryServiceProvider, never here.
+Route::get('/search/suggest', SearchSuggestController::class)->middleware('throttle:suggest')->name('search.suggest');
+Route::post('/assistant/ask', AssistantController::class)->middleware('throttle:assistant')->name('assistant.ask');
+// Review photos live on the private disk and are streamed only to people allowed to see the review.
+Route::get('/review-photos/{photo}', ReviewPhotoController::class)->name('review-photos.show');
+// --- /data-b ---
+
 Route::middleware([
     'auth:sanctum',
     config('jetstream.auth_session'),
@@ -79,10 +131,6 @@ Route::middleware([
     Route::post('/products/{product}/reviews', [ReviewController::class, 'store'])->name('reviews.store');
     Route::delete('/reviews/{review}', [ReviewController::class, 'destroy'])->name('reviews.destroy');
 
-    Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
-    Route::post('/cart', [CartController::class, 'store'])->name('cart.store');
-    Route::patch('/cart/{cartItem}', [CartController::class, 'update'])->name('cart.update');
-    Route::delete('/cart/{cartItem}', [CartController::class, 'destroy'])->name('cart.destroy');
     Route::post('/cart/checkout', [CartController::class, 'checkout'])->middleware('throttle:checkout')->name('cart.checkout');
 
     Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
@@ -128,8 +176,372 @@ Route::middleware([
     });
 });
 
+// --- data-a ---
+// The magic link in a guest's order e-mail (D-9). Public by design: the signed token is the credential. Throttled by the
+// 'guest-order' limiter, which App\Providers\EmallServiceProvider defines (never in a routes file).
+Route::get('/guest/orders/{order}/{token}', GuestOrderAccessController::class)
+    ->middleware('throttle:guest-order')
+    ->where('token', '[A-Za-z0-9_\-]{20,128}')
+    ->name('guest.orders.access');
+Route::get('/guest/orders/{order}/{token}/payment', [GuestOrderAccessController::class, 'paymentReturn'])
+    ->middleware('throttle:guest-order')
+    ->where('token', '[A-Za-z0-9_\\-]{20,128}')
+    ->name('guest.orders.payment.callback');
+// --- end data-a ---
+
+// --- w5 ---
+// Cart, checkout, orders, returns, account and help (R-43 W5). Registered here and nowhere else; no limiter, alias or binding is
+// defined in this file (App\Providers\CheckoutServiceProvider and EmallServiceProvider own those).
+// The cart and checkout are PUBLIC: a guest keeps a session cart and checks out with an e-mail address (D-9).
+Route::middleware('throttle:guest-cart')->group(function () {
+    Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
+    Route::post('/cart', [CartController::class, 'store'])->name('cart.store');
+    Route::patch('/cart/lines/{variant}', [CartController::class, 'update'])->name('cart.update');
+    Route::delete('/cart/lines/{variant}', [CartController::class, 'destroy'])->name('cart.destroy');
+    Route::post('/cart/promo', [CartController::class, 'applyPromo'])->name('cart.promo');
+    Route::delete('/cart/promo', [CartController::class, 'clearPromo'])->name('cart.promo.clear');
+    Route::post('/cart/region', [CartController::class, 'setRegion'])->name('cart.region');
+    Route::post('/cart/delivery', [CartController::class, 'setDelivery'])->name('cart.delivery');
+    Route::post('/cart/prices/accept', [CartController::class, 'acceptPrices'])->name('cart.prices.accept');
+
+    Route::get('/checkout', [CheckoutController::class, 'show'])->name('checkout.show');
+    Route::post('/checkout/delivery', [CheckoutController::class, 'delivery'])->name('checkout.delivery');
+});
+Route::post('/checkout', [CheckoutController::class, 'place'])->middleware('throttle:checkout')->name('checkout.place');
+
+// Testing only: a local stand-in for Paystack's hosted page. Present only in local/testing AND with EMALL_E2E_FAKE_PAYSTACK on.
+if (app()->environment('local', 'testing') && config('emall.e2e_fake_paystack')) {
+    Route::get('/dev/fake-paystack/{reference}', [DevFakePaystackController::class, 'show'])->name('dev.fake-paystack');
+    Route::post('/dev/fake-paystack/{reference}', [DevFakePaystackController::class, 'complete'])->name('dev.fake-paystack.complete');
+}
+
+// Guest order pages (D-9, D-19): reached from the e-mailed link (guest.orders.access), which stores a grant for that one order in this
+// session. Without the grant every one of these answers the same 404 as a wrong token. The {order} segment is the order id.
+Route::middleware('throttle:guest-order')->prefix('guest/orders/{order}')->name('guest.orders.')->group(function () {
+    Route::get('/', [GuestOrderController::class, 'show'])->name('show');
+    Route::get('/receipt', [OrderActionsController::class, 'receipt'])->name('receipt');
+    Route::post('/pay', [OrderActionsController::class, 'pay'])->name('pay');
+    Route::post('/payment/check', [OrderActionsController::class, 'checkPayment'])->name('payment.check');
+    Route::post('/message', [OrderActionsController::class, 'message'])->name('message');
+    Route::post('/report', [OrderActionsController::class, 'report'])->name('report');
+    Route::post('/reorder', [OrderActionsController::class, 'reorder'])->name('reorder');
+    Route::post('/items/{item}/receive', [OrderActionsController::class, 'receive'])->name('items.receive')->scopeBindings();
+    Route::post('/items/{item}/cancel', [OrderActionsController::class, 'cancel'])->name('items.cancel')->scopeBindings();
+    Route::get('/items/{item}/return', [ReturnController::class, 'create'])->name('returns.create')->scopeBindings();
+    Route::post('/items/{item}/return', [ReturnController::class, 'store'])->name('returns.store')->scopeBindings();
+});
+Route::get('/return-photos/{return}/{index}', ReturnPhotoController::class)->whereNumber('index')->name('return-photos.show');
+
+// Signed-in buyer: the cart's wishlist move, order actions, returns, account area. All behind sign-in and the usual verified check.
+Route::middleware(['auth:sanctum', config('jetstream.auth_session'), 'verified'])->group(function () {
+    Route::post('/cart/lines/{variant}/wishlist', [CartController::class, 'moveToWishlist'])->name('cart.wishlist');
+
+    Route::post('/orders/{order}/payment/check', [OrderActionsController::class, 'checkPayment'])->name('orders.payment.check');
+    Route::get('/orders/{order}/receipt', [OrderActionsController::class, 'receipt'])->name('orders.receipt');
+    Route::post('/orders/{order}/message', [OrderActionsController::class, 'message'])->name('orders.message');
+    Route::post('/orders/{order}/report', [OrderActionsController::class, 'report'])->name('orders.report');
+    Route::post('/orders/{order}/reorder', [OrderActionsController::class, 'reorder'])->name('orders.reorder');
+    Route::post('/orders/{order}/items/{item}/receive', [OrderActionsController::class, 'receive'])->name('orders.items.receive')->scopeBindings();
+    Route::get('/orders/{order}/items/{item}/return', [ReturnController::class, 'create'])->name('orders.returns.create')->scopeBindings();
+    Route::post('/orders/{order}/items/{item}/return', [ReturnController::class, 'store'])->name('orders.returns.store')->scopeBindings();
+
+    Route::get('/account', [AccountController::class, 'home'])->name('account.home');
+    Route::get('/account/returns', [ReturnController::class, 'index'])->name('account.returns');
+    Route::get('/account/returns/{return}', [ReturnController::class, 'show'])->name('account.returns.show');
+    Route::post('/account/returns/{return}/escalate', [ReturnController::class, 'escalate'])->name('account.returns.escalate');
+
+    Route::get('/account/addresses', [AddressController::class, 'index'])->name('account.addresses');
+    Route::post('/account/addresses', [AddressController::class, 'store'])->name('account.addresses.store');
+    Route::get('/account/addresses/{address}/edit', [AddressController::class, 'edit'])->name('account.addresses.edit');
+    Route::patch('/account/addresses/{address}', [AddressController::class, 'update'])->name('account.addresses.update');
+    Route::delete('/account/addresses/{address}', [AddressController::class, 'destroy'])->name('account.addresses.destroy');
+    Route::post('/account/addresses/{address}/default', [AddressController::class, 'makeDefault'])->name('account.addresses.default');
+
+    Route::get('/account/notifications', [NotificationPreferenceController::class, 'edit'])->name('account.notifications');
+    Route::put('/account/notifications', [NotificationPreferenceController::class, 'update'])->name('account.notifications.update');
+    Route::get('/account/privacy', [PrivacyController::class, 'show'])->name('account.privacy');
+    Route::get('/account/privacy/export', [PrivacyController::class, 'export'])->name('account.privacy.export');
+});
+
+// Help (public).
+Route::get('/help', [HelpController::class, 'index'])->name('help.index');
+Route::get('/help/delivery', [HelpController::class, 'delivery'])->name('help.delivery');
+Route::get('/help/returns', [HelpController::class, 'returns'])->name('help.returns');
+Route::get('/help/contact', [HelpController::class, 'contact'])->name('help.contact');
+Route::get('/help/selling', [HelpController::class, 'sellers'])->name('help.sellers');
+Route::get('/help/order-link', [HelpController::class, 'orderLink'])->name('help.order-link');
+Route::post('/help/order-link', [HelpController::class, 'sendOrderLink'])->middleware('throttle:guest-link')->name('help.order-link.send');
+// --- end w5 ---
+
+// --- integration ---
+// The aliases the integration pass registered (search, account.home, seller.dashboard, sell.start) were all replaced by their real pages
+// (W3, W5, W6) and their lines are gone. Nothing is registered here now: a name that is still pending (stores.index, stores.show,
+// wishlist.index, account.alerts) belongs to the product-page workstream (W4) and is registered by it.
+// --- end integration ---
+
+// --- w3 ---
+// Discovery pages (R-43 feature agent W3): the home page, search (and /products, which is the same controller), categories, collections, the shopping
+// assistant, saved searches, recently viewed and the shopper's province. Rate limiters live in DiscoveryServiceProvider, never here.
+Route::get('/', HomeController::class)->name('home');
+Route::get('/search', [DiscoverySearchController::class, 'index'])->name('search');
+Route::get('/categories', [CategoryController::class, 'index'])->name('categories.index');
+Route::get('/categories/{category}', [DiscoverySearchController::class, 'category'])->where('category', '[a-z0-9\-]+')->name('categories.show');
+Route::get('/collections', [CollectionController::class, 'index'])->name('collections.index');
+Route::get('/collections/{slug}', [CollectionController::class, 'show'])->where('slug', '[a-z0-9\-]+')->name('collections.show');
+Route::get('/assistant', AssistantPageController::class)->name('assistant');
+Route::get('/recently-viewed', [RecentlyViewedController::class, 'index'])->name('recently-viewed.index');
+Route::delete('/recently-viewed', [RecentlyViewedController::class, 'clear'])->name('recently-viewed.clear');
+Route::post('/region', [RegionController::class, 'update'])->name('region.update');
+
+Route::middleware([
+    'auth:sanctum',
+    config('jetstream.auth_session'),
+    'verified',
+])->group(function () {
+    Route::get('/account/saved-searches', [SavedSearchController::class, 'index'])->name('account.saved-searches');
+    Route::post('/account/saved-searches', [SavedSearchController::class, 'store'])->name('account.saved-searches.store');
+    Route::patch('/account/saved-searches/{savedSearch}', [SavedSearchController::class, 'update'])->name('account.saved-searches.update');
+    Route::delete('/account/saved-searches/{savedSearch}', [SavedSearchController::class, 'destroy'])->name('account.saved-searches.destroy');
+});
+// --- end w3 ---
+
+// --- w7 ---
+// The operator desk (R-43 W7). Every route is behind sign-in, a verified e-mail and the `operator` middleware alias (registered in
+// bootstrap/app.php, never here). The older operator routes (products, payments, refunds) stay in the group above.
+Route::middleware([
+    'auth:sanctum',
+    config('jetstream.auth_session'),
+    'verified',
+    'operator',
+])->prefix('operator')->name('operator.')->group(function () {
+    Route::get('/', App\Http\Controllers\Operator\HomeController::class)->name('home');
+
+    // Listings: the detail page and the flagged-listing review aid (the queue, approve and reject are above).
+    Route::get('/products/{product}', [ProductModerationController::class, 'show'])->name('products.show')->whereNumber('product');
+    Route::get('/flags', [FlagController::class, 'index'])->name('flags.index');
+    Route::post('/flags/{product}/dismiss', [FlagController::class, 'dismiss'])->name('flags.dismiss');
+
+    // Stores.
+    Route::get('/stores', [StoreReviewController::class, 'index'])->name('stores.index');
+    Route::get('/stores/{store}', [StoreReviewController::class, 'show'])->name('stores.show');
+    Route::post('/stores/{store}/approve', [StoreReviewController::class, 'approve'])->name('stores.approve');
+    Route::post('/stores/{store}/reject', [StoreReviewController::class, 'reject'])->name('stores.reject');
+    Route::post('/stores/{store}/suspend', [StoreReviewController::class, 'suspend'])->name('stores.suspend');
+    Route::post('/stores/{store}/reinstate', [StoreReviewController::class, 'reinstate'])->name('stores.reinstate');
+
+    // Reviews and questions held for a check.
+    Route::get('/moderation', [ContentModerationController::class, 'index'])->name('moderation.index');
+    Route::post('/moderation/reviews/{review}/release', [ContentModerationController::class, 'releaseReview'])->name('moderation.reviews.release');
+    Route::post('/moderation/reviews/{review}/remove', [ContentModerationController::class, 'removeReview'])->name('moderation.reviews.remove');
+    Route::post('/moderation/questions/{question}/release', [ContentModerationController::class, 'releaseQuestion'])->name('moderation.questions.release');
+    Route::post('/moderation/questions/{question}/remove', [ContentModerationController::class, 'removeQuestion'])->name('moderation.questions.remove');
+    Route::post('/moderation/answers/{answer}/remove', [ContentModerationController::class, 'removeAnswer'])->name('moderation.answers.remove');
+
+    // Reports.
+    Route::get('/reports', [App\Http\Controllers\Operator\ReportController::class, 'index'])->name('reports');
+    Route::get('/reports/{type}/{id}', [App\Http\Controllers\Operator\ReportController::class, 'show'])->name('reports.show')->whereNumber('id');
+    Route::post('/reports/{type}/{id}/resolve', [App\Http\Controllers\Operator\ReportController::class, 'resolve'])->name('reports.resolve')->whereNumber('id');
+
+    // Returns that reached the operator.
+    Route::get('/returns', [App\Http\Controllers\Operator\ReturnController::class, 'index'])->name('returns.index');
+    Route::get('/returns/{returnRequest}', [App\Http\Controllers\Operator\ReturnController::class, 'show'])->name('returns.show');
+    Route::post('/returns/{returnRequest}/settle', [App\Http\Controllers\Operator\ReturnController::class, 'settle'])->name('returns.settle');
+
+    // Money: the payment events log (the desk and the refund actions are above) and the ledger reconciliation.
+    Route::get('/payment-events', [OperatorPaymentController::class, 'events'])->name('payments.events');
+    Route::get('/ledger', [LedgerController::class, 'index'])->name('ledger.index');
+    Route::post('/ledger/run', [LedgerController::class, 'run'])->middleware('throttle:6,1')->name('ledger.run');
+
+    // Metrics.
+    Route::get('/metrics', [MetricsController::class, 'index'])->name('metrics');
+    Route::get('/metrics/export', [MetricsController::class, 'export'])->name('metrics.export');
+
+    // Merchandising: collections, searches, synonyms, "often needed with", categories, featured stores.
+    Route::view('/merchandising', 'operator.merchandising')->name('merch.index');
+    Route::get('/collections', [App\Http\Controllers\Operator\CollectionController::class, 'index'])->name('collections.index');
+    Route::get('/collections/create', [App\Http\Controllers\Operator\CollectionController::class, 'create'])->name('collections.create');
+    Route::post('/collections', [App\Http\Controllers\Operator\CollectionController::class, 'store'])->name('collections.store');
+    Route::post('/collections/preview', [App\Http\Controllers\Operator\CollectionController::class, 'preview'])->middleware('throttle:60,1')->name('collections.preview');
+    Route::get('/collections/find', [App\Http\Controllers\Operator\CollectionController::class, 'find'])->middleware('throttle:60,1')->name('collections.find');
+    Route::get('/collections/{collection}/edit', [App\Http\Controllers\Operator\CollectionController::class, 'edit'])->name('collections.edit');
+    Route::patch('/collections/{collection}', [App\Http\Controllers\Operator\CollectionController::class, 'update'])->name('collections.update');
+    Route::delete('/collections/{collection}', [App\Http\Controllers\Operator\CollectionController::class, 'destroy'])->name('collections.destroy');
+
+    Route::get('/search/synonyms', [SearchTuningController::class, 'synonyms'])->name('search.synonyms');
+    Route::post('/search/synonyms', [SearchTuningController::class, 'storeSynonym'])->name('search.synonyms.store');
+    Route::delete('/search/synonyms/{synonym}', [SearchTuningController::class, 'destroySynonym'])->name('search.synonyms.destroy');
+    Route::get('/search/queries', [SearchTuningController::class, 'searches'])->name('search.queries');
+    Route::get('/search/complements', [SearchTuningController::class, 'complements'])->name('search.complements');
+    Route::post('/search/complements', [SearchTuningController::class, 'storeComplement'])->name('search.complements.store');
+    Route::delete('/search/complements/{rule}', [SearchTuningController::class, 'destroyComplement'])->name('search.complements.destroy')->whereNumber('rule');
+
+    Route::get('/catalogue/categories', [CatalogueAdminController::class, 'categories'])->name('catalogue.categories');
+    Route::post('/catalogue/categories', [CatalogueAdminController::class, 'storeCategory'])->name('catalogue.categories.store');
+    Route::patch('/catalogue/categories/{category}', [CatalogueAdminController::class, 'updateCategory'])->name('catalogue.categories.update');
+    Route::post('/catalogue/categories/{category}/attributes', [CatalogueAdminController::class, 'storeAttribute'])->name('catalogue.attributes.store');
+    Route::delete('/catalogue/categories/{category}/attributes/{attribute}', [CatalogueAdminController::class, 'destroyAttribute'])->name('catalogue.attributes.destroy');
+    Route::get('/catalogue/featured', [CatalogueAdminController::class, 'featured'])->name('catalogue.featured');
+    Route::post('/catalogue/featured', [CatalogueAdminController::class, 'addFeatured'])->name('catalogue.featured.add');
+    Route::delete('/catalogue/featured/{store}', [CatalogueAdminController::class, 'removeFeatured'])->name('catalogue.featured.remove');
+
+    // People: support lookup (each opening is access-logged), operator access.
+    Route::get('/people', [PeopleController::class, 'index'])->name('people.index');
+    Route::get('/people/users/{user}', [PeopleController::class, 'user'])->name('people.user');
+    Route::get('/people/stores/{store}', [PeopleController::class, 'store'])->name('people.store');
+    Route::get('/people/orders/{order}', [PeopleController::class, 'order'])->name('people.order');
+    Route::get('/operators', [PeopleController::class, 'operators'])->name('team');
+    Route::post('/operators', [PeopleController::class, 'grant'])->name('team.grant');
+    Route::post('/operators/{user}/revoke', [PeopleController::class, 'revoke'])->name('team.revoke');
+
+    Route::get('/health', App\Http\Controllers\Operator\HealthController::class)->name('health');
+    Route::get('/audit', AuditController::class)->name('audit');
+});
+// --- end w7 ---
+
+// --- w6 ---
+// The seller desk (R-43 W6). Existing seller.* names (products, orders, promo codes, store) are registered above and keep working;
+// everything new is here. A seller reaches only the store they own; a parcel, return or listing that is not theirs answers 404 or 403.
+// Nothing is registered from this file but routes.
+Route::get('/sell/start', Seller\StartController::class)->name('sell.start');
+
+Route::middleware([
+    'auth:sanctum',
+    config('jetstream.auth_session'),
+    'verified',
+])->prefix('sell')->group(function () {
+    Route::get('/dashboard', Seller\DashboardController::class)->name('seller.dashboard');
+
+    Route::get('/store', [StoreController::class, 'status'])->name('seller.store.status');
+    Route::post('/store/submit', [StoreController::class, 'submit'])->name('seller.store.submit');
+    Route::post('/store/company', [StoreController::class, 'linkTeam'])->name('seller.store.link-team');
+
+    Route::post('/products/bulk', [SellerProductController::class, 'bulk'])->name('seller.products.bulk');
+    Route::patch('/products/{product}/attributes', [SellerProductController::class, 'attributes'])->name('seller.products.attributes');
+    Route::post('/products/{product}/duplicate', [SellerProductController::class, 'duplicate'])->name('seller.products.duplicate');
+    Route::post('/products/{product}/resubmit', [SellerProductController::class, 'resubmit'])->name('seller.products.resubmit');
+    Route::get('/products/{product}/stock', [SellerProductController::class, 'stockHistory'])->name('seller.products.stock-history');
+    Route::post('/products/{product}/options', [Seller\VariantController::class, 'options'])->name('seller.products.options');
+    Route::post('/products/{product}/variants', [Seller\VariantController::class, 'variants'])->name('seller.products.variants');
+    Route::post('/products/{product}/stock', [Seller\VariantController::class, 'stock'])->name('seller.products.stock');
+
+    Route::get('/shipping', [Seller\ShippingController::class, 'index'])->name('seller.shipping');
+    Route::post('/shipping/methods', [Seller\ShippingController::class, 'store'])->name('seller.shipping.store');
+    Route::patch('/shipping/methods/{method}', [Seller\ShippingController::class, 'update'])->name('seller.shipping.update');
+    Route::delete('/shipping/methods/{method}', [Seller\ShippingController::class, 'destroy'])->name('seller.shipping.destroy');
+    Route::post('/shipping/methods/{method}/regions', [Seller\ShippingController::class, 'addRegion'])->name('seller.shipping.regions.store');
+    Route::delete('/shipping/methods/{method}/regions/{region}', [Seller\ShippingController::class, 'removeRegion'])->name('seller.shipping.regions.destroy')->scopeBindings();
+
+    Route::get('/orders/{group}', [Seller\ParcelController::class, 'show'])->name('seller.orders.show')->whereNumber('group');
+    Route::get('/orders/{group}/slip', [Seller\ParcelController::class, 'slip'])->name('seller.orders.slip')->whereNumber('group');
+    Route::post('/orders/{group}/pack', [Seller\ParcelController::class, 'pack'])->name('seller.orders.pack')->whereNumber('group');
+    Route::post('/orders/{group}/ready', [Seller\ParcelController::class, 'ready'])->name('seller.orders.ready')->whereNumber('group');
+    Route::post('/orders/{group}/ship', [Seller\ParcelController::class, 'ship'])->name('seller.orders.ship')->whereNumber('group');
+    Route::post('/orders/{group}/deliver', [Seller\ParcelController::class, 'deliver'])->name('seller.orders.deliver')->whereNumber('group');
+    Route::post('/orders/{group}/cancel', [Seller\ParcelController::class, 'cancel'])->name('seller.orders.cancel')->whereNumber('group');
+    Route::post('/orders/{group}/notes', [Seller\ParcelController::class, 'note'])->name('seller.orders.note')->whereNumber('group');
+    Route::patch('/shipments/{shipment}', [Seller\ParcelController::class, 'tracking'])->name('seller.shipments.update')->whereNumber('shipment');
+    Route::post('/shipments/{shipment}/events', [Seller\ParcelController::class, 'event'])->name('seller.shipments.events.store')->whereNumber('shipment');
+
+    Route::get('/returns', [Seller\ReturnController::class, 'index'])->name('seller.returns');
+    Route::get('/returns/{return}', [Seller\ReturnController::class, 'show'])->name('seller.returns.show')->whereNumber('return');
+    Route::get('/returns/{return}/photos/{index}', [Seller\ReturnController::class, 'photo'])->name('seller.returns.photo')->whereNumber(['return', 'index']);
+    Route::post('/returns/{return}/approve', [Seller\ReturnController::class, 'approve'])->name('seller.returns.approve')->whereNumber('return');
+    Route::post('/returns/{return}/decline', [Seller\ReturnController::class, 'decline'])->name('seller.returns.decline')->whereNumber('return');
+    Route::post('/returns/{return}/receive', [Seller\ReturnController::class, 'receive'])->name('seller.returns.receive')->whereNumber('return');
+
+    Route::patch('/promo-codes/{promoCode}/toggle', [PromoCodeController::class, 'toggle'])->name('seller.promo-codes.toggle');
+
+    Route::get('/analytics', [Seller\AnalyticsController::class, 'index'])->name('seller.analytics');
+    Route::get('/analytics/export/{what}', [Seller\AnalyticsController::class, 'export'])->name('seller.analytics.export');
+    Route::get('/ledger', [Seller\LedgerController::class, 'index'])->name('seller.ledger');
+    Route::get('/ledger/export', [Seller\LedgerController::class, 'export'])->name('seller.ledger.export');
+
+    Route::get('/reviews', [Seller\FeedbackController::class, 'index'])->name('seller.feedback');
+    Route::post('/questions/{question}/answer', [Seller\FeedbackController::class, 'answer'])->name('seller.questions.answer');
+    Route::post('/reviews/{review}/reply', [Seller\FeedbackController::class, 'respond'])->name('seller.reviews.reply');
+});
+// --- end w6 ---
+
+// --- w4 ---
+// Product page actions, store pages, wishlist, alerts, reviews, questions and reports (R-43 W4). Throttles are inline middleware
+// parameters or the `community` limiter that DiscoveryServiceProvider defines; nothing is registered from this file.
+Route::get('/stores', [StorefrontController::class, 'index'])->name('stores.index');
+Route::get('/stores/{store:slug}', [StorefrontController::class, 'show'])->name('stores.show');
+Route::post('/products/{product}/cart', [ProductCartController::class, 'store'])->middleware('throttle:60,1')->name('products.cart');
+Route::post('/products/{product}/bundle', [ProductCartController::class, 'bundle'])->middleware('throttle:30,1')->name('products.bundle');
+Route::post('/delivery-region', [DeliveryRegionController::class, 'store'])->middleware('throttle:30,1')->name('delivery.region');
+Route::get('/wishlist/shared/{token}', [WishlistController::class, 'shared'])->middleware('throttle:60,1')->where('token', '[A-Za-z0-9]{40,64}')->name('wishlist.shared');
+
+Route::middleware([
+    'auth:sanctum',
+    config('jetstream.auth_session'),
+    'verified',
+])->group(function () {
+    Route::get('/wishlist', [WishlistController::class, 'index'])->name('wishlist.index');
+    Route::post('/wishlist/sharing', [WishlistController::class, 'sharing'])->name('wishlist.sharing');
+    Route::post('/wishlist/{product}', [WishlistController::class, 'toggle'])->middleware('throttle:60,1')->whereNumber('product')->name('wishlist.toggle');
+    Route::delete('/wishlist/items/{item}', [WishlistController::class, 'destroy'])->name('wishlist.items.destroy');
+    Route::post('/wishlist/items/{item}/cart', [WishlistController::class, 'toCart'])->name('wishlist.items.cart');
+    Route::post('/wishlist/items/{item}/alert', [WishlistController::class, 'alert'])->name('wishlist.items.alert');
+
+    Route::get('/account/alerts', [ProductAlertController::class, 'index'])->name('account.alerts');
+    Route::post('/products/{product}/alerts', [ProductAlertController::class, 'store'])->middleware('throttle:community')->name('alerts.store');
+    Route::delete('/account/alerts/{alert}', [ProductAlertController::class, 'destroy'])->name('alerts.destroy');
+
+    Route::patch('/reviews/{review}', [ReviewActionController::class, 'update'])->name('reviews.update');
+    Route::post('/reviews/{review}/vote', [ReviewActionController::class, 'vote'])->middleware('throttle:community')->name('reviews.vote');
+    Route::post('/reviews/{review}/report', [ReviewActionController::class, 'report'])->middleware('throttle:community')->name('reviews.report');
+    Route::post('/reviews/{review}/reply', [ReviewActionController::class, 'respond'])->middleware('throttle:community')->name('reviews.reply');
+
+    Route::post('/products/{product}/questions', [ProductQuestionController::class, 'store'])->middleware('throttle:community')->name('questions.store');
+    Route::post('/questions/{question}/answers', [ProductQuestionController::class, 'answer'])->middleware('throttle:community')->name('questions.answer');
+    Route::delete('/questions/{question}', [ProductQuestionController::class, 'destroy'])->name('questions.destroy');
+    Route::post('/questions/{question}/report', [ProductQuestionController::class, 'report'])->middleware('throttle:community')->name('questions.report');
+    Route::post('/answers/{answer}/report', [ProductQuestionController::class, 'reportAnswer'])->middleware('throttle:community')->name('answers.report');
+
+    Route::post('/products/{product}/report', [ReportController::class, 'product'])->middleware('throttle:community')->name('products.report');
+    Route::post('/stores/{store:slug}/report', [ReportController::class, 'store'])->middleware('throttle:community')->name('stores.report');
+    Route::post('/stores/{store:slug}/messages', [StorefrontController::class, 'message'])->middleware('throttle:6,60')->name('stores.message');
+});
+// --- end w4 ---
+
+// --- dev ---
+// Local-only sign-in for design and audit sessions (docs/R43_DEMO.md). Registered only in the
+// 'local' and 'testing' environments, so it does not exist in production: the route is absent, not guarded.
+if (app()->environment('local', 'testing')) {
+    Route::get('/dev/login/{user}', function (Request $request, string $user) {
+        $account = User::query()
+            ->when(ctype_digit($user), fn ($q) => $q->where('id', (int) $user), fn ($q) => $q->where('email', $user))
+            ->firstOrFail();
+
+        // Switching person: drop the previous person's session data first, or Jetstream's session guard sees a different password hash and signs the new person out again.
+        $request->session()->flush();
+        auth()->login($account);
+        $request->session()->regenerate();
+
+        $to = (string) $request->query('to', '/dashboard');
+
+        return redirect(str_starts_with($to, '/') && ! str_starts_with($to, '//') ? $to : '/dashboard');
+    })->name('dev.login');
+
+    Route::get('/dev/logout', function (Request $request) {
+        auth()->guard('web')->logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
+        return redirect('/');
+    })->name('dev.logout');
+
+    // The design-system gallery: every component, with invented specimens that are never saved (resources/views/dev/kit.blade.php).
+    Route::view('/dev/kit', 'dev.kit')->name('dev.kit');
+}
+// --- end dev ---
+
 // Public sign-up is closed (accounts are created by InfoDot at first sign-in). Keep the named route so any link or
 // invitation email that points at it lands on the login page instead of failing.
 if (! Features::enabled(Features::registration())) {
     Route::redirect('/register', '/login')->name('register');
 }
+
+// Last of all: an address nothing answers is a 404 inside the web group, so the error page can read the session (NotFoundController).
+Route::fallback(NotFoundController::class);

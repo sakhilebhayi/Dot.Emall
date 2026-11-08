@@ -40,7 +40,8 @@ class StorefrontCurrencyTest extends TestCase
 
         $this->get(route('products.index'))->assertOk()->assertSee('R1,234.56')->assertDontSee('$1,234.56');
         $this->get(route('products.show', $listing))->assertOk()
-            ->assertSee('R1,234.56')->assertSee('R1,999.99')
+            // The seller-typed compare price is no longer printed as a "was" price (R-43: a reference price shows only from real price history).
+            ->assertSee('R1,234.56')->assertDontSee('R1,999.99')
             ->assertDontSee('$1,234.56')->assertDontSee('$1,999.99');
     }
 
@@ -138,7 +139,7 @@ class StorefrontCurrencyTest extends TestCase
         $order->items()->update(['status' => 'delivered']);
         $order->forceFill(['status' => 'delivered'])->save();
 
-        $page = $this->actingAs($seller)->get(route('dashboard'))->assertOk();
+        $page = $this->actingAs($seller)->get(route('seller.dashboard'))->assertOk();
 
         $page->assertSee('R2,469.12')->assertDontSee('$2,469.12');
     }
@@ -164,7 +165,7 @@ class StorefrontCurrencyTest extends TestCase
         foreach ([
             [$buyer, route('orders.show', $orderId)],
             [$buyer, route('orders.index')],
-            [$seller, route('dashboard')],
+            [$seller, route('seller.dashboard')],
             [$seller, route('seller.orders.index')],
             [null, route('products.show', $listing)],
         ] as [$user, $url]) {

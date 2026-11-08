@@ -48,6 +48,9 @@ class ProductImages
 
     public const OUTPUT_MAX_SIDE = 1600;
 
+    /** The card picture: a grid of 24 listings must not download 24 full-size photos. A card is drawn at most 480 px wide. */
+    public const THUMB_MAX_SIDE = 640;
+
     public const MIMES = ['image/jpeg', 'image/png', 'image/webp'];
 
     /**
@@ -62,6 +65,32 @@ class ProductImages
             'images' => ['nullable', 'array', 'max:'.$max],
             'images.*' => ['file', 'max:'.self::MAX_KILOBYTES, 'mimetypes:'.implode(',', self::MIMES), 'mimes:jpg,jpeg,png,webp'],
         ];
+    }
+
+    /**
+     * The words for a refused upload, for the form that validates `rules()` (or a logo/banner field). Laravel's own messages name the
+     * field "images.0" and, when the web server's upload limit (often 2 MB) cuts a file off before the app sees it, say only that it
+     * "failed to upload" with no hint of what to do (D-155).
+     *
+     * @param  array<int, string>  $fields  rule keys, e.g. ['images.*'] or ['logo', 'banner']
+     * @return array<string, string>
+     */
+    public static function messages(array $fields = ['images.*']): array
+    {
+        $mb = self::MAX_KILOBYTES / 1024;
+        $messages = ['images.max' => 'A listing can have at most '.self::MAX_PER_PRODUCT.' photos.', 'images.array' => 'Choose the photos again.'];
+
+        foreach ($fields as $field) {
+            $messages += [
+                "{$field}.uploaded" => "That photo did not arrive. Photos can be up to {$mb} MB, and a larger file is cut off on the way: try a smaller one.",
+                "{$field}.max" => "A photo can be up to {$mb} MB. Choose a smaller one.",
+                "{$field}.mimes" => 'A photo must be a JPEG, PNG or WebP picture.',
+                "{$field}.mimetypes" => 'A photo must be a JPEG, PNG or WebP picture.',
+                "{$field}.file" => 'Choose a picture file.',
+            ];
+        }
+
+        return $messages;
     }
 
     /**
@@ -106,14 +135,24 @@ class ProductImages
                 $next = (int) (ProductImage::query()->where('product_id', $product->id)->max('sort_order') ?? -1) + 1;
                 $created = collect();
 
-                foreach ($prepared as [$binary, $extension]) {
-                    $path = "product-images/{$product->id}/".Str::random(40).".{$extension}";
+                foreach ($prepared as [$binary, $extension, $thumb]) {
+                    $name = Str::random(40);
+                    $path = "product-images/{$product->id}/{$name}.{$extension}";
                     Storage::disk('public')->put($path, $binary);
                     $written[] = $path;
+
+                    $thumbPath = null;
+
+                    if ($thumb !== null) {
+                        $thumbPath = "product-images/{$product->id}/{$name}-card.{$extension}";
+                        Storage::disk('public')->put($thumbPath, $thumb);
+                        $written[] = $thumbPath;
+                    }
 
                     $created->push(ProductImage::create([
                         'product_id' => $product->id,
                         'path' => $path,
+                        'thumb_path' => $thumbPath,
                         'sort_order' => $next++,
                     ]));
                 }
@@ -128,12 +167,64 @@ class ProductImages
         }
     }
 
+    /**
+     * Makes the card-size copy of a photo that has none (uploaded before card pictures existed). Returns whether a copy was made; a missing
+     * or unreadable file is skipped, never fatal, so a backfill over thousands of photos always finishes.
+     */
+    public function makeThumbnail(ProductImage $image): bool
+    {
+        $disk = Storage::disk('public');
+
+        if ($image->thumb_path !== null || ! $disk->exists($image->path) || ! function_exists('imagecreatefromstring')) {
+            return false;
+        }
+
+        $contents = (string) $disk->get($image->path);
+        $info = @getimagesizefromstring($contents);
+        $source = @imagecreatefromstring($contents);
+
+        if ($info === false || ! $source instanceof GdImage || ! in_array($info[2], [IMAGETYPE_JPEG, IMAGETYPE_PNG, IMAGETYPE_WEBP], true)) {
+            return false;
+        }
+
+        if (max($info[0], $info[1]) <= self::THUMB_MAX_SIDE) {
+            // Already card-sized: the photo is its own card picture. Recorded, so a re-run does not read it again.
+            $image->forceFill(['thumb_path' => $image->path])->save();
+
+            return false;
+        }
+
+        [$binary, $extension] = $this->encode($this->scaleDown($source, self::THUMB_MAX_SIDE), $info[2]);
+        $thumbPath = preg_replace('/\.[A-Za-z0-9]+$/', '', $image->path).'-card.'.$extension;
+        $disk->put($thumbPath, $binary);
+        $image->forceFill(['thumb_path' => $thumbPath])->save();
+
+        return true;
+    }
+
+    /**
+     * One picture for a store (its logo or banner): the same checks and re-encoding as a listing photo, written to the public
+     * disk under "store-media/{store id}/" with a random name. Returns the stored path; the caller removes the one it replaces.
+     *
+     * @throws ValidationException
+     */
+    public function storeMedia(UploadedFile $file, int $storeId, string $field): string
+    {
+        [$binary, $extension] = $this->prepare($file, 0, withThumb: false);
+
+        // prepare() reports against "images.0"; the form field is "logo" or "banner".
+        $path = "store-media/{$storeId}/{$field}-".Str::random(24).".{$extension}";
+        Storage::disk('public')->put($path, $binary);
+
+        return $path;
+    }
+
     public function remove(ProductImage $image): void
     {
         DB::transaction(function () use ($image) {
             Product::query()->withTrashed()->lockForUpdate()->find($image->product_id);
 
-            Storage::disk('public')->delete($image->path);
+            Storage::disk('public')->delete(array_filter([$image->path, $image->thumb_path]));
             $image->delete();
 
             $this->renumber($image->product_id);
@@ -160,7 +251,7 @@ class ProductImages
     {
         $images = ProductImage::query()->where('product_id', $product->id)->get();
 
-        Storage::disk('public')->delete($images->pluck('path')->all());
+        Storage::disk('public')->delete($images->pluck('path')->merge($images->pluck('thumb_path'))->filter()->values()->all());
         ProductImage::query()->where('product_id', $product->id)->delete();
     }
 
@@ -178,11 +269,11 @@ class ProductImages
     }
 
     /**
-     * @return array{0: string, 1: string} [binary, extension]
+     * @return array{0: string, 1: string, 2: ?string} [binary, extension, card-size binary or null]
      *
      * @throws ValidationException
      */
-    private function prepare(UploadedFile $file, int $index): array
+    private function prepare(UploadedFile $file, int $index, bool $withThumb = true): array
     {
         $fail = fn (string $message) => throw ValidationException::withMessages(["images.{$index}" => $message]);
         $name = $file->getClientOriginalName();
@@ -206,7 +297,7 @@ class ProductImages
         $contents = (string) file_get_contents($file->getRealPath());
 
         if (! function_exists('imagecreatefromstring')) {
-            return [$contents, [IMAGETYPE_JPEG => 'jpg', IMAGETYPE_PNG => 'png', IMAGETYPE_WEBP => 'webp'][$type]];
+            return [$contents, [IMAGETYPE_JPEG => 'jpg', IMAGETYPE_PNG => 'png', IMAGETYPE_WEBP => 'webp'][$type], null];
         }
 
         $image = @imagecreatefromstring($contents);
@@ -221,7 +312,17 @@ class ProductImages
 
         $image = $this->scaleDown($image);
 
-        return $this->encode($image, $type);
+        [$binary, $extension] = $this->encode($image, $type);
+
+        // The card picture is cut from the picture just decoded, so it is the same orientation and carries no metadata either.
+        $thumb = null;
+
+        if ($withThumb && max(imagesx($image), imagesy($image)) > self::THUMB_MAX_SIDE) {
+            $small = $this->scaleDown($image, self::THUMB_MAX_SIDE);
+            $thumb = $this->encode($small, $type)[0];
+        }
+
+        return [$binary, $extension, $thumb];
     }
 
     private function applyExifOrientation(GdImage $image, string $contents): GdImage
@@ -243,17 +344,17 @@ class ProductImages
         return $rotated instanceof GdImage ? $rotated : $image;
     }
 
-    private function scaleDown(GdImage $image): GdImage
+    private function scaleDown(GdImage $image, int $limit = self::OUTPUT_MAX_SIDE): GdImage
     {
         $width = imagesx($image);
         $height = imagesy($image);
         $long = max($width, $height);
 
-        if ($long <= self::OUTPUT_MAX_SIDE) {
+        if ($long <= $limit) {
             return $image;
         }
 
-        $scale = self::OUTPUT_MAX_SIDE / $long;
+        $scale = $limit / $long;
         $scaled = imagescale($image, max(1, (int) round($width * $scale)), max(1, (int) round($height * $scale)));
 
         return $scaled instanceof GdImage ? $scaled : $image;

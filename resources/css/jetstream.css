@@ -1,0 +1,26 @@
+/* Jetstream pages (profile, teams, API tokens, password confirmation modals): the form-section layout and the Livewire modal, in tokens.
+   The colour utilities still present in those views resolve through tailwind.config.js to the same palette. */
+.ds-jsection { display: grid; gap: var(--s-4); padding-block: var(--s-5); }
+.ds-jsection__title h3 { font-size: var(--text-md); }
+.ds-jsection__title p { color: var(--ink-2); margin-top: var(--s-1); max-width: 34rem; }
+.ds-jsection__panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-control); min-width: 0; }
+.ds-jsection__fields { padding: var(--s-5); display: grid; gap: var(--s-4); grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.ds-jsection__fields > * { grid-column: 1 / -1; min-width: 0; }
+.ds-jsection__fields > [class*="col-span-6"] { grid-column: 1 / -1; }
+.ds-jsection__fields > [class*="sm:col-span-4"] { grid-column: 1 / -1; }
+@media (min-width: 40rem) { .ds-jsection__fields > [class*="sm:col-span-4"] { grid-column: span 4; } }
+.ds-jsection__actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--s-3); padding: var(--s-3) var(--s-5); border-top: 1px solid var(--line); background: var(--sunken); border-radius: 0 0 var(--r-control) var(--r-control); }
+.ds-jsection__rule { border: 0; border-top: 1px solid var(--line); margin: var(--s-2) 0; }
+@media (min-width: 64rem) { .ds-jsection { grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: var(--s-7); } }
+.ds-action-message { font-size: var(--text-sm); color: var(--pos); font-weight: 650; margin-inline-end: var(--s-3); }
+.ds-check { width: 1.25rem; height: 1.25rem; accent-color: var(--brand); border-radius: var(--r-label); cursor: pointer; }
+
+.ds-jmodal { position: fixed; inset: 0; z-index: 130; display: grid; place-items: center; padding: var(--s-3); overflow-y: auto; }
+.ds-jmodal__scrim { position: fixed; inset: 0; background: var(--scrim); }
+.ds-jmodal__sheet { position: relative; width: 100%; background: var(--raised); color: var(--ink); border-radius: var(--r-sheet); box-shadow: var(--lift-2); overflow: hidden; }
+.ds-jmodal--sm { max-width: 24rem; } .ds-jmodal--md { max-width: 32rem; } .ds-jmodal--lg { max-width: 40rem; } .ds-jmodal--xl { max-width: 48rem; }
+.ds-jmodal__body { padding: var(--s-5); display: grid; gap: var(--s-3); }
+.ds-jmodal__title { font-size: var(--text-lg); display: flex; align-items: center; gap: var(--s-2); }
+.ds-jmodal__content { color: var(--ink-2); display: grid; gap: var(--s-3); }
+.ds-jmodal__foot { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--s-2); padding: var(--s-3) var(--s-5) var(--s-4); background: var(--sunken); border-top: 1px solid var(--line); }
+.ds-jmodal__foot > * + * { margin-inline-start: 0; }

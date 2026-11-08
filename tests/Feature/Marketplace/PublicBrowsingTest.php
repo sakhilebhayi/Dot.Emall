@@ -44,7 +44,8 @@ class PublicBrowsingTest extends TestCase
 
         $page->assertSee('Guest Visible Soapstone Bowl');
         $page->assertSee('Sign in to buy');
-        $page->assertDontSee(route('cart.store'), false);
+        // The header cart link goes to /cart (same URL as the add form's action), so the add form is told apart by its product field.
+        $page->assertDontSee('name="product_id"', false);
         $page->assertDontSee('Leave a review');
     }
 
@@ -104,12 +105,13 @@ class PublicBrowsingTest extends TestCase
         }
     }
 
-    public function test_buying_and_everything_after_still_requires_sign_in(): void
+    public function test_everything_that_stores_or_discloses_something_about_a_person_still_requires_sign_in(): void
     {
         $product = $this->makeListing($this->makeSeller());
 
-        $this->get(route('cart.index'))->assertRedirect(route('login'));
-        $this->post(route('cart.store'), ['product_id' => $product->id])->assertRedirect(route('login'));
+        // Shopping itself no longer needs an account (D-9): a guest keeps a session cart and can reach checkout.
+        $this->get(route('cart.index'))->assertOk();
+        $this->post(route('cart.store'), ['product_id' => $product->id])->assertRedirect(route('cart.index'));
         $this->post(route('cart.checkout'), [])->assertRedirect(route('login'));
         $this->get(route('orders.index'))->assertRedirect(route('login'));
         $this->post(route('reviews.store', $product), ['rating' => 5])->assertRedirect(route('login'));

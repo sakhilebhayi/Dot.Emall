@@ -83,7 +83,7 @@ class OrderLineSnapshotTest extends TestCase
 
         $this->actingAs($buyer)->get(route('orders.show', $order))->assertOk()->assertSee('Archived Beadwork Necklace');
         $this->actingAs($seller)->get(route('orders.show', $order))->assertOk()->assertSee('Archived Beadwork Necklace');
-        $this->actingAs($seller)->get(route('dashboard'))->assertOk();
+        $this->actingAs($seller)->get(route('seller.dashboard'))->assertOk();
     }
 
     public function test_an_archived_listing_leaves_the_storefront_and_every_cart(): void

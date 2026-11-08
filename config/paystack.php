@@ -34,10 +34,11 @@ return [
     // Amounts are sent in the subunit (cents for ZAR).
     'currency' => env('PAYSTACK_CURRENCY') ?: null,
 
+    // D-4: stock is held this many minutes (EMALL_STOCK_HOLD_MINUTES; the old PAYSTACK_UNPAID_WINDOW_MINUTES is no longer read).
     // An order that requires payment and is still unpaid after this many
     // minutes is cancelled by `orders:expire-unpaid` (stock and promo use go
     // back through OrderLifecycle). Paid orders are never touched.
-    'unpaid_window_minutes' => (int) env('PAYSTACK_UNPAID_WINDOW_MINUTES', 60),
+    'unpaid_window_minutes' => (int) env('EMALL_STOCK_HOLD_MINUTES', 30),
 
     // How long "Pay now" reuses an open Paystack attempt before starting a new one.
     'attempt_ttl_minutes' => (int) env('PAYSTACK_ATTEMPT_TTL_MINUTES', 30),

@@ -4,7 +4,6 @@ namespace App\Notifications;
 
 use App\Models\Order;
 use App\Models\Store;
-use Illuminate\Notifications\Notification;
 
 /**
  * In-app (database channel) notification sent to a store owner when a buyer
@@ -16,17 +15,9 @@ use Illuminate\Notifications\Notification;
  * count and their net value) -- never the order total, which would leak
  * what the buyer bought from other sellers.
  */
-class NewOrderNotification extends Notification
+class NewOrderNotification extends EmallNotification
 {
     public function __construct(public Order $order, public Store $store) {}
-
-    /**
-     * @return array<int, string>
-     */
-    public function via(object $notifiable): array
-    {
-        return ['database'];
-    }
 
     /**
      * @return array<string, mixed>
@@ -45,7 +36,8 @@ class NewOrderNotification extends Notification
                 : ' (unpaid).'),
             'order_id' => $this->order->id,
             'store_id' => $this->store->id,
-            'url' => route('orders.show', $this->order),
+            // The seller's own parcel on the seller desk, not the buyer's order page.
+            'url' => ($group = $this->order->groups()->where('store_id', $this->store->id)->first()) ? route('seller.orders.show', $group) : route('orders.show', $this->order),
         ];
     }
 }

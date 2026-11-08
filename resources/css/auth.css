@@ -1,0 +1,44 @@
+/* Auth pages and error pages: the label centred on the page. */
+.ds-auth__label h1 { font-size: var(--text-xl); }
+.ds-auth__label .ds-label__main { gap: var(--s-3); }
+.ds-auth__body p { max-width: 60ch; }
+.ds-auth__body .ds-divider { display: flex; align-items: center; gap: var(--s-3); color: var(--ink-3); font-size: var(--text-sm); }
+.ds-auth__body .ds-divider::before, .ds-auth__body .ds-divider::after { content: ""; flex: 1; border-top: 1px solid var(--line); }
+.ds-error-code { font-size: var(--text-3xl); font-weight: 750; font-stretch: var(--width-price); font-variant-numeric: tabular-nums lining-nums; line-height: 1; letter-spacing: -0.02em; color: var(--ink); }
+.ds-error-eco { margin-top: var(--s-4); font-size: var(--text-sm); color: var(--ink-3); }
+.ds-error-eco a { color: var(--ink-2); }
+.ds-auth .ds-page-header__actions { margin-top: var(--s-2); }
+
+/* Error pages inside the storefront layout (D-187): the label beside a way out. */
+.ds-err { display: grid; gap: var(--s-6); padding-block: var(--s-6) var(--s-5); align-items: start; }
+.ds-err__label { --label-behind: var(--ground); width: min(100%, 30rem); }
+.ds-err__find { display: grid; gap: var(--s-4); align-content: start; max-width: 40rem; }
+.ds-err__find h2 { font-size: var(--text-lg); }
+.ds-err__search { display: flex; flex-wrap: wrap; gap: var(--s-2); }
+.ds-err__search .ds-input { flex: 1 1 14rem; }
+@media (min-width: 64rem) { .ds-err { grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: var(--s-8); padding-block-start: var(--s-7); } }
+
+/* Sign-in: one ticket, two halves (D-189). The stub half sits beyond a vertical perforation on wide screens, below a horizontal one on phones. */
+.ds-signin { display: grid; gap: 0; margin-inline: calc(var(--s-5) * -1); margin-block-end: calc(var(--s-5) * -1); }
+.ds-signin__half { display: grid; align-content: start; gap: var(--s-3); padding: var(--s-5); }
+.ds-signin__half h2 { font-size: var(--text-lg); }
+.ds-signin__half--stub { position: relative; border-block-start: var(--perf); background: var(--sunken); }
+.ds-signin__half--stub::before, .ds-signin__half--stub::after { content: ""; position: absolute; width: calc(var(--notch) * 2); height: calc(var(--notch) * 2); border-radius: 50%; background: var(--ground); border: 1px solid var(--line); inset-block-start: calc(1px - var(--notch)); z-index: 1; }
+.ds-signin__half--stub::before { inset-inline-start: calc(var(--notch) * -1 - 1px); clip-path: inset(0 0 0 50%); }
+.ds-signin__half--stub::after { inset-inline-end: calc(var(--notch) * -1 - 1px); clip-path: inset(0 50% 0 0); }
+.ds-signin__row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s-2) var(--s-4); }
+.ds-signin__row a { display: inline-flex; align-items: center; min-height: var(--tap); }
+@media (min-width: 48rem) {
+    .ds-signin { grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); }
+    .ds-signin__half { padding: var(--s-6); }
+    .ds-signin__half--stub { border-block-start: 0; border-inline-start: var(--perf); border-end-end-radius: var(--r-label); }
+    .ds-signin__half--stub::before, .ds-signin__half--stub::after { inset-inline: auto; inset-inline-start: calc(1px - var(--notch)); }
+    .ds-signin__half--stub::before { inset-block-start: calc(var(--notch) * -1 - 1px); clip-path: inset(50% 0 0 0); }
+    .ds-signin__half--stub::after { inset-block-start: auto; inset-block-end: calc(var(--notch) * -1 - 1px); clip-path: inset(0 0 50% 0); }
+}
+.ds-input-wrap { position: relative; display: block; }
+.ds-input-wrap .ds-input { padding-inline-end: var(--tap); }
+.ds-input-wrap__reveal { position: absolute; inset-block: 0; inset-inline-end: 0; width: var(--tap); display: grid; place-items: center; border: 0; background: none; color: var(--ink-2); cursor: pointer; border-radius: 0 var(--r-control) var(--r-control) 0; }
+.ds-input-wrap__reveal:hover { color: var(--ink); }
+.ds-input-wrap__reveal .when-shown, .ds-input-wrap__reveal[aria-pressed="true"] .when-hidden { display: none; }
+.ds-input-wrap__reveal[aria-pressed="true"] .when-shown { display: inline-block; }

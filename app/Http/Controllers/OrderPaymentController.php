@@ -54,7 +54,8 @@ class OrderPaymentController extends Controller
         $result = $payments->confirmReturn($order, is_string($reference) ? $reference : null);
 
         return redirect()->route('orders.show', $order)
-            ->with($result->isGood() ? 'status' : 'error', $result->message());
+            ->with($result->isGood() ? 'status' : 'error', $result->message())
+            ->with('payment_outcome', $result->outcome);
     }
 
     private function ownOrFail(Request $request, Order $order): void

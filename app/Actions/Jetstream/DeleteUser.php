@@ -2,41 +2,48 @@
 
 namespace App\Actions\Jetstream;
 
-use App\Models\Team;
 use App\Models\User;
-use Illuminate\Support\Facades\DB;
-use Laravel\Jetstream\Contracts\DeletesTeams;
+use App\Services\Account\AccountDeletionBlocked;
+use App\Services\Account\AccountEraser;
+use Illuminate\Validation\ValidationException;
 use Laravel\Jetstream\Contracts\DeletesUsers;
 
+/**
+ * "Delete my account" (D-7, D-98): the person is anonymised and the shop's order and money records stay. See AccountEraser for
+ * exactly what is refused, what is removed and what is kept.
+ */
 class DeleteUser implements DeletesUsers
 {
-    /**
-     * Create a new action instance.
-     */
-    public function __construct(protected DeletesTeams $deletesTeams) {}
+    public function __construct(protected AccountEraser $eraser) {}
 
     /**
-     * Delete the given user.
+     * @throws ValidationException while the account still has orders, returns, refunds or held earnings that someone is owed
      */
     public function delete(User $user): void
     {
-        DB::transaction(function () use ($user) {
-            $this->deleteTeams($user);
-            $user->deleteProfilePhoto();
-            $user->tokens->each->delete();
-            $user->delete();
-        });
+        try {
+            $this->eraser->erase($user);
+        } catch (AccountDeletionBlocked $e) {
+            throw ValidationException::withMessages(['password' => implode(' ', $e->reasons)]);
+        }
     }
 
     /**
-     * Delete the teams and team associations attached to the user.
+     * Every reason this account cannot be deleted right now, in words for the person; empty when it can. The account page reads the
+     * same answer, so what it says and what the delete button does cannot disagree.
+     *
+     * @return array<int, string>
      */
-    protected function deleteTeams(User $user): void
+    public function blockers(User $user): array
     {
-        $user->teams()->detach();
+        return $this->eraser->obstacles($user);
+    }
 
-        $user->ownedTeams->each(function (Team $team) {
-            $this->deletesTeams->delete($team);
-        });
+    /** The reasons as one sentence run; null when the account can be deleted. */
+    public function blockedReason(User $user): ?string
+    {
+        $reasons = $this->blockers($user);
+
+        return $reasons === [] ? null : implode(' ', $reasons);
     }
 }

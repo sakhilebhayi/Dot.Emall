@@ -65,7 +65,7 @@ class SellerPaymentGatingTest extends TestCase
         $page->assertDontSee('14 Protea Lane, Parkhurst');
 
         $this->actingAs($this->seller)->get(route('seller.orders.index'))
-            ->assertSee('awaiting payment');
+            ->assertSee('Awaiting payment');
     }
 
     public function test_after_payment_the_seller_can_fulfil_and_sees_the_address(): void
@@ -158,9 +158,9 @@ class SellerPaymentGatingTest extends TestCase
     {
         $this->payOrder($this->unpaid());
 
-        $this->actingAs($this->seller)->get(route('dashboard'))
+        $this->actingAs($this->seller)->get(route('seller.dashboard'))
             ->assertOk()
-            ->assertSee('Payout is not available yet')
-            ->assertSee('earned, not paid out');
+            ->assertSee('there are no automatic payouts yet')
+            ->assertSee('Held, waiting out the return window');
     }
 }

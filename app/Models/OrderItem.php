@@ -8,6 +8,8 @@ use Database\Factories\OrderItemFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * One line of an order. A checkout can span several sellers' stores, so
@@ -26,8 +28,9 @@ class OrderItem extends Model
     use HasFactory;
 
     protected $fillable = [
-        'order_id', 'product_id', 'product_name', 'store_id', 'store_name', 'seller_id',
-        'quantity', 'unit_price', 'total', 'discount_amount', 'status',
+        'order_id', 'order_group_id', 'product_id', 'variant_id', 'product_name', 'variant_label', 'sku', 'store_id',
+        'store_name', 'seller_id', 'quantity', 'unit_price', 'total', 'discount_amount', 'status',
+        'processing_at', 'shipped_at', 'delivered_at', 'ready_at', 'collected_at', 'cancelled_at', 'refunded_at',
     ];
 
     protected $casts = [
@@ -35,7 +38,31 @@ class OrderItem extends Model
         'total' => 'decimal:2',
         'discount_amount' => 'decimal:2',
         'status' => OrderStatus::class,
+        'processing_at' => 'datetime',
+        'shipped_at' => 'datetime',
+        'delivered_at' => 'datetime',
+        'ready_at' => 'datetime',
+        'collected_at' => 'datetime',
+        'cancelled_at' => 'datetime',
+        'refunded_at' => 'datetime',
     ];
+
+    /**
+     * Every line belongs to a parcel (its seller's share of the order), which is what the seller desk lists, ships and earns on.
+     * Checkout always sets it; a line made any other way (an older order, a test, a repair script) gets the parcel of its
+     * order and store here, so a line can never be invisible to its seller.
+     */
+    protected static function booted(): void
+    {
+        static::creating(function (OrderItem $item): void {
+            if ($item->order_group_id === null && $item->order_id !== null && $item->store_id !== null) {
+                $item->order_group_id = OrderGroup::query()->firstOrCreate(
+                    ['order_id' => $item->order_id, 'store_id' => $item->store_id],
+                    ['seller_id' => $item->seller_id, 'store_name' => $item->store_name ?? 'Store', 'method_type' => 'arranged', 'method_name' => null, 'delivery_cents' => 0, 'status' => 'pending'],
+                )->id;
+            }
+        });
+    }
 
     public function order(): BelongsTo
     {
@@ -51,6 +78,31 @@ class OrderItem extends Model
         return $this->belongsTo(Product::class)->withTrashed();
     }
 
+    public function variant(): BelongsTo
+    {
+        return $this->belongsTo(ProductVariant::class, 'variant_id');
+    }
+
+    public function group(): BelongsTo
+    {
+        return $this->belongsTo(OrderGroup::class, 'order_group_id');
+    }
+
+    public function shipments(): BelongsToMany
+    {
+        return $this->belongsToMany(Shipment::class, 'shipment_items');
+    }
+
+    public function returnRequests(): HasMany
+    {
+        return $this->hasMany(ReturnRequest::class);
+    }
+
+    public function statusHistory(): HasMany
+    {
+        return $this->hasMany(OrderStatusHistory::class)->orderBy('id');
+    }
+
     public function store(): BelongsTo
     {
         return $this->belongsTo(Store::class);
@@ -63,7 +115,9 @@ class OrderItem extends Model
 
     public function displayName(): string
     {
-        return $this->product_name ?? $this->product?->name ?? 'Unavailable product';
+        $name = $this->product_name ?? $this->product?->name ?? 'Unavailable product';
+
+        return $this->variant_label ? "{$name} ({$this->variant_label})" : $name;
     }
 
     public function displayStoreName(): string

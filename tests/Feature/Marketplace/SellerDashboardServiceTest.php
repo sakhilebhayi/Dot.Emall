@@ -145,12 +145,12 @@ class SellerDashboardServiceTest extends TestCase
             [$this->makeListing($b, ['price' => 7654.32]), 1],
         ]);
 
-        $page = $this->actingAs($a)->get(route('dashboard'))->assertOk();
+        $page = $this->actingAs($a)->get(route('seller.dashboard'))->assertOk();
 
         $page->assertDontSee('7,654.32');
         $page->assertDontSee('7,664.32');
         $page->assertDontSee('14 Protea Lane');
-        $page->assertSee('1 order waiting on you to fulfil.');
+        $page->assertSee('1 parcel to pack and ship');
     }
 
     public function test_review_and_stock_figures_cover_only_the_sellers_products(): void
