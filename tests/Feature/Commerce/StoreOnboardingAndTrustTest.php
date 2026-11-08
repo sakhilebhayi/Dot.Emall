@@ -73,7 +73,7 @@ class StoreOnboardingAndTrustTest extends TestCase
 
     public function test_the_existing_become_a_seller_form_still_works_and_follows_the_setting(): void
     {
-        $this->actingAs($u = $this->makeBuyer())->post(route('seller.store.store'), ['name' => 'Plain Store', 'description' => 'x'])->assertRedirect(route('seller.products.create'));
+        $this->actingAs($u = $this->makeBuyer())->post(route('seller.store.store'), ['name' => 'Plain Store', 'description' => 'x'])->assertRedirect(route('seller.store.status'));
         $this->assertSame(StoreStatus::Active, $u->fresh()->store->status);
 
         config(['emall.seller.requires_review' => true]);

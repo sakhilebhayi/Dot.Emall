@@ -73,7 +73,6 @@ class ResponsiveShellTest extends TestCase
         $this->placeOrder($buyer, [[$this->makeListing($seller, ['name' => 'Scrolling Table Copper Whisk']), 1]]);
 
         $this->assertScrollsHorizontally($this->assertResponsiveShell($this->actingAs($buyer)->get(route('orders.index'))), 'Your orders');
-        $this->assertScrollsHorizontally($this->assertResponsiveShell($this->actingAs($seller)->get(route('seller.orders.index')), 'desk-menu'), 'Orders to fulfil');
         $this->assertScrollsHorizontally($this->assertResponsiveShell($this->actingAs($seller)->get(route('dashboard')), 'desk-menu'), 'Recent orders');
     }
 

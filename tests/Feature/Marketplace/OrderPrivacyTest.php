@@ -144,8 +144,9 @@ class OrderPrivacyTest extends TestCase
         $page->assertDontSee('LANTERNLOVE');
         $page->assertDontSee(number_format((float) $this->order->fresh()->total, 2));
 
-        $orders = $page->viewData('orders');
-        $this->assertCount(1, $orders->first()->items, 'only this seller\'s line is even loaded');
+        $groups = $page->viewData('groups');
+        $this->assertCount(1, $groups->first()->items, 'only this seller\'s line is even loaded');
+        $this->assertSame($this->sellerA->id, $groups->first()->seller_id);
     }
 
     public function test_the_buyers_name_is_hidden_in_the_seller_list_once_nothing_is_left_to_ship(): void

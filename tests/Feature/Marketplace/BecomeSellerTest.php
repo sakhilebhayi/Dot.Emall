@@ -45,7 +45,7 @@ class BecomeSellerTest extends TestCase
 
         $this->actingAs($user)
             ->get(route('seller.store.create'))
-            ->assertRedirect(route('seller.products.create'));
+            ->assertRedirect(route('seller.dashboard'));
 
         $this->actingAs($user)->post(route('seller.store.store'), [
             'name' => 'Second Shop',

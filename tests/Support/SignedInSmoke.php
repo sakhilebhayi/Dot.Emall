@@ -38,6 +38,8 @@ final class SignedInSmoke
         'user/two-factor-secret-key' => 'needs a recent password confirmation and 2FA set up',
         'user/confirm-password' => "Fortify's own page; it redirects when a password confirmation is still fresh, so its status depends on the session",
         'user/confirmed-password-status' => 'JSON status, not a page',
+        'sell/analytics/export/{what}' => 'CSV downloads; both kinds are opened above under their literal addresses (export/orders, export/products)',
+        'sell/returns/{return}/photos/{index}' => 'streams a photo the buyer attached; return photos have no upload path yet (D-25), covered by SellerReturnsTest',
     ];
 
     /** @var array<string, mixed> */
@@ -63,13 +65,20 @@ final class SignedInSmoke
         $order = $this->placeOrder($buyer, $live);
         $line = $order->items()->first();
 
+        // Ship and deliver it, then let the buyer ask to return it, so the seller desk has a parcel with a shipment and a return to open.
+        $lifecycle = app(\App\Services\OrderLifecycle::class);
+        $lifecycle->advanceItem($line, \App\Enums\OrderStatus::Shipped, $seller, null, 'seller');
+        $lifecycle->advanceItem($line->fresh(), \App\Enums\OrderStatus::Delivered, $seller, null, 'seller');
+        $return = app(\App\Services\Returns\ReturnService::class)->request($line->fresh(), $buyer, 'faulty', 'Smoke return');
+        $group = $line->fresh()->group;
+
         CartItem::withoutGlobalScopes()->create(['user_id' => $buyer->id, 'product_id' => $live->id, 'quantity' => 2]);
 
         // A guest who never signed in: reached only by the link in their e-mail (D-9). The path is what the browser opens.
         $guestOrder = app(CheckoutService::class)->placeAsGuest('smoke-guest@example.test', [['variant_id' => ProductVariant::query()->where('product_id', $live->id)->value('id'), 'quantity' => 1]], ['shipping_address' => '2 Smoke Street, Testville', 'shipping_name' => 'Smoke Guest'], (string) Str::uuid());
         $guestLink = (string) parse_url((string) app(GuestOrderAccess::class)->url($guestOrder), PHP_URL_PATH);
 
-        $this->world = compact('store', 'live', 'pending', 'order', 'line', 'seller', 'buyer', 'newcomer', 'operator', 'category', 'guestLink');
+        $this->world = compact('store', 'live', 'pending', 'order', 'line', 'group', 'return', 'seller', 'buyer', 'newcomer', 'operator', 'category', 'guestLink');
 
         return compact('seller', 'buyer', 'newcomer', 'operator');
     }
@@ -83,6 +92,8 @@ final class SignedInSmoke
         $live = $w['live']->id;
         $pending = $w['pending']->id;
         $order = $w['order']->id;
+        $group = $w['group']->id;
+        $return = $w['return']->id;
 
         return [
             // anyone
@@ -115,7 +126,9 @@ final class SignedInSmoke
             // someone who is not a seller yet
             ['who' => 'newcomer', 'uri' => '/sell'],
             ['who' => 'newcomer', 'uri' => '/sell/start'],
-            ['who' => 'newcomer', 'uri' => '/sell/products', 'expect' => 200],
+            ['who' => 'newcomer', 'uri' => '/sell/products', 'expect' => 302],
+            ['who' => 'newcomer', 'uri' => '/sell/dashboard', 'expect' => 302],
+            ['who' => 'guest', 'uri' => '/sell/start'],
             // seller
             ['who' => 'seller', 'uri' => '/dashboard'],
             ['who' => 'seller', 'uri' => '/sell/dashboard'],
@@ -127,6 +140,27 @@ final class SignedInSmoke
             ['who' => 'seller', 'uri' => '/sell/orders'],
             ['who' => 'seller', 'uri' => "/orders/{$order}"],
             ['who' => 'seller', 'uri' => '/sell/promo-codes'],
+            // the rest of the seller desk (W6)
+            ['who' => 'seller', 'uri' => '/sell/store'],
+            ['who' => 'seller', 'uri' => "/sell/products/{$live}/stock"],
+            ['who' => 'seller', 'uri' => '/sell/shipping'],
+            ['who' => 'seller', 'uri' => '/sell/shipping?province=Gauteng&basket=500'],
+            ['who' => 'seller', 'uri' => '/sell/products?q=kettle&stock=low&status=approved'],
+            ['who' => 'seller', 'uri' => '/sell/orders'],
+            ['who' => 'seller', 'uri' => '/sell/orders?tab=delivered'],
+            ['who' => 'seller', 'uri' => "/sell/orders/{$group}"],
+            ['who' => 'seller', 'uri' => "/sell/orders/{$group}/slip"],
+            ['who' => 'seller', 'uri' => '/sell/returns'],
+            ['who' => 'seller', 'uri' => "/sell/returns/{$return}"],
+            ['who' => 'seller', 'uri' => '/sell/analytics'],
+            ['who' => 'seller', 'uri' => '/sell/analytics?period=7'],
+            ['who' => 'seller', 'uri' => '/sell/analytics/export/orders'],
+            ['who' => 'seller', 'uri' => '/sell/analytics/export/products'],
+            ['who' => 'seller', 'uri' => '/sell/ledger'],
+            ['who' => 'seller', 'uri' => '/sell/ledger/export'],
+            ['who' => 'seller', 'uri' => '/sell/reviews'],
+            // another seller's parcel and return are not theirs to open
+            ['who' => 'newcomer', 'uri' => "/sell/orders/{$group}", 'expect' => 302],
             // somebody else's order is not theirs to open
             ['who' => 'newcomer', 'uri' => "/orders/{$order}", 'expect' => 403],
             ['who' => 'newcomer', 'uri' => '/operator/products', 'expect' => 403],

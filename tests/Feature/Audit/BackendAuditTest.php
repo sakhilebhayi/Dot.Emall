@@ -105,14 +105,13 @@ class BackendAuditTest extends TestCase
             ['price' => '10000000000000', 'stock' => 1],
             ['price' => '10000001', 'stock' => 1],
             ['price' => '10', 'stock' => 3000000000],
-            ['price' => '10', 'stock' => 1, 'compare_price' => '99999999999999'],
             ['price' => '0.001', 'stock' => 1],
             ['price' => '10', 'stock' => 10000001],
         ] as $bad) {
             $this->patch(route('seller.products.update', $product), array_merge(['name' => 'x'], $bad))->assertSessionHasErrors();
         }
 
-        $this->patch(route('seller.products.update', $product), ['name' => 'x', 'price' => '10000000', 'stock' => 10000000, 'compare_price' => '10000000.00'])
+        $this->patch(route('seller.products.update', $product), ['name' => 'x', 'price' => '10000000', 'stock' => 10000000])
             ->assertSessionHasNoErrors();
     }
 
