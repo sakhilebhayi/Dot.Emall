@@ -2,9 +2,11 @@
 
 namespace App\Services\Shipping;
 
+use App\Models\Address;
 use App\Models\ShippingMethod;
 use App\Models\ShippingMethodRegion;
 use App\Models\Store;
+use App\Services\Cart\CartLine;
 use App\Services\CheckoutException;
 use App\Support\Money;
 use Illuminate\Support\Carbon;
@@ -22,6 +24,25 @@ use Illuminate\Support\Collection;
  */
 class ShippingQuote
 {
+    /**
+     * The convenience entry point: shipping options for a cart (a collection of Cart\CartLine) or for a ready-made
+     * [store id => item value in cents] map, to an address, a Region, address-shaped fields, or nothing yet.
+     *
+     * @param  Collection<int, CartLine>|array<int, int>  $cartOrGroups
+     * @param  Address|Region|array<string, mixed>|null  $destination
+     * @return array<int, GroupQuote> keyed by store id
+     */
+    public static function for(Collection|array $cartOrGroups, Address|Region|array|null $destination = null, ?Carbon $today = null): array
+    {
+        $itemsByStore = $cartOrGroups instanceof Collection
+            ? $cartOrGroups->groupBy(fn ($line) => $line->storeId())->map(fn (Collection $group) => (int) $group->sum(fn ($line) => $line->totalCents()))->all()
+            : $cartOrGroups;
+
+        $region = $destination instanceof Region ? $destination : Region::from($destination);
+
+        return app(self::class)->forStores($itemsByStore, $region, $today);
+    }
+
     /**
      * @param  array<int, int>  $itemsByStore  store id => item value in cents for that store (after nothing: promo free shipping is applied by the caller)
      * @return array<int, GroupQuote> keyed by store id

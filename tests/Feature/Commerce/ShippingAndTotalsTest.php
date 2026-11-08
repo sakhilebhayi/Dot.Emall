@@ -58,6 +58,24 @@ class ShippingAndTotalsTest extends TestCase
         $this->assertStringContainsString('not a promise', $option->estimateLabel);
     }
 
+    public function test_the_convenience_entry_point_takes_a_cart_or_a_map_and_an_address_or_region(): void
+    {
+        $seller = $this->makeSeller();
+        $this->withDelivery($seller, ['price' => 55]);
+        $buyer = $this->makeBuyer();
+        $this->makeCart($buyer, [[$this->makeListing($seller, ['price' => 100]), 2]]);
+        $address = Address::factory()->create(['user_id' => $buyer->id]);
+        $lines = app(CartManager::class)->lines($buyer);
+
+        $fromCart = ShippingQuote::for($lines, $address)[$seller->store->id];
+        $fromMap = ShippingQuote::for([$seller->store->id => 20000], new Region('ZA', 'Gauteng', '2193'))[$seller->store->id];
+        $fromFields = ShippingQuote::for([$seller->store->id => 20000], ['province' => 'Gauteng', 'postal_code' => '2193'])[$seller->store->id];
+
+        $this->assertSame(20000, $fromCart->itemsCents);
+        $this->assertSame([5500, 5500, 5500], [$fromCart->cheapest()->priceCents, $fromMap->cheapest()->priceCents, $fromFields->cheapest()->priceCents]);
+        $this->assertSame([], ShippingQuote::for([]));
+    }
+
     public function test_business_days_skip_weekends(): void
     {
         $this->assertSame('2026-11-16', BusinessDays::add(Carbon::parse('2026-11-13'), 1)->toDateString());

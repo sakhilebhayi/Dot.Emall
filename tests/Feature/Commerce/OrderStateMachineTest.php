@@ -3,11 +3,13 @@
 namespace Tests\Feature\Commerce;
 
 use App\Enums\OrderStatus;
-use App\Models\Order;
+use App\Models\LedgerEntry;
 use App\Models\OrderStatusHistory;
-use App\Models\User;
+use App\Services\CheckoutService;
+use App\Services\OrderAccess;
 use App\Services\OrderLifecycle;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use InvalidArgumentException;
 use Tests\Concerns\BuildsCommerce;
 use Tests\Concerns\BuildsMarketplace;
@@ -161,7 +163,7 @@ class OrderStateMachineTest extends TestCase
     {
         $seller = $this->makeSeller();
         $variant = $this->makeListing($seller)->defaultVariant()->first();
-        $order = app(\App\Services\CheckoutService::class)->placeAsGuest('g@example.test', [['variant_id' => $variant->id, 'quantity' => 1]], ['shipping_address' => 'x']);
+        $order = app(CheckoutService::class)->placeAsGuest('g@example.test', [['variant_id' => $variant->id, 'quantity' => 1]], ['shipping_address' => 'x']);
         $line = $order->items()->first();
         $this->life()->advanceItem($line, OrderStatus::Shipped, $seller);
 
@@ -220,7 +222,7 @@ class OrderStateMachineTest extends TestCase
         $this->life()->advanceItem($order->items[0], OrderStatus::Processing, $a);
         $this->life()->advanceItem($order->items[1], OrderStatus::Processing, $b);
 
-        $access = app(\App\Services\OrderAccess::class);
+        $access = app(OrderAccess::class);
 
         $this->assertCount(2, $access->present($order->fresh(), $buyer)['history']);
         $this->assertCount(1, $access->present($order->fresh(), $a)['history']);
@@ -235,18 +237,18 @@ class OrderStateMachineTest extends TestCase
         $order = $this->placeOrder($this->makeBuyer(), [[$this->makeListing($seller, ['price' => 100]), 1], [$this->makeListing($seller, ['price' => 50]), 1]]);
         $this->payOrder($order);
         [$a, $b] = $order->items->all();
-        $entry = fn () => \App\Models\LedgerEntry::query()->where('order_id', $order->id)->where('kind', 'sale')->first();
+        $entry = fn () => LedgerEntry::query()->where('order_id', $order->id)->where('kind', 'sale')->first();
 
         $this->life()->advanceItem($a, OrderStatus::Shipped, $seller);
         $this->life()->advanceItem($b, OrderStatus::Shipped, $seller);
         $this->life()->advanceItem($a->fresh(), OrderStatus::Delivered, $seller);
         $this->assertNull($entry()->release_at);
 
-        \Illuminate\Support\Carbon::setTestNow('2026-11-09 12:00:00');
+        Carbon::setTestNow('2026-11-09 12:00:00');
         $this->life()->advanceItem($b->fresh(), OrderStatus::Delivered, $seller);
 
         $this->assertSame('2026-11-16 12:00:00', $entry()->release_at->format('Y-m-d H:i:s'));
-        \Illuminate\Support\Carbon::setTestNow();
+        Carbon::setTestNow();
     }
 
     private function expectsRefusal(callable $do, string $what): void

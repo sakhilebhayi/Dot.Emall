@@ -2,19 +2,23 @@
 
 namespace Tests\Feature\Commerce;
 
+use App\Enums\PaymentStatus;
 use App\Models\CartItem;
 use App\Models\Order;
 use App\Models\User;
+use App\Notifications\CommerceNotification;
 use App\Services\Cart\CartManager;
 use App\Services\Cart\CartProblem;
 use App\Services\CheckoutException;
 use App\Services\CheckoutService;
 use App\Services\Guests\GuestOrderAccess;
 use App\Services\OrderAccess;
+use App\Services\PaymentService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
 use Tests\Concerns\BuildsCommerce;
@@ -183,10 +187,10 @@ class GuestCheckoutTest extends TestCase
         $this->fakeHttp(['api.paystack.co/transaction/initialize' => function ($request) {
             $this->assertSame('guest@example.test', $request->data()['email']);
 
-            return \Illuminate\Support\Facades\Http::response(['status' => true, 'message' => 'ok', 'data' => ['authorization_url' => 'https://checkout.paystack.com/x', 'access_code' => 'x', 'reference' => $request->data()['reference']]], 200);
+            return Http::response(['status' => true, 'message' => 'ok', 'data' => ['authorization_url' => 'https://checkout.paystack.com/x', 'access_code' => 'x', 'reference' => $request->data()['reference']]], 200);
         }]);
 
-        $payment = app(\App\Services\PaymentService::class)->startPayment($order);
+        $payment = app(PaymentService::class)->startPayment($order);
 
         $this->assertNotNull($payment->authorization_url);
     }
@@ -374,7 +378,7 @@ class GuestCheckoutTest extends TestCase
         Notification::fake();
         $order = $this->guestOrder('g@example.test');
 
-        Notification::assertSentOnDemand(\App\Notifications\CommerceNotification::class, function ($notification, $channels, $notifiable) use ($order) {
+        Notification::assertSentOnDemand(CommerceNotification::class, function ($notification, $channels, $notifiable) use ($order) {
             return $channels === ['mail'] && $notifiable->routes['mail'] === 'g@example.test' && $notification->kind === 'order_placed' && $notification->orderId === $order->id;
         });
     }
@@ -382,10 +386,46 @@ class GuestCheckoutTest extends TestCase
     public function test_the_guest_email_contains_a_working_link(): void
     {
         $order = $this->guestOrder('g@example.test');
-        $notice = new \App\Notifications\CommerceNotification('order_placed', $order->id);
+        $notice = new CommerceNotification('order_placed', $order->id);
         $mail = $notice->toMail(Notification::route('mail', 'g@example.test'));
 
         $this->assertSame(app(GuestOrderAccess::class)->url($order), $mail->actionUrl);
         $this->getJson($mail->actionUrl)->assertOk();
+    }
+
+    public function test_a_guest_comes_back_from_paystack_to_a_link_that_verifies_the_payment_with_paystack(): void
+    {
+        $this->enablePaystack();
+        $order = $this->guestOrder();
+        $callback = null;
+        $this->fakeHttp(['api.paystack.co/transaction/initialize' => function ($request) use (&$callback) {
+            $callback = $request->data()['callback_url'];
+
+            return Http::response(['status' => true, 'message' => 'ok', 'data' => ['authorization_url' => 'https://checkout.paystack.com/y', 'access_code' => 'y', 'reference' => $request->data()['reference']]], 200);
+        }]);
+        $payment = app(PaymentService::class)->startPayment($order->fresh());
+
+        $token = app(GuestOrderAccess::class)->tokenFor($order);
+        $this->assertSame(route('guest.orders.payment.callback', ['order' => $order->id, 'token' => $token]), $callback);
+
+        $this->fakeHttp(['api.paystack.co/transaction/verify/*' => $this->verifyResponse($payment->reference, $payment->amount_cents)]);
+
+        $this->getJson($callback.'?reference='.$payment->reference)->assertOk()->assertJsonPath('good', true)->assertJsonPath('payment_status', 'paid');
+        $this->assertSame(PaymentStatus::Paid, $order->fresh()->payment_status);
+    }
+
+    public function test_the_guest_payment_return_believes_nothing_in_the_url_and_rejects_a_wrong_token(): void
+    {
+        $this->enablePaystack();
+        $order = $this->guestOrder();
+        $payment = $this->startAttempt($order);
+        $token = app(GuestOrderAccess::class)->tokenFor($order);
+
+        // Paystack says it is not paid: the URL claiming success changes nothing.
+        $this->fakeHttp(['api.paystack.co/transaction/verify/*' => $this->verifyResponse($payment->reference, $payment->amount_cents, 'abandoned')]);
+        $this->getJson("/guest/orders/{$order->id}/{$token}/payment?reference={$payment->reference}&status=success&paid=1")->assertOk()->assertJsonPath('good', false);
+        $this->assertSame(PaymentStatus::Pending, $order->fresh()->payment_status);
+
+        $this->getJson("/guest/orders/{$order->id}/".str_repeat('a', 43).'/payment')->assertNotFound();
     }
 }

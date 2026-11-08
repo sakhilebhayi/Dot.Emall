@@ -10,6 +10,7 @@ use App\Models\ProductVariant;
 use App\Models\Store;
 use App\Models\User;
 use App\Services\Catalogue\ProductVariants;
+use App\Services\CheckoutService;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -172,7 +173,7 @@ class ParallelVariantPostgresTest extends TestCase
     {
         [, $m] = $this->shirt(5, 0);
         $buyer = $this->buyers(1, $m, 1)[0];
-        $order = app(\App\Services\CheckoutService::class)->place($buyer, ['shipping_address' => '1 Test Street']);
+        $order = app(CheckoutService::class)->place($buyer, ['shipping_address' => '1 Test Street']);
         Order::query()->whereKey($order->id)->update(['requires_payment' => true, 'payment_status' => 'paid', 'paid_at' => now()]);
 
         $results = $this->race(array_fill(0, 6, ['ledger', $order->id]));

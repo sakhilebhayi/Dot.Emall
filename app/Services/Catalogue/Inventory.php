@@ -4,7 +4,9 @@ namespace App\Services\Catalogue;
 
 use App\Models\ProductVariant;
 use App\Models\StockMovement;
+use App\Models\Store;
 use App\Services\CheckoutException;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -86,6 +88,26 @@ class Inventory
 
             return $target;
         });
+    }
+
+    /**
+     * The variants of a store whose stock is at or below THEIR PRODUCT's own low-stock threshold (the seller sets it), lowest first.
+     *
+     * @return Collection<int, ProductVariant>
+     */
+    public function lowStock(Store $store, int $limit = 100): Collection
+    {
+        return ProductVariant::query()
+            ->join('products', 'products.id', '=', 'product_variants.product_id')
+            ->where('products.store_id', $store->id)
+            ->whereNull('products.deleted_at')
+            ->where('product_variants.is_active', true)
+            ->whereColumn('product_variants.stock', '<=', 'products.low_stock_threshold')
+            ->orderBy('product_variants.stock')->orderBy('product_variants.id')
+            ->limit($limit)
+            ->select('product_variants.*')
+            ->with('product:id,name,low_stock_threshold')
+            ->get();
     }
 
     public function recordMovement(ProductVariant $variant, int $delta, int $after, string $reason, ?int $actorId, ?int $orderId, ?int $orderItemId, ?string $note = null): StockMovement

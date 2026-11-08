@@ -10,6 +10,8 @@ use App\Models\Product;
 use App\Models\Store;
 use App\Models\Team;
 use App\Models\User;
+use App\Services\CheckoutService;
+use App\Services\Returns\ReturnService;
 use App\Services\Stores\StoreOnboarding;
 use App\Services\Stores\StoreTrust;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -314,7 +316,7 @@ class StoreOnboardingAndTrustTest extends TestCase
         config(['ecosystem.infodot' => ['redeem_url' => 'https://infodot.test/api/ecosystem/redeem', 'platform' => 'emall', 'secret' => 's', 'timeout' => 2, 'provision' => true]]);
         $seller = $this->makeSeller();
         $variant = $this->makeListing($seller)->defaultVariant()->first();
-        $order = app(\App\Services\CheckoutService::class)->placeAsGuest('Ann@Acme.test', [['variant_id' => $variant->id, 'quantity' => 1]], ['shipping_address' => 'x']);
+        $order = app(CheckoutService::class)->placeAsGuest('Ann@Acme.test', [['variant_id' => $variant->id, 'quantity' => 1]], ['shipping_address' => 'x']);
 
         Http::fake(['infodot.test/*' => Http::response(['user' => ['id' => 1, 'name' => 'Ann', 'email' => 'ann@acme.test', 'email_verified' => true], 'teams' => []])]);
         $this->post(route('ecosystem.auth'), ['token' => 'x'], ['Origin' => 'https://infodot.test'])->assertRedirect();
@@ -381,7 +383,7 @@ class StoreOnboardingAndTrustTest extends TestCase
         $buyer = $this->makeBuyer();
         $order = $this->placeOrder($buyer, array_map(fn () => [$this->makeListing($seller, ['rating_count' => 0]), 1], range(1, 5)));
         $this->deliver($order);
-        app(\App\Services\Returns\ReturnService::class)->request($order->items()->first()->fresh(), $buyer, 'faulty');
+        app(ReturnService::class)->request($order->items()->first()->fresh(), $buyer, 'faulty');
         Product::query()->where('store_id', $store->id)->limit(2)->get()->each(function ($p, $i) {
             DB::table('products')->where('id', $p->id)->update(['rating_count' => $i === 0 ? 3 : 1, 'rating_average' => $i === 0 ? 4.0 : 2.0]);
         });

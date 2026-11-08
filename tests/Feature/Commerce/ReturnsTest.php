@@ -9,11 +9,14 @@ use App\Enums\ReturnStatus;
 use App\Models\LedgerEntry;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\PromoCode;
 use App\Models\Refund;
 use App\Models\ReturnRequest;
 use App\Models\User;
+use App\Services\CheckoutService;
 use App\Services\Returns\ReturnService;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Carbon;
@@ -94,7 +97,7 @@ class ReturnsTest extends TestCase
     {
         $seller = $this->makeSeller();
         $this->withDelivery($seller, ['price' => 40]);
-        \App\Models\PromoCode::factory()->create(['store_id' => $seller->store->id, 'code' => 'HALF', 'discount_type' => 'percent', 'discount_value' => 50]);
+        PromoCode::factory()->create(['store_id' => $seller->store->id, 'code' => 'HALF', 'discount_type' => 'percent', 'discount_value' => 50]);
         $buyer = $this->makeBuyer();
         $order = $this->deliver($this->placeOrder($buyer, [[$this->makeListing($seller, ['price' => 100]), 1]], ['promo_code' => 'HALF']));
 
@@ -331,7 +334,7 @@ class ReturnsTest extends TestCase
 
     public function test_the_escalation_job_is_scheduled_with_an_overlap_guard_that_expires(): void
     {
-        $events = collect(app(\Illuminate\Console\Scheduling\Schedule::class)->events())->filter(fn ($e) => str_contains($e->command, 'emall:'));
+        $events = collect(app(Schedule::class)->events())->filter(fn ($e) => str_contains($e->command, 'emall:'));
 
         foreach (['emall:escalate-returns', 'emall:release-ledger'] as $command) {
             $event = $events->first(fn ($e) => str_contains($e->command, $command));
@@ -424,7 +427,7 @@ class ReturnsTest extends TestCase
     {
         $seller = $this->makeSeller();
         $variant = $this->makeListing($seller, ['price' => 80])->defaultVariant()->first();
-        $order = app(\App\Services\CheckoutService::class)->placeAsGuest('g@example.test', [['variant_id' => $variant->id, 'quantity' => 1]], ['shipping_address' => 'x']);
+        $order = app(CheckoutService::class)->placeAsGuest('g@example.test', [['variant_id' => $variant->id, 'quantity' => 1]], ['shipping_address' => 'x']);
         $this->deliver($order);
         $line = $order->items()->first();
 

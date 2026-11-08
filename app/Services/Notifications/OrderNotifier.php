@@ -2,7 +2,6 @@
 
 namespace App\Services\Notifications;
 
-use App\Models\LedgerEntry;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\ProductVariant;
@@ -102,7 +101,7 @@ class OrderNotifier
     }
 
     /**
-     * @param  iterable<int, LedgerEntry>  $entries  released for ONE seller
+     * Earnings of one order were released to a seller.
      */
     public function ledgerReleased(int $sellerId, int $orderId, int $netCents): void
     {

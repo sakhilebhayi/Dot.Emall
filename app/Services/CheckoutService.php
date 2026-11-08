@@ -29,6 +29,7 @@ use App\Support\Throttles;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -180,7 +181,7 @@ class CheckoutService
                 }
             });
         } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::warning('Low-stock check failed.', ['error' => class_basename($e)]);
+            Log::warning('Low-stock check failed.', ['error' => class_basename($e)]);
         }
     }
 

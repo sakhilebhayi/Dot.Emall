@@ -9,6 +9,7 @@ use App\Events\OrderPaid;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Models\PaymentEvent;
+use App\Services\Guests\GuestOrderAccess;
 use App\Services\Ledger\LedgerService;
 use App\Services\Notifications\OrderNotifier;
 use App\Services\Paystack\PaymentGatewayException;
@@ -177,7 +178,7 @@ class PaymentService
             amountCents: $cents,
             currency: $currency,
             reference: $reference,
-            callbackUrl: route('orders.payment.callback', $order),
+            callbackUrl: $this->callbackUrl($order),
             metadata: ['order_id' => $order->id, 'order_reference' => $order->reference()],
         );
 
@@ -198,6 +199,19 @@ class PaymentService
 
             return $payment;
         });
+    }
+
+    /**
+     * Where Paystack sends the buyer back. A guest has no account to sign in to, so theirs is the order's magic-link
+     * payment return (the token in the path is the credential, as for the order link itself).
+     */
+    private function callbackUrl(Order $order): string
+    {
+        if ($order->isGuest() && ($token = app(GuestOrderAccess::class)->tokenFor($order)) !== null) {
+            return route('guest.orders.payment.callback', ['order' => $order->id, 'token' => $token]);
+        }
+
+        return route('orders.payment.callback', $order);
     }
 
     /**

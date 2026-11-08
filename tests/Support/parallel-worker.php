@@ -15,11 +15,15 @@
  * Not a test and not autoloaded.
  */
 
+use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
+use App\Models\ProductVariant;
 use App\Models\User;
+use App\Services\Catalogue\Inventory;
 use App\Services\CheckoutException;
 use App\Services\CheckoutService;
+use App\Services\Ledger\LedgerService;
 use App\Services\OrderLifecycle;
 use App\Services\PaymentService;
 use Illuminate\Contracts\Console\Kernel;
@@ -58,14 +62,14 @@ try {
         $app->make(OrderLifecycle::class)->cancelItem($line);
         echo json_encode(['ok' => true]), "\n";
     } elseif ($mode === 'setstock') {
-        $variant = App\Models\ProductVariant::findOrFail((int) $argv[2]);
+        $variant = ProductVariant::findOrFail((int) $argv[2]);
         $wait();
-        $stored = $app->make(App\Services\Catalogue\Inventory::class)->setStock($variant, (int) $argv[4], (int) $argv[5], null);
+        $stored = $app->make(Inventory::class)->setStock($variant, (int) $argv[4], (int) $argv[5], null);
         echo json_encode(['ok' => true, 'stored' => $stored]), "\n";
     } elseif ($mode === 'ledger') {
-        $order = App\Models\Order::findOrFail((int) $argv[2]);
+        $order = Order::findOrFail((int) $argv[2]);
         $wait();
-        $written = $app->make(App\Services\Ledger\LedgerService::class)->recordSale($order);
+        $written = $app->make(LedgerService::class)->recordSale($order);
         echo json_encode(['ok' => true, 'written' => $written]), "\n";
     } elseif ($mode === 'stock') {
         // What the seller's edit form does: write the number from the form.

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Order;
 use App\Services\Guests\GuestOrderAccess;
 use App\Services\OrderAccess;
+use App\Services\PaymentService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -40,5 +41,26 @@ class GuestOrderAccessController extends Controller
             'total' => $order->amount($order->total),
             'lines' => $view['lines']->map(fn ($line) => ['name' => $line->displayName(), 'quantity' => $line->quantity, 'status' => $line->status->value])->values(),
         ]);
+    }
+
+    /**
+     * GET /guest/orders/{order}/{token}/payment: where Paystack sends a guest back. The reference in the query only
+     * chooses which of THIS order's own attempts to check; whether it is paid is decided by asking Paystack (never by the
+     * URL), exactly as for an account's order. Then the guest lands on their order like any other visit.
+     */
+    public function paymentReturn(Request $request, Order $order, string $token, GuestOrderAccess $access, PaymentService $payments): RedirectResponse|Response|JsonResponse
+    {
+        abort_unless($access->verify($order, $token), 404);
+
+        $access->grantSession($order);
+
+        $reference = $request->query('reference', $request->query('trxref'));
+        $result = $payments->confirmReturn($order, is_string($reference) ? $reference : null);
+
+        if (Route::has('guest.orders.show') && ! $request->wantsJson()) {
+            return redirect()->route('guest.orders.show', $order)->with($result->isGood() ? 'status' : 'error', $result->message());
+        }
+
+        return response()->json(['order' => $order->reference(), 'payment' => $result->message(), 'good' => $result->isGood(), 'payment_status' => $order->refresh()->payment_status->value]);
     }
 }

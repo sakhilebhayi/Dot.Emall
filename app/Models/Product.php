@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Deleting a listing is an archive (soft delete): the row stays so order
@@ -68,7 +69,7 @@ class Product extends Model
             // A hard delete cascades to the variants while order lines still point at them (and are about to lose their
             // product link too). Unlink the lines first, in a statement of their own, so history survives on PostgreSQL.
             if ($product->isForceDeleting()) {
-                \Illuminate\Support\Facades\DB::table('order_items')->where('product_id', $product->id)->update(['variant_id' => null]);
+                DB::table('order_items')->where('product_id', $product->id)->update(['variant_id' => null]);
             }
         });
     }

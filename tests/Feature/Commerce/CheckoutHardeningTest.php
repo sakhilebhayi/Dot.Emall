@@ -7,11 +7,13 @@ use App\Enums\PaymentAttemptStatus;
 use App\Enums\PaymentStatus;
 use App\Models\CartItem;
 use App\Models\Order;
+use App\Models\StockMovement;
 use App\Services\CheckoutException;
 use App\Services\CheckoutService;
 use App\Services\OrderLifecycle;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Str;
 use Tests\Concerns\BuildsCommerce;
 use Tests\Concerns\BuildsMarketplace;
 use Tests\Concerns\BuildsPayments;
@@ -66,7 +68,7 @@ class CheckoutHardeningTest extends TestCase
         $buyer = $this->makeBuyer();
         CartItem::withoutGlobalScopes()->create(['user_id' => $buyer->id, 'product_id' => $this->makeListing($this->makeSeller())->id, 'quantity' => 1]);
 
-        $this->actingAs($buyer)->post(route('cart.checkout'), ['checkout_token' => (string) \Illuminate\Support\Str::uuid(), 'shipping_address' => '1 Test Street'])
+        $this->actingAs($buyer)->post(route('cart.checkout'), ['checkout_token' => (string) Str::uuid(), 'shipping_address' => '1 Test Street'])
             ->assertRedirect(route('cart.index'))
             ->assertSessionHas('error', fn ($m) => str_contains($m, 'Payments are not open yet'));
     }
@@ -76,7 +78,7 @@ class CheckoutHardeningTest extends TestCase
         $this->enablePaystack();
         $buyer = $this->makeBuyer();
         $product = $this->makeListing($this->makeSeller(), ['stock' => 3]);
-        $token = (string) \Illuminate\Support\Str::uuid();
+        $token = (string) Str::uuid();
         CartItem::withoutGlobalScopes()->create(['user_id' => $buyer->id, 'product_id' => $product->id, 'quantity' => 1]);
         $first = app(CheckoutService::class)->place($buyer, ['shipping_address' => 'x'], $token);
 
@@ -211,7 +213,7 @@ class CheckoutHardeningTest extends TestCase
 
         $this->assertSame(5, $product->fresh()->stock);
         $this->assertSame(5, $product->defaultVariant()->first()->stock);
-        $this->assertSame(1, \App\Models\StockMovement::query()->where('product_id', $product->id)->where('reason', 'expiry')->count());
+        $this->assertSame(1, StockMovement::query()->where('product_id', $product->id)->where('reason', 'expiry')->count());
     }
 
     public function test_a_seller_cannot_ship_pack_or_hand_over_an_unpaid_order(): void

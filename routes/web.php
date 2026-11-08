@@ -138,6 +138,10 @@ Route::get('/guest/orders/{order}/{token}', GuestOrderAccessController::class)
     ->middleware('throttle:guest-order')
     ->where('token', '[A-Za-z0-9_\-]{20,128}')
     ->name('guest.orders.access');
+Route::get('/guest/orders/{order}/{token}/payment', [GuestOrderAccessController::class, 'paymentReturn'])
+    ->middleware('throttle:guest-order')
+    ->where('token', '[A-Za-z0-9_\\-]{20,128}')
+    ->name('guest.orders.payment.callback');
 // --- end data-a ---
 
 // --- dev ---

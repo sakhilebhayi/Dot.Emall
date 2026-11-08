@@ -5,6 +5,7 @@ namespace Tests\Feature\Commerce;
 use App\Models\Address;
 use App\Models\CartItem;
 use App\Models\Order;
+use App\Models\OrderItem;
 use App\Models\ShippingMethod;
 use App\Services\Cart\CartManager;
 use App\Services\Cart\CartQuote;
@@ -156,7 +157,7 @@ class QueryCountTest extends TestCase
             [$small, $large] = $this->measure(
                 function (int $n) use ($order, $group, $seller) {
                     foreach (range(1, $n) as $i) {
-                        \App\Models\OrderItem::factory()->forProduct($this->makeListing($seller))->create(['order_id' => $order->id, 'order_group_id' => $group->id]);
+                        OrderItem::factory()->forProduct($this->makeListing($seller))->create(['order_id' => $order->id, 'order_group_id' => $group->id]);
                     }
                 },
                 fn () => $access->present($order->fresh(), $viewer)['lines']->each(fn ($l) => [$l->displayName(), $l->product?->name]),

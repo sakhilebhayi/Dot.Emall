@@ -235,6 +235,20 @@ class VariantsAndStockTest extends TestCase
         $this->assertTrue($product->defaultVariant()->first()->fresh()->isLow() === false);
     }
 
+    public function test_low_stock_lists_variants_at_or_below_their_products_own_threshold(): void
+    {
+        $seller = $this->makeSeller();
+        $a = $this->makeListing($seller, ['stock' => 3, 'low_stock_threshold' => 5]);
+        $this->makeListing($seller, ['stock' => 8, 'low_stock_threshold' => 5]);
+        $c = $this->makeListing($seller, ['stock' => 8, 'low_stock_threshold' => 10]);
+        $this->makeListing($seller, ['stock' => 1, 'low_stock_threshold' => 5])->delete();
+        $this->makeListing($this->makeSeller(), ['stock' => 0]);
+
+        $low = app(Inventory::class)->lowStock($seller->store);
+
+        $this->assertSame([$a->id, $c->id], $low->pluck('product_id')->all());
+    }
+
     public function test_inventory_never_goes_below_zero_and_logs_every_change(): void
     {
         $variant = $this->makeListing($this->makeSeller(), ['stock' => 3])->defaultVariant()->first();

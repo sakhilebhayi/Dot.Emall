@@ -4,11 +4,13 @@ namespace Tests\Feature\Commerce;
 
 use App\Enums\OrderStatus;
 use App\Models\Shipment;
+use App\Models\User;
 use App\Services\Shipping\Carriers;
 use App\Services\Shipping\ShipmentService;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\ValidationException;
 use InvalidArgumentException;
 use Tests\Concerns\BuildsCommerce;
 use Tests\Concerns\BuildsMarketplace;
@@ -75,7 +77,7 @@ class ShipmentsTest extends TestCase
         $this->assertNull($carriers->trackingUrl('aramex', '12'));
         $this->assertNull($carriers->trackingUrl('nonexistent', '123456'));
         $this->assertNull($carriers->trackingUrl(null, '123456'));
-        $this->assertNull($carriers->trackingUrl('courier_guy', "ABC123\"><script>"));
+        $this->assertNull($carriers->trackingUrl('courier_guy', 'ABC123"><script>'));
         $this->assertNull($carriers->trackingUrl('courier_guy', '../../etc'));
         $this->assertStringStartsWith('https://www.aramex.com/', $carriers->trackingUrl('aramex', '1234567890'));
     }
@@ -95,7 +97,7 @@ class ShipmentsTest extends TestCase
     {
         [$seller, , , $group] = $this->parcel(1);
 
-        $this->expectException(\Illuminate\Validation\ValidationException::class);
+        $this->expectException(ValidationException::class);
         $this->service()->ship($group, $seller, ['carrier_key' => 'dsv', 'tracking_number' => '<b>x</b>']);
     }
 
@@ -103,7 +105,7 @@ class ShipmentsTest extends TestCase
     {
         [$seller, , , $group] = $this->parcel(1);
 
-        $this->expectException(\Illuminate\Validation\ValidationException::class);
+        $this->expectException(ValidationException::class);
         $this->service()->ship($group, $seller, ['carrier_key' => 'evil_corp']);
     }
 
@@ -172,7 +174,7 @@ class ShipmentsTest extends TestCase
         $this->assertSame(['Collected by courier', 'Out for delivery'], $events->pluck('description')->all(), 'ordered by the time the seller gave');
         $this->assertSame($seller->id, $events->first()->created_by);
 
-        $this->expectException(\Illuminate\Validation\ValidationException::class);
+        $this->expectException(ValidationException::class);
         $this->service()->addEvent($shipment, $seller, str_repeat('x', 191));
     }
 
@@ -180,7 +182,7 @@ class ShipmentsTest extends TestCase
     {
         [$seller, $buyer, , $group] = $this->parcel(1);
         $shipment = $this->service()->ship($group, $seller);
-        $operator = \App\Models\User::factory()->create(['is_platform_operator' => true]);
+        $operator = User::factory()->create(['is_platform_operator' => true]);
         $stranger = $this->makeBuyer();
 
         $this->assertTrue(Gate::forUser($buyer)->allows('view', $shipment));

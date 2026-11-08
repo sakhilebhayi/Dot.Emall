@@ -11,6 +11,12 @@ class SellerFees
 {
     public function __construct(private readonly LedgerService $ledger) {}
 
+    /** The same text without having to resolve the service: SellerFees::text($store). */
+    public static function text(?Store $store = null): string
+    {
+        return app(self::class)->disclosure($store);
+    }
+
     public function percent(?Store $store = null): float
     {
         return $this->ledger->commissionPercent($store?->id);

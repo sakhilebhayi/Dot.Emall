@@ -6,12 +6,16 @@ use App\Enums\OrderStatus;
 use App\Models\Team;
 use App\Models\User;
 use App\Notifications\CommerceNotification;
+use App\Notifications\NewOrderNotification;
 use App\Services\Notifications\NotificationPreferences;
 use App\Services\Notify\NotifyClient;
 use App\Services\OrderLifecycle;
+use App\Services\PaymentService;
 use App\Services\Shipping\ShipmentService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
+use Illuminate\Notifications\Events\NotificationSending;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Notification;
@@ -120,7 +124,7 @@ class NotificationsTest extends TestCase
         $attempt = $this->startAttempt($order);
 
         $this->fakeHttp(['api.paystack.co/transaction/verify/*' => $this->verifyResponse($attempt->reference, $attempt->amount_cents, 'failed')]);
-        app(\App\Services\PaymentService::class)->confirmReturn($order->fresh(), $attempt->reference);
+        app(PaymentService::class)->confirmReturn($order->fresh(), $attempt->reference);
 
         $this->assertContains('payment_failed', $this->typesFor($buyer));
     }
@@ -155,7 +159,7 @@ class NotificationsTest extends TestCase
         $seller = $this->makeSeller();
         $order = $this->placeOrder($this->makeBuyer(), [[$this->makeListing($seller), 1]]);
 
-        $notice = new \App\Notifications\NewOrderNotification($order, $seller->store);
+        $notice = new NewOrderNotification($order, $seller->store);
 
         $this->assertEqualsCanonicalizing(['database', 'mail'], $notice->via($seller));
         $mail = $notice->toMail($seller);
@@ -168,7 +172,7 @@ class NotificationsTest extends TestCase
         $seller = $this->makeSeller();
         $buyer = $this->makeBuyer();
         $variant = $this->makeListing($seller, ['stock' => 3])->defaultVariant()->first();
-        \Illuminate\Support\Facades\Event::listen(\Illuminate\Notifications\Events\NotificationSending::class, fn () => throw new \RuntimeException('mail is down'));
+        Event::listen(NotificationSending::class, fn () => throw new \RuntimeException('mail is down'));
 
         $order = $this->placeOrder($buyer, [[$variant->product, 1]]);
 

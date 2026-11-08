@@ -9,12 +9,15 @@ use App\Models\Payment;
 use App\Models\PromoCode;
 use App\Models\Refund;
 use App\Models\StoreCommissionOverride;
+use App\Models\User;
 use App\Services\Ledger\LedgerService;
+use App\Services\Ledger\Reconciler;
 use App\Services\Ledger\SellerFees;
 use App\Services\OrderLifecycle;
 use App\Services\Returns\ReturnService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Tests\Concerns\BuildsCommerce;
@@ -48,7 +51,7 @@ class LedgerAndReconcileTest extends TestCase
         }]);
     }
 
-    /** @return array{0: \App\Models\User, 1: \App\Models\User, 2: Order} a paid order of R100 + R60 items and R40 delivery from one seller */
+    /** @return array{0: User, 1: User, 2: Order} a paid order of R100 + R60 items and R40 delivery from one seller */
     private function paid(array $storeAttributes = []): array
     {
         $this->enablePaystack();
@@ -285,7 +288,7 @@ class LedgerAndReconcileTest extends TestCase
 
         LedgerEntry::query()->where('order_id', $order->id)->update(['gross_cents' => 1]);
 
-        $result = app(\App\Services\Ledger\Reconciler::class)->run();
+        $result = app(Reconciler::class)->run();
 
         $this->assertContains('ledger_vs_order', array_column($result['mismatches'], 'check'));
         $this->artisan('emall:reconcile')->assertFailed();
@@ -295,11 +298,11 @@ class LedgerAndReconcileTest extends TestCase
     {
         [, , $order] = $this->paid();
 
-        \Illuminate\Support\Facades\DB::table('order_groups')->where('order_id', $order->id)->update(['delivery_cents' => 1]);
+        DB::table('order_groups')->where('order_id', $order->id)->update(['delivery_cents' => 1]);
         Payment::query()->create(['order_id' => null, 'provider' => 'paystack', 'reference' => 'EMALL-X-1', 'amount_cents' => 500, 'currency' => 'ZAR', 'status' => 'success']);
         Refund::query()->create(['payment_id' => Payment::query()->where('reference', 'EMALL-X-1')->value('id'), 'order_id' => $order->id, 'amount_cents' => 100, 'currency' => 'ZAR', 'status' => 'refund_pending', 'kind' => 'cancellation']);
 
-        $checks = array_column(app(\App\Services\Ledger\Reconciler::class)->run()['mismatches'], 'check');
+        $checks = array_column(app(Reconciler::class)->run()['mismatches'], 'check');
 
         $this->assertContains('group_delivery_vs_order', $checks);
         $this->assertContains('payment_without_paid_order', $checks);

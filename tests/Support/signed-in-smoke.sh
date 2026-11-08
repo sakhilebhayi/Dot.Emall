@@ -16,6 +16,8 @@ export APP_ENV=production APP_DEBUG=false APP_URL=https://emall.smoke.test TRUST
 export DB_CONNECTION=sqlite DB_DATABASE="$WORK/smoke.sqlite" DB_URL=
 export SESSION_DRIVER=array CACHE_STORE=array QUEUE_CONNECTION=sync MAIL_MAILER=array BROADCAST_CONNECTION=log
 export FILESYSTEM_DISK=local LOG_CHANNEL=stderr LOG_LEVEL=error
+# D-1 refuses checkout in production without Paystack; this run builds its demo orders without it on purpose.
+export EMALL_CHECKOUT_REQUIRES_GATEWAY=false
 export PAYSTACK_SECRET_KEY= PAYSTACK_PUBLIC_KEY= ANALYTICS_INGEST_URL= ANALYTICS_INGEST_SECRET= INFODOT_SERVICE_SECRET=
 touch "$DB_DATABASE"
 
