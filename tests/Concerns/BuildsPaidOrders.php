@@ -19,7 +19,7 @@ trait BuildsPaidOrders
         $order->forceFill(['requires_payment' => true, 'payment_status' => PaymentStatus::Paid, 'paid_at' => now()])->save();
 
         if ($delivered) {
-            $order->items()->update(['status' => OrderStatus::Delivered->value]);
+            $order->items()->update(['status' => OrderStatus::Delivered->value, 'delivered_at' => now()]);
             $order->forceFill(['status' => OrderStatus::Delivered])->save();
         }
 

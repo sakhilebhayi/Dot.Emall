@@ -10,6 +10,7 @@ use App\Services\Analytics\MetricsCollector;
 use App\Services\Discovery\Track;
 use App\Services\Metrics\CommerceMetrics;
 use App\Services\Metrics\Metric;
+use App\Services\Returns\ReturnService;
 use App\Support\Actor;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -142,12 +143,31 @@ class CommerceMetricsTest extends TestCase
         $this->assertSame([1, 1], [$this->metric('refund_rate')->numerator, $this->metric('refund_rate')->denominator]);
     }
 
-    public function test_return_rate_says_so_when_there_is_no_returns_table(): void
+    public function test_return_rate_says_no_data_yet_until_something_has_been_delivered(): void
     {
         $metric = $this->metric('return_rate');
 
         $this->assertSame(Metric::NO_DATA, $metric->status);
-        $this->assertStringContainsString('not recorded yet', (string) $metric->note);
+        $this->assertNull($metric->value);
+        $this->assertSame('No data yet', $metric->toArray()['display']);
+        $this->assertStringContainsString('nothing to compare returns with', (string) $metric->note);
+    }
+
+    public function test_return_rate_is_requests_over_lines_delivered_in_the_period(): void
+    {
+        $product = $this->makeListing($this->makeSeller(), ['price' => 80.00, 'stock' => 100]);
+        $buyer = $this->makeBuyer();
+        $first = $this->paidOrder($buyer, [$product], delivered: true);
+        $this->paidOrder($this->makeBuyer(), [$product], delivered: true);
+
+        $zero = $this->metric('return_rate');
+        $this->assertSame([0, 2], [$zero->numerator, $zero->denominator], 'two lines delivered and none returned is a real zero, not a missing figure');
+        $this->assertSame(Metric::OK, $zero->status);
+
+        app(ReturnService::class)->request($first->items->first()->refresh(), $buyer, 'faulty', 'It does not switch on');
+
+        $this->assertSame([1, 2], [$this->metric('return_rate')->numerator, $this->metric('return_rate')->denominator]);
+        $this->assertSame(0.5, $this->metric('return_rate')->value);
     }
 
     public function test_seller_activity(): void

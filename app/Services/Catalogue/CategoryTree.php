@@ -2,6 +2,7 @@
 
 namespace App\Services\Catalogue;
 
+use App\Contracts\CategoryTree as CategoryLookup;
 use App\Models\Product;
 use App\Models\StoreCategory;
 use Illuminate\Support\Facades\Cache;
@@ -16,9 +17,12 @@ use InvalidArgumentException;
  * rollup count includes every descendant. Counts come from ONE grouped query, rolled up in memory, and are cached
  * for a minute; any product change that can alter them calls forgetCounts().
  */
-class CategoryTree
+class CategoryTree implements CategoryLookup
 {
     private const CACHE_KEY = 'emall.category_counts.v1';
+
+    /** The categories of this request by id, read once (a marketplace has hundreds of categories, not millions). */
+    private ?array $all = null;
 
     /**
      * @param  array{name: string, slug?: ?string, sort_order?: int, description?: ?string, image_path?: ?string, is_active?: bool}  $data
@@ -33,6 +37,7 @@ class CategoryTree
 
         $category = StoreCategory::create(array_merge($data, ['slug' => $slug, 'parent_id' => $parent?->id]));
         self::forgetCounts();
+        $this->forget();
 
         return $category->refresh();
     }
@@ -62,6 +67,7 @@ class CategoryTree
         });
 
         self::forgetCounts();
+        $this->forget();
 
         return $category->refresh();
     }
@@ -147,6 +153,88 @@ class CategoryTree
     public static function forgetCounts(): void
     {
         Cache::forget(self::CACHE_KEY);
+    }
+
+    // ---- App\Contracts\CategoryTree: the lookups search, recommendations and collections use (D-50) -------------------
+    // One tree, one implementation: discovery used to read store_categories through a second class that ignored the
+    // materialised path and the on/off switch. These read the same table through the same path column.
+
+    public function withDescendants(int $categoryId): array
+    {
+        $all = $this->all();
+
+        if (! isset($all[$categoryId])) {
+            return [$categoryId];
+        }
+
+        $prefix = $all[$categoryId]['path'] ?: '/'.$categoryId.'/';
+
+        return array_values(array_map(
+            fn (array $row) => $row['id'],
+            array_filter($all, fn (array $row) => str_starts_with((string) $row['path'], $prefix)),
+        )) ?: [$categoryId];
+    }
+
+    public function find(int $categoryId): ?array
+    {
+        return $this->all()[$categoryId] ?? null;
+    }
+
+    public function findBySlug(string $slug): ?array
+    {
+        foreach ($this->all() as $row) {
+            if ($row['slug'] === $slug) {
+                return $row;
+            }
+        }
+
+        return null;
+    }
+
+    public function many(array $categoryIds): array
+    {
+        return array_intersect_key($this->all(), array_flip($categoryIds));
+    }
+
+    public function path(int $categoryId): array
+    {
+        $all = $this->all();
+        $path = [];
+
+        for ($row = $all[$categoryId] ?? null, $guard = 0; $row !== null && $guard++ < 12; $row = $row['parent_id'] !== null ? ($all[$row['parent_id']] ?? null) : null) {
+            array_unshift($path, $row['name']);
+        }
+
+        return $path;
+    }
+
+    public function forget(): void
+    {
+        $this->all = null;
+    }
+
+    /** @return array<int, array{id: int, name: string, slug: string, parent_id: int|null, path: string|null, depth: int, is_active: bool}> */
+    private function all(): array
+    {
+        if ($this->all !== null) {
+            return $this->all;
+        }
+
+        $this->all = [];
+
+        foreach (StoreCategory::query()->get(['id', 'name', 'slug', 'parent_id', 'path', 'depth', 'is_active']) as $row) {
+            $this->all[(int) $row->id] = [
+                'id' => (int) $row->id,
+                'name' => $row->name,
+                'slug' => $row->slug,
+                'parent_id' => $row->parent_id !== null ? (int) $row->parent_id : null,
+                'path' => $row->path,
+                'depth' => (int) $row->depth,
+                'is_active' => (bool) $row->is_active,
+            ];
+        }
+
+        return $this->all;
     }
 
     private function uniqueSlug(string $slug): string

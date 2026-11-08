@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Product;
 use App\Models\Review;
-use App\Models\StoreCategory;
+use App\Services\Catalogue\CategoryTree;
 use App\Services\ReviewService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -27,7 +27,7 @@ class ProductController extends Controller
      * to an active store, and themselves active, are browsable — see
      * Product::scopeBrowsable().
      */
-    public function index(Request $request): View
+    public function index(Request $request, CategoryTree $tree): View
     {
         $validated = $request->validate([
             'q' => ['nullable', 'string', 'max:100'],
@@ -44,13 +44,15 @@ class ProductController extends Controller
             ->browsable()
             ->with(['store', 'category', 'images'])
             ->when($search !== '', fn ($q) => $this->whereNameContains($q, $search))
-            ->when($category, fn ($q) => $q->where('category_id', $category))
+            // A category includes everything beneath it (Electronics shows its laptops and phones).
+            ->when($category, fn ($q) => $q->whereIn('category_id', $tree->withDescendants((int) $category)))
             ->latest()
             ->paginate(12)
             ->withQueryString();
 
-        // Counted like the list below: listings a buyer cannot see (pending, rejected, switched off, closed store) do not count.
-        $categories = StoreCategory::withCount(['products' => fn ($q) => $q->browsable()])->orderBy('name')->get();
+        // The category tree's own counts: only listings a buyer can see (pending, rejected, switched off, closed store do not
+        // count), a parent counting everything beneath it. Categories with nothing to show are not offered as a filter.
+        $categories = $this->categoryOptions($tree, $category !== null ? (int) $category : null);
 
         return view('products.index', [
             'products' => $products,
@@ -58,6 +60,44 @@ class ProductController extends Controller
             'search' => $search,
             'category' => $category,
         ]);
+    }
+
+    /**
+     * The category facet: the top-level categories with listings, and the children of the one the shopper is in.
+     *
+     * @return list<array{value: int, label: string, count: int, checked: bool}>
+     */
+    private function categoryOptions(CategoryTree $tree, ?int $selected): array
+    {
+        $roots = $tree->tree();
+        $selectedRoot = null;
+
+        if ($selected !== null) {
+            $rootId = (int) (array_values(array_filter(explode('/', (string) ($tree->find($selected)['path'] ?? ''))))[0] ?? 0);
+            $selectedRoot = $rootId ?: null;
+        }
+
+        $options = [];
+
+        foreach ($roots as $root) {
+            $keep = $root['rollup_count'] > 0 || $root['id'] === $selected;
+
+            if (! $keep) {
+                continue;
+            }
+
+            $options[] = ['value' => $root['id'], 'label' => $root['name'], 'count' => $root['rollup_count'], 'checked' => $selected === $root['id']];
+
+            if ($root['id'] === $selectedRoot) {
+                foreach ($root['children'] as $child) {
+                    if ($child['rollup_count'] > 0 || $child['id'] === $selected) {
+                        $options[] = ['value' => $child['id'], 'label' => '- '.$child['name'], 'count' => $child['rollup_count'], 'checked' => $selected === $child['id']];
+                    }
+                }
+            }
+        }
+
+        return $options;
     }
 
     /**

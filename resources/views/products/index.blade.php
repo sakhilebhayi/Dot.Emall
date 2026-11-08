@@ -11,7 +11,7 @@
                 <summary class="ds-btn ds-btn--quiet"><x-ds.icon name="filter" :size="18" />Filters</summary>
                 <form method="get" action="{{ route('products.index') }}">
                     @if ($search !== '')<input type="hidden" name="q" value="{{ $search }}">@endif
-                    <x-ds.facet-group title="Category" name="category" type="radio" :options="$categories->map(fn ($c) => ['value' => $c->id, 'label' => $c->name, 'count' => $c->products_count, 'checked' => (string) $category === (string) $c->id])->all()" />
+                    <x-ds.facet-group title="Category" name="category" type="radio" :options="$categories" />
                     <div style="display: flex; gap: var(--s-2); padding-top: var(--s-3);">
                         <x-ds.button type="submit" size="sm">Apply</x-ds.button>
                         <x-ds.button :href="route('products.index', array_filter(['q' => $search]))" variant="quiet" size="sm">Clear</x-ds.button>

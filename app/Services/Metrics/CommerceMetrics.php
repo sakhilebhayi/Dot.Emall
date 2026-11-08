@@ -12,7 +12,6 @@ use App\Support\Shop;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 
 /**
  * The marketplace's health numbers, each with a written definition, computed from real rows only. A number whose
@@ -27,7 +26,7 @@ use Illuminate\Support\Facades\Schema;
  *  checkout_completion    person-days with a paid order / person-days that started checkout
  *  cart_abandonment       person-days with an add-to-cart and no paid order that day
  *  repeat_purchase_rate   buyers (in the period) who have two or more counted orders ever / buyers in the period
- *  return_rate            return requests / delivered order lines in the period (needs the returns table)
+ *  return_rate            return requests / order lines delivered or collected in the period
  *  refund_rate            counted orders with a refund / counted orders
  *  gmv                    sum of totals of counted orders (see CountedOrders), in the storefront currency
  *  aov                    gmv / counted orders
@@ -146,16 +145,21 @@ class CommerceMetrics
 
     public function returnRate(CarbonInterface $from, CarbonInterface $to): Metric
     {
-        $definition = 'Return requests opened in the period, divided by order lines delivered in the period.';
+        $definition = 'Return requests opened in the period, divided by order lines delivered or collected in the period.';
 
-        if (! Schema::hasTable('return_requests')) {
-            return Metric::none('return_rate', 'Return rate', $definition, 'rate', 'Returns are not recorded yet.');
-        }
-
-        $delivered = (int) DB::table('order_items')->where('status', OrderStatus::Delivered->value)->where('updated_at', '>=', $from)->where('updated_at', '<', $to)->count();
+        // The lines' own delivered_at / collected_at timestamps (written by the order state machine, D-15), so a line
+        // that was edited later does not move into another period. Nothing delivered yet means nothing to divide by.
+        $delivered = (int) DB::table('order_items')->where(function ($q) use ($from, $to) {
+            $q->where(fn ($d) => $d->where('delivered_at', '>=', $from)->where('delivered_at', '<', $to))
+                ->orWhere(fn ($c) => $c->where('collected_at', '>=', $from)->where('collected_at', '<', $to));
+        })->count();
         $returns = (int) DB::table('return_requests')->where('created_at', '>=', $from)->where('created_at', '<', $to)->count();
 
-        return Metric::rate('return_rate', 'Return rate', $definition, $returns, $delivered, 'Delivery time is the line\'s last update, the only timestamp recorded for it.');
+        if ($delivered === 0) {
+            return Metric::none('return_rate', 'Return rate', $definition, 'rate', 'No order lines were delivered or collected in this period yet, so there is nothing to compare returns with.');
+        }
+
+        return Metric::rate('return_rate', 'Return rate', $definition, $returns, $delivered, $returns === 0 ? 'No returns were requested in this period.' : null);
     }
 
     public function refundRate(CarbonInterface $from, CarbonInterface $to): Metric

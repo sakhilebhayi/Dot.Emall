@@ -3,7 +3,7 @@
 namespace Tests\Feature\Discovery;
 
 use App\Models\SearchSynonym;
-use App\Services\Discovery\StoreCategoryTree;
+use App\Services\Catalogue\CategoryTree;
 use App\Services\Search\PortableSearch;
 use App\Services\Search\PostgresSearch;
 use App\Services\Search\QueryUnderstanding;
@@ -115,7 +115,7 @@ class IndexingAndEnginesTest extends TestCase
         $child = $this->category('Laptops', $root);
         $grandchild = $this->category('Gaming Laptops', $child);
         $this->category('Furniture');
-        $tree = new StoreCategoryTree;
+        $tree = new CategoryTree;
 
         $this->assertEqualsCanonicalizing([$root->id, $child->id, $grandchild->id], $tree->withDescendants($root->id));
         $this->assertSame(['Electronics', 'Laptops', 'Gaming Laptops'], $tree->path($grandchild->id));

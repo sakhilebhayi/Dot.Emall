@@ -162,7 +162,15 @@ class BackendAuditTest extends TestCase
         $this->makeListing($seller, ['category_id' => $category->id, 'is_active' => false]);
         $this->makeListing($seller, ['category_id' => $category->id, 'status' => 'pending_approval']);
 
-        $this->get('/products')->assertOk()->assertSee('Kitchen (1)', false);
+        // A category nobody can buy from (only unlisted products) is not offered as a filter at all.
+        $empty = StoreCategory::create(['name' => 'Garden', 'slug' => 'garden']);
+        $this->makeListing($seller, ['category_id' => $empty->id, 'is_active' => false]);
+
+        $html = $this->get('/products')->assertOk()->getContent();
+
+        // The facet row reads: <span>Kitchen</span> ... <span class="ds-facet__count"><span class="ds-visually-hidden">, </span>1</span>
+        $this->assertMatchesRegularExpression('~<span>Kitchen</span>\s*<span class="ds-facet__count"><span class="ds-visually-hidden">, </span>1</span>~', $html);
+        $this->assertStringNotContainsString('<span>Garden</span>', $html);
     }
 
     // ---- F-04: a made-up token with a "|" was a 500 on PostgreSQL ------------------------------------------------------

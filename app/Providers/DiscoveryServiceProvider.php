@@ -9,9 +9,9 @@ use App\Models\Product;
 use App\Models\Store;
 use App\Models\StoreCategory;
 use App\Observers\SearchIndexObserver;
+use App\Services\Catalogue\CategoryTree as CategoryTreeService;
 use App\Services\Discovery\AllowAllNotifications;
 use App\Services\Discovery\DatabaseCatalogueSource;
-use App\Services\Discovery\StoreCategoryTree;
 use App\Services\Search\PortableSearch;
 use App\Services\Search\PostgresSearch;
 use App\Services\Search\QueryUnderstanding;
@@ -41,7 +41,9 @@ class DiscoveryServiceProvider extends ServiceProvider
 
         // Defaults for the seams to other workstreams; a later provider can bind its own and these step aside.
         $this->app->singletonIf(CatalogueSource::class, DatabaseCatalogueSource::class);
-        $this->app->singletonIf(CategoryTree::class, StoreCategoryTree::class);
+        // One category tree for the whole app (D-50): the commerce service implements the lookup contract.
+        $this->app->singleton(CategoryTreeService::class);
+        $this->app->singletonIf(CategoryTree::class, fn ($app) => $app->make(CategoryTreeService::class));
         $this->app->singletonIf(NotificationPreferences::class, AllowAllNotifications::class);
 
         // The engine is chosen by what the database can do, not by configuration alone.
