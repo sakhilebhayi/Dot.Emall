@@ -7,6 +7,7 @@ use App\Models\Product;
 use App\Services\Discovery\CountedOrders;
 use App\Services\Metrics\CommerceMetrics;
 use App\Services\Metrics\Metric;
+use App\Services\Shipping\BusinessDays;
 use App\Support\Money;
 use App\Support\Shop;
 use Carbon\CarbonInterface;
@@ -93,7 +94,7 @@ class OperatorMetrics
 
     public function sellerFulfilment(CarbonInterface $from, CarbonInterface $to): Metric
     {
-        $definition = 'Of paid parcels placed in the period whose handling time has passed or that have shipped, the share shipped within the handling days the seller set (plus one day).';
+        $definition = 'Of paid parcels placed in the period whose handling time has passed or that have shipped, the share shipped within the handling business days the seller set, counted from payment. The same rule as the store page uses.';
 
         $groups = DB::table('order_groups as g')->join('orders as o', 'o.id', '=', 'g.order_id')
             ->whereIn('o.payment_status', [PaymentStatus::Paid->value, PaymentStatus::PartiallyRefunded->value, PaymentStatus::Refunded->value])
@@ -105,7 +106,7 @@ class OperatorMetrics
 
         foreach ($groups as $g) {
             $start = Carbon::parse($g->paid_at ?? $g->placed_at);
-            $deadline = $start->copy()->addDays((int) $g->handling_days + 1);
+            $deadline = BusinessDays::add($start, (int) $g->handling_days)->endOfDay();
 
             if ($g->shipped_at === null && $deadline->isFuture()) {
                 continue;
@@ -118,7 +119,7 @@ class OperatorMetrics
             }
         }
 
-        return Metric::rate('seller_fulfilment', 'Seller fulfilment', $definition, $onTime, $due, 'Counted from the day the order was paid. A parcel still inside its handling time is not counted either way.');
+        return Metric::rate('seller_fulfilment', 'Seller fulfilment', $definition, $onTime, $due, 'A parcel still inside its handling time is not counted either way. Collection parcels are included.');
     }
 
     public function disputeRate(CarbonInterface $from, CarbonInterface $to): Metric
