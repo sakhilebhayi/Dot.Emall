@@ -135,7 +135,9 @@
             @php($cols = $s['collections'])
             <x-ds.section :title="$cols->title" id="collections">
                 <x-slot:actions><a href="{{ route('collections.index') }}">All collections</a></x-slot:actions>
-                <div class="disc-collections">
+                {{-- The lead panel takes a full row; the rest sit in an even grid (never a trailing empty third): 1, 2 or 3 columns by how many follow it. --}}
+                @php($restCols = [1 => 1, 2 => 2, 3 => 3, 4 => 2][max(0, count($cols->items) - 1)] ?? 3)
+                <div class="disc-collections" style="--rest-cols: {{ $restCols }}">
                     @foreach ($cols->items as $row)
                         <x-disc-collection-panel :collection="$row['collection']" :preview="$row['preview']" :basis="$row['basis']" :large="$loop->first" />
                     @endforeach

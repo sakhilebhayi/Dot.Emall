@@ -127,6 +127,8 @@
 
 /* Collections */
 .disc-collections { display: grid; gap: var(--s-6) var(--s-6); grid-template-columns: repeat(auto-fill, minmax(min(100%, 20rem), 1fr)); }
+/* From 48rem the lead panel spans the row and the others share it evenly: --rest-cols (1 to 3) is set from how many panels follow the lead, so two followers are two halves, not two thirds and a gap. */
+@media (min-width: 48rem) { .disc-collections { grid-template-columns: repeat(var(--rest-cols, 2), minmax(0, 1fr)); } }
 .disc-panel-c { display: grid; gap: var(--s-4); align-content: start; padding-block-start: var(--s-4); border-top: 1px solid var(--line); min-width: 0; }
 .disc-panel-c__title { font-size: var(--text-lg); }
 .disc-panel-c__title a { color: var(--ink); text-decoration: none; }
@@ -195,7 +197,10 @@
 .disc-spot__list div { display: grid; gap: 2px; min-width: 0; }
 .disc-spot__list a { color: var(--ink); font-weight: 650; text-decoration: none; }
 .disc-spot__list a:hover { color: var(--brand); text-decoration: underline; }
-@media (min-width: 56rem) { .disc-spot { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: var(--s-7); } .disc-spot__list--wide { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 var(--s-7); } }
+@media (min-width: 56rem) { .disc-spot { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: var(--s-7); align-items: stretch; }
+    /* The lead and the list are one block of equal height: the rows share the lead's height rather than leaving a void under the list. */
+    .disc-spot:has(.disc-spot__lead) > .disc-spot__list:not(.disc-spot__list--wide) { grid-auto-rows: 1fr; align-content: stretch; }
+    .disc-spot__lead { align-content: center; } .disc-spot__list--wide { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 var(--s-7); } }
 .disc-nearby { display: grid; gap: var(--s-2); justify-items: start; padding-block: var(--s-5); border-top: 1px solid var(--line); }
 .disc-nearby h2 { font-size: var(--text-lg); }
 
