@@ -29,7 +29,7 @@
             </div>
             <aside class="sd-stack" aria-label="Before you start">
                 <h2 class="sd-h3">Have these to hand</h2>
-                <ul class="sd-muted" style="padding-inline-start: 1.25rem;">
+                <ul class="sd-muted sd-bullets">
                     <li>A name and a few sentences about your store.</li>
                     <li>The province you ship from.</li>
                     <li>A contact e-mail address.</li>

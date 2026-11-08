@@ -156,8 +156,8 @@
                     <p class="sd-muted sd-measure">Name an option and list its values with commas, for example Size: S, M, L. Up to {{ \App\Services\Catalogue\ProductVariants::MAX_OPTIONS }} options. Leave all empty for a product with one price.</p>
                     @foreach ($rows as $i => $row)
                         <div class="sd-fields sd-fields--two" style="grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);">
-                            <x-ds.input :label="'Option '.($i + 1).' name'" :name="'options['.$i.'][name]'" :id="'opt-name-'.$i" :value="$row['name']" maxlength="40" placeholder="Size" />
-                            <x-ds.input :label="'Option '.($i + 1).' values'" :name="'options['.$i.'][values]'" :id="'opt-values-'.$i" :value="$row['values']" maxlength="1000" placeholder="S, M, L" />
+                            <x-ds.input :label="'Option '.($i + 1).' name'" :name="'options['.$i.'][name]'" :id="'opt-name-'.$i" :value="$row['name']" maxlength="40" :placeholder="['Size', 'Colour', 'Material'][$i] ?? ''" />
+                            <x-ds.input :label="'Option '.($i + 1).' values'" :name="'options['.$i.'][values]'" :id="'opt-values-'.$i" :value="$row['values']" maxlength="1000" :placeholder="['S, M, L', 'Red, Blue', 'Cotton, Wool'][$i] ?? ''" />
                         </div>
                     @endforeach
                     <div class="sd-actions">

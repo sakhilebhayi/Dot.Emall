@@ -4,6 +4,7 @@
     $required = collect($checklist)->where('required', true);
     $requiredDone = $required->where('done', true)->count();
     $doneAll = collect($checklist)->where('done', true)->count();
+    $gate = $s === StoreStatus::Draft; // required only means something while a review is still ahead of the store
 @endphp
 <x-seller-layout>
     <x-slot:title>Store status</x-slot:title>
@@ -47,13 +48,13 @@
 
         <section aria-labelledby="st-list">
             <h2 id="st-list" class="sd-h2" style="margin-block-end: var(--s-2);">Checklist</h2>
-            <p class="sd-quiet" style="margin-block-end: var(--s-3);">{{ $doneAll }} of {{ count($checklist) }} done. {{ $requiredDone }} of {{ $required->count() }} of the required steps are done.</p>
+            <p class="sd-quiet" style="margin-block-end: var(--s-3);">{{ $doneAll }} of {{ count($checklist) }} done.@if ($gate) {{ $requiredDone }} of {{ $required->count() }} of the steps the review needs are done.@endif</p>
             <ol class="sd-check">
                 @foreach ($checklist as $item)
                     <li data-done="{{ $item['done'] ? 'true' : 'false' }}">
                         <span class="sd-check__mark">@if ($item['done'])<x-ds.icon name="check" :size="16" />@endif</span>
                         <span class="sd-check__text">
-                            <strong>{{ $item['label'] }} <span class="sd-sr">{{ $item['done'] ? ', done' : ', not done' }}</span>@if ($item['required'] && ! $item['done'])<x-ds.badge tone="cau">Required</x-ds.badge>@elseif (! $item['required'] && ! $item['done'])<span class="sd-quiet"> optional</span>@endif</strong>
+                            <strong>{{ $item['label'] }} <span class="sd-sr">{{ $item['done'] ? ', done' : ', not done' }}</span>@if ($item['required'] && ! $item['done'])<x-ds.badge :tone="$gate ? 'cau' : 'neutral'">{{ $gate ? 'Required for review' : 'Recommended' }}</x-ds.badge>@elseif (! $item['required'] && ! $item['done'])<span class="sd-quiet"> optional</span>@endif</strong>
                             <small>{{ $item['hint'] }}</small>
                         </span>
                         @unless ($item['done'])<a class="ds-btn ds-btn--quiet ds-btn--sm" href="{{ $item['href'] }}">{{ $item['action'] }}</a>@else<a class="ds-btn ds-btn--link" href="{{ $item['href'] }}">Change</a>@endunless
@@ -67,7 +68,7 @@
                 <h2 id="st-submit" class="sd-h2">Send for review</h2>
                 @if ($missing)
                     <p class="sd-muted sd-measure">Before you can send your store, finish:</p>
-                    <ul class="sd-muted" style="padding-inline-start: 1.25rem;">@foreach ($missing as $m)<li>{{ $m }}</li>@endforeach</ul>
+                    <ul class="sd-muted sd-bullets">@foreach ($missing as $m)<li>{{ $m }}</li>@endforeach</ul>
                 @else
                     <p class="sd-muted sd-measure">Everything required is in. The Emall team reviews your store, usually before it opens to shoppers; you are told the outcome here.</p>
                 @endif

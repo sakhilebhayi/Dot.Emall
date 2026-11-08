@@ -41,10 +41,10 @@ link renders as `#` with `data-pending-route` (28 on a buyer's page, 7 on the se
 | `/orders` | kit shell, old table | No delivery, tracking, return or timeline columns. |
 | `/orders/{id}` | **old** (55 inline styles, no layout slot) | Now shows the Delivery row; still no parcels (`OrderAccess::present()['groups']`), shipment and tracking events labelled "from the seller", status history, return actions, receipt confirmation, or estimate labels. |
 | `/dashboard` | **old** (59 inline styles) | Both buyer and seller overview; `seller.dashboard` and `account.home` alias it. Needs splitting and the ledger balance (`LedgerService::balance`). |
-| `/sell/orders` | kit shell, old table | No ship form (`ShipmentService`), no per-parcel actions, no return queue. |
-| `/sell/products` (create, edit, index) | kit shell, **old** (24, 40, 19) | No brand, attributes (`ProductAttributes`), options and variants (`ProductVariants`), per-variant stock with `stock_was`, low-stock threshold, fee disclosure (`SellerFees::text`). |
-| `/sell/store/edit`, `/sell` | kit shell, old (13, 9) | Store profile fields from `StoreOnboarding` (legal name, region, policies, VAT), shipping methods and regions, the review/submit flow. |
-| `/sell/promo-codes` | kit shell, old (25) | `free_shipping` option. |
+| `/sell/orders` | **kit (W6)** | Parcel tabs, per-parcel page with shipping, tracking, delivery, cancel with reason, notes, packing slip. Done. |
+| `/sell/products` (create, edit, index) | **kit (W6)** | Filters, bulk switching, options and variants with `stock_was`, specifications, photos with a drop zone, fee preview, stock history, duplicate, resubmit. Done. |
+| `/sell/store/edit`, `/sell`, `/sell/start`, `/sell/store` | **kit (W6)** | Onboarding, status and checklist, profile with logo and banner, InfoDot company link. Done. |
+| `/sell/promo-codes` | **kit (W6)** | Minimum spend, per-buyer cap, expiry, free delivery, conditions note, pause, usage log. The cart must print `$quote->promo->conditions` (W5). |
 | `/operator/products`, `/operator/payments` | kit shell, old (19, 61) | No return queue (`ReturnService::operatorQueue`), store review queue (`StoreOnboarding::reviewQueue`), moderation queue (`ModerationQueue`), reports, metrics (`CommerceMetrics`), search zero-result report. |
 | Auth, profile, teams, API tokens, 4xx/5xx | kit | Done by the shell; Jetstream forms inside profile and teams keep their stock markup. |
 | Notification bell | old (9 inline styles) | Renders every notice type through `title`, `message`, `url`; new notices carry `action`. |
@@ -69,3 +69,11 @@ link renders as `#` with `data-pending-route` (28 on a buyer's page, 7 on the se
 Carrier APIs, automatic payouts, Paystack transfers, a model-written assistant answer without a key, Dot.Notify without its env
 settings, InfoDot company "verified" state (the sign-in payload has no such field), VAT invoices. Owner items from D-1, D-2, D-8,
 D-24 and D-26 still stand.
+
+## Seller desk (W6): what other workstreams need to know
+
+- **Routes** now real (their alias lines are gone from the `integration` block): `sell.start` (public), `seller.dashboard`, `seller.shipping`, `seller.returns`, `seller.analytics`; new: `seller.store.status`, `seller.ledger`, `seller.feedback`, `seller.orders.show`, `seller.orders.slip`, `seller.returns.show`, and the action routes in the `// --- w6 ---` block.
+- **W4 (store pages):** the seller's "preview" links go through `emall_route('stores.show', $store)`. A logo and banner are stored on the **public disk** at `store-media/{store id}/logo-*` and `banner-*` (`stores.logo_path`, `stores.banner_path`); print them with `Storage::disk('public')->url()`. The store's policies, region, trading details and the InfoDot link state are all on `stores`.
+- **W5 (cart, orders, returns):** (1) print the promo **conditions note** (`$quote->promo->conditions`) where a code is accepted; refusals of minimum spend and per-buyer cap use the same single message as every other refusal. (2) The return-photo upload must write under `returns/{order id}/` on the `local` or `public` disk: the seller desk streams exactly those paths. (3) `Status::ORDER` gained `ready_for_collection` and `collected`; if you added them too, keep one. (4) A buyer-visible parcel timeline can read `shipments.events` as the seller types them (labelled "from the seller").
+- **W7 (operator):** a store sent back or suspended is shown to its owner with the operator's reason on the status page and in a strip on every seller page; a rejected listing shows `products.rejected_reason` and the seller can send it again (`seller.products.resubmit`, status back to `pending_approval`).
+- **Shared files touched:** `app/Services/Cart/CartQuote.php` and `app/Services/CheckoutService.php` (one `PromoRules` check each), `app/Models/OrderItem.php` (a parcel for every line), `app/Support/Navigation.php` (two more seller links), `app/Support/Status.php` (two states), `resources/views/components/desk-shell.blade.php` and `resources/views/layouts/partials/head.blade.php` (decode a slot once before printing: names with `&`).

@@ -73,7 +73,12 @@ document.addEventListener('submit', (e) => {
     xhr.upload.addEventListener('progress', (ev) => { if (ev.lengthComputable && bar) { bar.hidden = false; bar.style.setProperty('--p', Math.round(ev.loaded / ev.total * 100) + '%'); if (fill) fill.setAttribute('aria-hidden', 'true'); } });
     xhr.addEventListener('load', () => {
         let body = {}; try { body = JSON.parse(xhr.responseText); } catch (err) { /* not JSON */ }
-        if (xhr.status >= 200 && xhr.status < 300 && body.redirect) { window.location.assign(body.redirect); return; }
+        if (xhr.status >= 200 && xhr.status < 300 && body.redirect) {
+            // The same address with only a new #fragment would just scroll, and the page would still show the old photos: reload it instead.
+            const target = new URL(body.redirect, window.location.href);
+            if (target.pathname + target.search === window.location.pathname + window.location.search) { window.location.hash = target.hash; window.location.reload(); } else { window.location.assign(target); }
+            return;
+        }
         if (bar) bar.hidden = true;
         const errors = body.errors ? Object.values(body.errors).flat() : [body.message || 'The upload did not work. Try again.'];
         if (msg) { msg.textContent = errors.join(' '); msg.hidden = false; }
