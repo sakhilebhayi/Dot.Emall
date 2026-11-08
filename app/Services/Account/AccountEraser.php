@@ -77,15 +77,17 @@ class AccountEraser
         $onTheWay = $unfinished->reject(fn (Order $o) => $o->isAwaitingPayment());
 
         if ($unpaid->isNotEmpty()) {
-            $reasons[] = 'Order '.$this->names($unpaid->map->reference()).' is waiting for payment. Pay for it, or cancel it, first.';
+            $reasons[] = ($unpaid->count() > 1 ? 'Orders ' : 'Order ').$this->names($unpaid->map->reference()).($unpaid->count() > 1 ? ' are waiting for payment. Pay for them, or cancel them, first.' : ' is waiting for payment. Pay for it, or cancel it, first.');
         }
         if ($onTheWay->isNotEmpty()) {
-            $reasons[] = 'Order '.$this->names($onTheWay->map->reference()).' has not reached you yet. Wait until it is delivered or collected, or cancel it while the seller has not sent it.';
+            $reasons[] = ($onTheWay->count() > 1 ? 'Orders ' : 'Order ').$this->names($onTheWay->map->reference()).($onTheWay->count() > 1
+                ? ' have not reached you yet. Wait until they are delivered or collected, or cancel them while the seller has not sent them.'
+                : ' has not reached you yet. Wait until it is delivered or collected, or cancel it while the seller has not sent it.');
         }
 
         $buyerReturns = ReturnRequest::query()->where('requester_id', $id)->whereIn('status', $this->openReturns())->with('item')->orderBy('id')->get();
         if ($buyerReturns->isNotEmpty()) {
-            $reasons[] = 'Your return of '.$this->names($buyerReturns->map(fn (ReturnRequest $r) => $r->item?->displayName() ?? 'an item')).' is still open. Wait until it is settled.';
+            $reasons[] = ($buyerReturns->count() > 1 ? 'Your returns of ' : 'Your return of ').$this->names($buyerReturns->map(fn (ReturnRequest $r) => $r->item?->displayName() ?? 'an item')).($buyerReturns->count() > 1 ? ' are still open. Wait until they are settled.' : ' is still open. Wait until it is settled.');
         }
 
         $owed = [RefundStatus::Pending->value, RefundStatus::Submitted->value, RefundStatus::Failed->value];

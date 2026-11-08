@@ -137,6 +137,21 @@ class AccountErasureTest extends TestCase
         $this->assertSame('Former customer', $review->fresh()->user->publicName());
     }
 
+    public function test_several_unfinished_orders_are_listed_in_the_plural(): void
+    {
+        $this->enablePaystack();
+        $seller = $this->makeSeller();
+        $this->withDelivery($seller);
+        $buyer = $this->makeBuyer();
+        $listing = $this->makeListing($seller, ['stock' => 9]);
+        $this->placeOrder($buyer, [[$listing, 1]]);
+        $this->placeOrder($buyer, [[$listing, 1]]);
+
+        $reason = $this->reasons($buyer)[0];
+        $this->assertStringStartsWith('Orders ', $reason);
+        $this->assertStringContainsString(' are waiting for payment. Pay for them, or cancel them, first.', $reason);
+    }
+
     public function test_a_buyer_with_an_unfinished_order_cannot_close_the_account(): void
     {
         $this->enablePaystack();
