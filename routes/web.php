@@ -4,6 +4,7 @@ use App\Http\Controllers\Auth\EcosystemAuthController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\CspReportController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\HealthController;
 use App\Http\Controllers\OperatorPaymentController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\OrderItemCancellationController;
@@ -29,6 +30,9 @@ use Illuminate\View\Middleware\ShareErrorsFromSession;
 use Laravel\Fortify\Features;
 use Laravel\Jetstream\Jetstream;
 
+// Health check for the deploy smoke test and uptime monitors (see HealthController).
+Route::get('/up', HealthController::class)->name('health');
+
 Route::post('/auth/ecosystem', [EcosystemAuthController::class, 'handle'])
     ->withoutMiddleware(['Illuminate\Foundation\Http\Middleware\PreventRequestForgery', 'Illuminate\Foundation\Http\Middleware\VerifyCsrfToken', 'Illuminate\Foundation\Http\Middleware\ValidateCsrfToken'])->middleware('throttle:10,1')->name('ecosystem.auth');
 
@@ -53,9 +57,7 @@ Route::post('/csp-report', CspReportController::class)
 // signature header is the authentication (see PaystackWebhookController).
 Route::post('/webhooks/paystack', PaystackWebhookController::class)->middleware('throttle:webhooks')->name('webhooks.paystack');
 
-Route::get('/', function () {
-    return view('welcome');
-});
+Route::view('/', 'welcome')->name('home');
 
 // Cookie Policy — Jetstream's termsAndPrivacyPolicy feature covers terms.show/policy.show
 // natively. There's no Jetstream equivalent for a Cookie Policy, so this one is wired by hand,
@@ -154,6 +156,9 @@ if (app()->environment('local', 'testing')) {
 
         return redirect('/');
     })->name('dev.logout');
+
+    // The design-system gallery: every component, with invented specimens that are never saved (resources/views/dev/kit.blade.php).
+    Route::view('/dev/kit', 'dev.kit')->name('dev.kit');
 }
 // --- end dev ---
 
