@@ -5,9 +5,11 @@ namespace App\Http\Controllers;
 use App\Models\Product;
 use App\Models\ProductImage;
 use App\Services\ProductImages;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\ValidationException;
 
 /**
  * A seller's photos for one of their own listings: add (up to six), remove,
@@ -16,17 +18,17 @@ use Illuminate\Support\Facades\Gate;
  */
 class ProductImageController extends Controller
 {
-    public function store(Request $request, Product $product, ProductImages $images): RedirectResponse|\Illuminate\Http\JsonResponse
+    public function store(Request $request, Product $product, ProductImages $images): RedirectResponse|JsonResponse
     {
         Gate::authorize('update', $product);
 
         // The drop zone sends the pictures itself (to show progress) and asks for JSON. The app renders JSON errors only under /api (D-41),
         // so a refusal is answered here as a 422 the page can print in place; a plain form post gets the usual redirect with errors.
         try {
-            $request->validate(array_merge(ProductImages::rules(), ['images' => ['required', 'array', 'min:1', 'max:'.ProductImages::MAX_PER_PRODUCT]]));
+            $request->validate(array_merge(ProductImages::rules(), ['images' => ['required', 'array', 'min:1', 'max:'.ProductImages::MAX_PER_PRODUCT]]), ProductImages::messages() + ['images.required' => 'Choose at least one photo.', 'images.min' => 'Choose at least one photo.']);
 
             $added = $images->add($product, $request->file('images'));
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             if ($request->wantsJson()) {
                 return response()->json(['message' => collect($e->errors())->flatten()->first(), 'errors' => $e->errors()], 422);
             }

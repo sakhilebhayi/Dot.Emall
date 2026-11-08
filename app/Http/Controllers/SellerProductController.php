@@ -127,7 +127,7 @@ class SellerProductController extends Controller
             'brand' => 'nullable|string|max:100',
             'low_stock_threshold' => 'nullable|integer|min:0|max:'.self::MAX_STOCK,
             ...ProductImages::rules(),
-        ]);
+        ], ProductImages::messages());
 
         $product = DB::transaction(function () use ($store, $validated, $request, $images) {
             $product = Product::create([

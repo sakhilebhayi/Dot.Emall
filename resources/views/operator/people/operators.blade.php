@@ -1,7 +1,7 @@
 <x-operator-layout>
     <x-slot:title>Operators</x-slot:title>
     <x-slot:heading>Operators</x-slot:heading>
-    <x-slot:lead>The people who can run the marketplace. The first operator is created on the server with <span class="op-code">php artisan emall:operator person@example.com</span>. From here you can make an existing, verified account an operator, or remove one. Both need a reason and are written to the audit trail.</x-slot:lead>
+    <x-slot:lead>The people who can run the marketplace. The first operator is created on the server with "php artisan emall:operator person@example.com". From here you can make an existing, verified account an operator, or remove one. Both need a reason and are written to the audit trail.</x-slot:lead>
     <x-slot:breadcrumbs><x-ds.breadcrumbs :items="[['label' => 'People', 'href' => route('operator.people.index')], ['label' => 'Operators']]" /></x-slot:breadcrumbs>
 
     <div class="op-split">

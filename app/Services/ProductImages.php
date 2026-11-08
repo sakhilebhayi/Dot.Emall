@@ -65,6 +65,32 @@ class ProductImages
     }
 
     /**
+     * The words for a refused upload, for the form that validates `rules()` (or a logo/banner field). Laravel's own messages name the
+     * field "images.0" and, when the web server's upload limit (often 2 MB) cuts a file off before the app sees it, say only that it
+     * "failed to upload" with no hint of what to do (D-155).
+     *
+     * @param  array<int, string>  $fields  rule keys, e.g. ['images.*'] or ['logo', 'banner']
+     * @return array<string, string>
+     */
+    public static function messages(array $fields = ['images.*']): array
+    {
+        $mb = self::MAX_KILOBYTES / 1024;
+        $messages = ['images.max' => 'A listing can have at most '.self::MAX_PER_PRODUCT.' photos.', 'images.array' => 'Choose the photos again.'];
+
+        foreach ($fields as $field) {
+            $messages += [
+                "{$field}.uploaded" => "That photo did not arrive. Photos can be up to {$mb} MB, and a larger file is cut off on the way: try a smaller one.",
+                "{$field}.max" => "A photo can be up to {$mb} MB. Choose a smaller one.",
+                "{$field}.mimes" => 'A photo must be a JPEG, PNG or WebP picture.',
+                "{$field}.mimetypes" => 'A photo must be a JPEG, PNG or WebP picture.',
+                "{$field}.file" => 'Choose a picture file.',
+            ];
+        }
+
+        return $messages;
+    }
+
+    /**
      * @param  array<int, UploadedFile>  $files
      * @return Collection<int, ProductImage>
      *

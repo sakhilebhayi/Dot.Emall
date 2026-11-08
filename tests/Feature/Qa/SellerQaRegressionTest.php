@@ -11,6 +11,7 @@ use App\Models\Refund;
 use App\Models\User;
 use App\Services\Guests\GuestOrders;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Tests\Concerns\BuildsCommerce;
 use Tests\Concerns\BuildsMarketplace;
 use Tests\Concerns\BuildsOperatorWorld;
@@ -138,5 +139,40 @@ class SellerQaRegressionTest extends TestCase
         $other = $this->makeBuyer();
         $this->actingAs($other)->get(route('checkout.show'))->assertRedirect(route('cart.index'));
         $this->assertSame(1, \DB::table('commerce_events')->where('name', 'checkout_started')->count());
+    }
+
+    /** D-154 */
+    public function test_the_operators_page_prints_its_instructions_not_the_markup_around_them(): void
+    {
+        $operator = User::factory()->withPersonalTeam()->create(['is_platform_operator' => true]);
+
+        $page = $this->actingAs($operator)->get(route('operator.team'))->assertOk();
+
+        $page->assertSee('php artisan emall:operator person@example.com', false)->assertDontSee('&lt;span', false)->assertDontSee('op-code&quot;', false);
+    }
+
+    /** D-155 */
+    public function test_a_refused_photo_is_explained_in_words_not_as_images_dot_0(): void
+    {
+        [$seller, $product] = $this->shippingSeller();
+        $this->actingAs($seller);
+
+        $svg = UploadedFile::fake()->createWithContent('logo.svg', '<svg xmlns="http://www.w3.org/2000/svg"></svg>');
+        $big = UploadedFile::fake()->image('big.jpg', 800, 600)->size(5000);
+        $cut = new UploadedFile(tempnam(sys_get_temp_dir(), 'qa'), 'cut.jpg', 'image/jpeg', UPLOAD_ERR_INI_SIZE, true);
+
+        foreach ([[$svg, 'JPEG, PNG or WebP'], [$big, 'up to 4 MB'], [$cut, 'did not arrive']] as [$file, $needle]) {
+            $response = $this->post(route('seller.products.images.store', $product), ['images' => [$file]], ['Accept' => 'application/json']);
+            $response->assertStatus(422);
+            $this->assertStringContainsString($needle, (string) $response->json('message'));
+            $this->assertStringNotContainsString('images.0', (string) $response->json('message'));
+        }
+
+        $this->post(route('seller.products.store'), ['name' => 'Photo words', 'price' => '10', 'stock' => '1', 'images' => [$svg]])
+            ->assertSessionHasErrors(['images.0']);
+        $this->assertStringNotContainsString('images.0 field', collect(session('errors')->get('images.0'))->first());
+
+        $this->patch(route('seller.store.update'), ['name' => $seller->store->name, 'logo' => $svg])->assertSessionHasErrors('logo');
+        $this->assertStringContainsString('JPEG, PNG or WebP', collect(session('errors')->get('logo'))->first());
     }
 }

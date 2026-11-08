@@ -5,9 +5,11 @@ namespace App\Http\Controllers;
 use App\Enums\StoreStatus;
 use App\Models\Store;
 use App\Models\Team;
+use App\Services\Addresses\AddressRules;
 use App\Services\ProductImages;
 use App\Services\Stores\StoreOnboarding;
 use App\Services\Stores\StoreTrust;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -28,7 +30,7 @@ class StoreController extends Controller
             return redirect()->route('seller.dashboard');
         }
 
-        return view('seller.store.create', ['provinces' => \App\Services\Addresses\AddressRules::PROVINCES, 'email' => $request->user()->email]);
+        return view('seller.store.create', ['provinces' => AddressRules::PROVINCES, 'email' => $request->user()->email]);
     }
 
     public function store(Request $request, StoreOnboarding $onboarding): RedirectResponse
@@ -98,7 +100,7 @@ class StoreController extends Controller
 
         return view('seller.store.edit', [
             'store' => $store,
-            'provinces' => \App\Services\Addresses\AddressRules::PROVINCES,
+            'provinces' => AddressRules::PROVINCES,
             'companies' => $companies,
             'trust' => StoreTrust::for($store),
         ]);
@@ -122,7 +124,7 @@ class StoreController extends Controller
             'banner' => ['nullable', 'file', 'max:'.ProductImages::MAX_KILOBYTES, 'mimes:jpg,jpeg,png,webp'],
             'remove_logo' => 'nullable|boolean',
             'remove_banner' => 'nullable|boolean',
-        ]);
+        ], ProductImages::messages(['logo', 'banner']));
 
         // A checkbox that is not ticked sends nothing: the form sends a 0 first, so an untick is heard.
         $data = $request->only(array_keys($onboarding->rules($store))) + ['name' => $store->name];
@@ -167,7 +169,7 @@ class StoreController extends Controller
 
         try {
             $onboarding->linkTeam($store, Team::findOrFail($data['team_id']));
-        } catch (\Illuminate\Auth\Access\AuthorizationException $e) {
+        } catch (AuthorizationException $e) {
             return back()->withErrors(['team_id' => $e->getMessage()]);
         }
 
