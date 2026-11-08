@@ -6,6 +6,7 @@ use App\Providers\EmallServiceProvider;
 use App\Providers\FortifyServiceProvider;
 use App\Providers\HealthCheckServiceProvider;
 use App\Providers\JetstreamServiceProvider;
+use App\Providers\OperatorServiceProvider;
 
 return [
     AppServiceProvider::class,
@@ -14,4 +15,5 @@ return [
     FortifyServiceProvider::class,
     JetstreamServiceProvider::class,
     DiscoveryServiceProvider::class,
+    OperatorServiceProvider::class,
 ];

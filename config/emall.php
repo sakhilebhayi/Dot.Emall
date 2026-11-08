@@ -88,4 +88,30 @@ return [
     'reference_price' => [
         'window_days' => 30,
     ],
+
+    // Operator desk (R-43 W7). A review AID, never an automatic ban: a listing that matches a rule below is put in front of a person with the
+    // rule and the evidence shown, and the person decides. Edit the lists here; matching is whole words, case-insensitive, on name and description.
+    // Starting point from the research brief (docs/R43_RESEARCH.md section 8): no alcohol, tobacco, firearms, medicines or adult goods at launch,
+    // and "replica" is the word counterfeit sellers use. Not legal advice: have an attorney confirm the list before widening what is sold.
+    'prohibited_terms' => [
+        'firearm', 'firearms', 'rifle', 'pistol', 'handgun', 'revolver', 'ammunition', 'ammo', 'taser', 'pepper spray', 'knuckle duster',
+        'tobacco', 'cigarette', 'cigarettes', 'cigar', 'vape', 'vapes', 'e-cigarette', 'hookah',
+        'whisky', 'whiskey', 'vodka', 'brandy', 'tequila', 'liquor', 'beer', 'cannabis', 'marijuana', 'dagga',
+        'prescription', 'antibiotic', 'antibiotics', 'steroid', 'steroids', 'viagra', 'schedule 6',
+        'sex toy', 'adult toy', 'porn',
+        'replica', 'counterfeit', 'knockoff', 'knock-off',
+    ],
+
+    'flags' => [
+        // Price rule: a listing priced below `low_ratio` x or above `high_ratio` x the median of its category, when the category has at least `min_peers` other listings.
+        'low_ratio' => 0.25,
+        'high_ratio' => 5.0,
+        'min_peers' => 5,
+        // New-store rule: a store younger than `new_store_days` with at least `high_value_count` listings priced at `high_value_cents` or more.
+        'new_store_days' => 14,
+        'high_value_cents' => 500000,
+        'high_value_count' => 5,
+        // Only listings that are pending or were listed/edited within this many days are scanned.
+        'scan_days' => 60,
+    ],
 ];
