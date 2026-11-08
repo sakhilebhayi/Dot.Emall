@@ -1,0 +1,10 @@
+/* Auth pages and error pages: the label centred on the page. */
+.ds-auth__label h1 { font-size: var(--text-xl); }
+.ds-auth__label .ds-label__main { gap: var(--s-3); }
+.ds-auth__body p { max-width: 60ch; }
+.ds-auth__body .ds-divider { display: flex; align-items: center; gap: var(--s-3); color: var(--ink-3); font-size: var(--text-sm); }
+.ds-auth__body .ds-divider::before, .ds-auth__body .ds-divider::after { content: ""; flex: 1; border-top: 1px solid var(--line); }
+.ds-error-code { font-size: var(--text-3xl); font-weight: 750; font-stretch: var(--width-price); font-variant-numeric: tabular-nums lining-nums; line-height: 1; letter-spacing: -0.02em; color: var(--ink); }
+.ds-error-eco { margin-top: var(--s-4); font-size: var(--text-sm); color: var(--ink-3); }
+.ds-error-eco a { color: var(--ink-2); }
+.ds-auth .ds-page-header__actions { margin-top: var(--s-2); }

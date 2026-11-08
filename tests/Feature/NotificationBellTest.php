@@ -98,12 +98,11 @@ class NotificationBellTest extends TestCase
         $seller->notify(new NewOrderNotification($order, $store));
         $id = $seller->notifications()->firstOrFail()->id;
 
-        // A row is a click target, so it needs a role, a tab stop and Enter/Space handlers (WCAG 2.1.1, 4.1.2).
+        // A row is a real <button> (a tab stop that Enter and Space operate natively, WCAG 2.1.1 and 4.1.2), so no role or key handlers are needed.
         Livewire::actingAs($seller)
             ->test(NotificationBell::class)
             ->set('open', true)
-            ->assertSeeHtml('role="button" tabindex="0"')
-            ->assertSeeHtml('wire:keydown.enter="markAsRead(\''.$id.'\')"')
-            ->assertSeeHtml('wire:keydown.space.prevent="markAsRead(\''.$id.'\')"');
+            ->assertSeeHtml('<button type="button" class="ds-dropdown__item"')
+            ->assertSeeHtml('wire:click="markAsRead(\''.$id.'\')"');
     }
 }

@@ -28,7 +28,7 @@
 
                 <!-- Current Profile Photo -->
                 <div class="mt-2" x-show="! photoPreview">
-                    <img src="{{ $this->user->profile_photo_url }}" alt="{{ $this->user->name }}" class="rounded-full size-20 object-cover">
+                    <x-ds.avatar :name="$this->user->name" />
                 </div>
 
                 <!-- New Profile Photo Preview -->

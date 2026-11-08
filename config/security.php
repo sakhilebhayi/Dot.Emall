@@ -8,10 +8,11 @@ return [
     'hsts_seconds' => (int) env('SECURITY_HSTS_SECONDS', 15552000),
 
     /*
-    | The Content-Security-Policy is REPORT-ONLY: the browser reports what it would have blocked to /csp-report and blocks nothing.
-    | Set SECURITY_CSP_REPORT_ONLY=false to enforce the same policy without a deploy, once the reports have been reviewed.
+    | The Content-Security-Policy is ENFORCED by default: a nonce-based policy with no third party, run against every page in a real browser with no
+    | violations (docs/R43_DECISIONS_SHELL.md). Set SECURITY_CSP_REPORT_ONLY=true to turn the same policy into report-only without a deploy (the browser then
+    | reports to /csp-report and blocks nothing), for example while a new page is being built.
     */
-    'csp_report_only' => (bool) env('SECURITY_CSP_REPORT_ONLY', true),
+    'csp_report_only' => (bool) env('SECURITY_CSP_REPORT_ONLY', false),
 
     /*
     | Comma separated host names this app answers for (TRUSTED_HOSTS). Empty means: the host of APP_URL. A request for any

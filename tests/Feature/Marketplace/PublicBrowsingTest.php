@@ -44,7 +44,8 @@ class PublicBrowsingTest extends TestCase
 
         $page->assertSee('Guest Visible Soapstone Bowl');
         $page->assertSee('Sign in to buy');
-        $page->assertDontSee(route('cart.store'), false);
+        // The header cart link goes to /cart (same URL as the add form's action), so the add form is told apart by its product field.
+        $page->assertDontSee('name="product_id"', false);
         $page->assertDontSee('Leave a review');
     }
 

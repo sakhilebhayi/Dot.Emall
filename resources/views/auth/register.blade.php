@@ -1,60 +1,19 @@
-<x-guest-layout>
-    <x-authentication-card>
-        <x-slot name="logo">
-            <x-authentication-card-logo />
-        </x-slot>
+<x-auth-layout>
+    <x-slot:title>Create an account</x-slot:title>
+    <x-slot:heading>Create an account</x-slot:heading>
+    <x-slot:lead>Accounts come from InfoDot. If you were sent here to register, use this form.</x-slot:lead>
 
-        <x-validation-errors class="mb-4" />
-
-        <form method="POST" action="{{ route('register') }}">
-            @csrf
-
-            <div>
-                <x-label for="name" value="{{ __('Name') }}" />
-                <x-input id="name" class="block mt-1 w-full" type="text" name="name" :value="old('name')" required autofocus autocomplete="name" />
-            </div>
-
-            <div class="mt-4">
-                <x-label for="email" value="{{ __('Email') }}" />
-                <x-input id="email" class="block mt-1 w-full" type="email" name="email" :value="old('email')" required autocomplete="username" />
-            </div>
-
-            <div class="mt-4">
-                <x-label for="password" value="{{ __('Password') }}" />
-                <x-input id="password" class="block mt-1 w-full" type="password" name="password" required autocomplete="new-password" />
-            </div>
-
-            <div class="mt-4">
-                <x-label for="password_confirmation" value="{{ __('Confirm Password') }}" />
-                <x-input id="password_confirmation" class="block mt-1 w-full" type="password" name="password_confirmation" required autocomplete="new-password" />
-            </div>
-
-            @if (Laravel\Jetstream\Jetstream::hasTermsAndPrivacyPolicyFeature())
-                <div class="mt-4">
-                    <x-label for="terms">
-                        <div class="flex items-center">
-                            <x-checkbox name="terms" id="terms" required />
-
-                            <div class="ms-2">
-                                {!! __('I agree to the :terms_of_service and :privacy_policy', [
-                                        'terms_of_service' => '<a target="_blank" href="'.route('terms.show').'" class="underline text-sm text-[var(--ink-soft)] hover:text-[var(--ink)] rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--gold)]">'.__('Terms of Service').'</a>',
-                                        'privacy_policy' => '<a target="_blank" href="'.route('policy.show').'" class="underline text-sm text-[var(--ink-soft)] hover:text-[var(--ink)] rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--gold)]">'.__('Privacy Policy').'</a>',
-                                ]) !!}
-                            </div>
-                        </div>
-                    </x-label>
-                </div>
-            @endif
-
-            <div class="flex items-center justify-end mt-4">
-                <a class="underline text-sm text-[var(--ink-soft)] hover:text-[var(--ink)] rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--gold)]" href="{{ route('login') }}">
-                    {{ __('Already registered?') }}
-                </a>
-
-                <x-button class="ms-4">
-                    {{ __('Register') }}
-                </x-button>
-            </div>
-        </form>
-    </x-authentication-card>
-</x-guest-layout>
+    <x-validation-errors />
+    <form method="POST" action="{{ route('register') }}" class="ds-stack" style="--stack: var(--s-4);">
+        @csrf
+        <x-ds.input name="name" label="Name" required autofocus autocomplete="name" />
+        <x-ds.input name="email" label="Email" type="email" required autocomplete="username" />
+        <x-ds.input name="password" label="Password" type="password" required autocomplete="new-password" />
+        <x-ds.input name="password_confirmation" label="Confirm password" type="password" required autocomplete="new-password" />
+        @if (Laravel\Jetstream\Jetstream::hasTermsAndPrivacyPolicyFeature())
+            <label class="ds-choice" for="terms"><input type="checkbox" id="terms" name="terms" required><span class="ds-choice__text"><span class="ds-choice__label">I agree to the <a href="{{ route('terms.show') }}" target="_blank">terms of service</a> and <a href="{{ route('policy.show') }}" target="_blank">privacy policy</a></span></span></label>
+        @endif
+        <x-ds.button type="submit">Create account</x-ds.button>
+        <a href="{{ route('login') }}">Already registered? Sign in</a>
+    </form>
+</x-auth-layout>

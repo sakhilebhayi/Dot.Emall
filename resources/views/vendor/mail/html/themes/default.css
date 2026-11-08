@@ -1,3 +1,4 @@
+/* Mail theme in the Shelf Edge palette. Email clients do not read CSS variables, so this file is the one place the tokens appear as literal hex; they must match resources/css/tokens.css (light theme). */
 /*
 Dot.Emall brand theme for Laravel's Markdown mail components. Matches welcome.blade.php's :root
 tokens (--ink, --gold, --indigo, --paper). Hardcoded hex throughout — email clients don't reliably
@@ -16,8 +17,8 @@ body *:not(html):not(style):not(br):not(tr):not(code) {
 
 body {
     -webkit-text-size-adjust: none;
-    background-color: #f5f4ef;
-    color: #565a72;
+    background-color: #f6f7f4;
+    color: #3a3f5e;
     height: 100%;
     line-height: 1.4;
     margin: 0;
@@ -34,7 +35,7 @@ blockquote {
 }
 
 a {
-    color: #c99a2e;
+    color: #4b58a8;
 }
 
 a img {
@@ -44,7 +45,7 @@ a img {
 /* Typography */
 
 h1 {
-    color: #1c2036;
+    color: #1b1e36;
     font-size: 19px;
     font-weight: bold;
     margin-top: 0;
@@ -86,7 +87,7 @@ img {
     -premailer-cellpadding: 0;
     -premailer-cellspacing: 0;
     -premailer-width: 100%;
-    background-color: #f5f4ef;
+    background-color: #f6f7f4;
     margin: 0;
     padding: 0;
     width: 100%;
@@ -104,13 +105,13 @@ img {
 /* Header */
 
 .header {
-    background-color: #1c2036;
+    background-color: #1b1e36;
     padding: 32px 0;
     text-align: center;
 }
 
 .header a {
-    color: #f5f4ef;
+    color: #f6f7f4;
     font-size: 19px;
     font-weight: bold;
     text-decoration: none;
@@ -132,9 +133,9 @@ img {
     -premailer-cellpadding: 0;
     -premailer-cellspacing: 0;
     -premailer-width: 100%;
-    background-color: #f5f4ef;
-    border-bottom: 1px solid #f5f4ef;
-    border-top: 1px solid #f5f4ef;
+    background-color: #f6f7f4;
+    border-bottom: 1px solid #f6f7f4;
+    border-top: 1px solid #f6f7f4;
     margin: 0;
     padding: 0;
     width: 100%;
@@ -145,7 +146,7 @@ img {
     -premailer-cellspacing: 0;
     -premailer-width: 570px;
     background-color: #ffffff;
-    border-color: #e5e4dc;
+    border-color: #dcdfd8;
     border-radius: 12px;
     border-width: 1px;
     box-shadow: 0 1px 3px 0 rgba(28, 32, 54, 0.08), 0 1px 2px -1px rgba(28, 32, 54, 0.08);
@@ -161,14 +162,14 @@ img {
 /* Subcopy */
 
 .subcopy {
-    border-top: 1px solid #e5e4dc;
+    border-top: 1px solid #dcdfd8;
     margin-top: 25px;
     padding-top: 25px;
 }
 
 .subcopy p {
     font-size: 14px;
-    color: #565a72;
+    color: #3a3f5e;
 }
 
 /* Footer */
@@ -184,13 +185,13 @@ img {
 }
 
 .footer p {
-    color: #91909e;
+    color: #565c7b;
     font-size: 12px;
     text-align: center;
 }
 
 .footer a {
-    color: #91909e;
+    color: #565c7b;
     text-decoration: underline;
 }
 
@@ -205,13 +206,13 @@ img {
 }
 
 .table th {
-    border-bottom: 1px solid #e5e4dc;
+    border-bottom: 1px solid #dcdfd8;
     margin: 0;
     padding-bottom: 8px;
 }
 
 .table td {
-    color: #565a72;
+    color: #3a3f5e;
     font-size: 15px;
     line-height: 18px;
     margin: 0;
@@ -247,49 +248,49 @@ img {
 
 .button-blue,
 .button-primary {
-    background-color: #c99a2e;
-    border-bottom: 8px solid #c99a2e;
-    border-left: 18px solid #c99a2e;
-    border-right: 18px solid #c99a2e;
-    border-top: 8px solid #c99a2e;
-    color: #1c2036;
+    background-color: #4b58a8;
+    border-bottom: 8px solid #4b58a8;
+    border-left: 18px solid #4b58a8;
+    border-right: 18px solid #4b58a8;
+    border-top: 8px solid #4b58a8;
+    color: #ffffff;
 }
 
 .button-green,
 .button-success {
-    background-color: #16a34a;
-    border-bottom: 8px solid #16a34a;
-    border-left: 18px solid #16a34a;
-    border-right: 18px solid #16a34a;
-    border-top: 8px solid #16a34a;
+    background-color: #0a6b4d;
+    border-bottom: 8px solid #0a6b4d;
+    border-left: 18px solid #0a6b4d;
+    border-right: 18px solid #0a6b4d;
+    border-top: 8px solid #0a6b4d;
     color: #fff;
 }
 
 .button-red,
 .button-error {
-    background-color: #dc2626;
-    border-bottom: 8px solid #dc2626;
-    border-left: 18px solid #dc2626;
-    border-right: 18px solid #dc2626;
-    border-top: 8px solid #dc2626;
+    background-color: #b3261e;
+    border-bottom: 8px solid #b3261e;
+    border-left: 18px solid #b3261e;
+    border-right: 18px solid #b3261e;
+    border-top: 8px solid #b3261e;
     color: #fff;
 }
 
 /* Panels */
 
 .panel {
-    border-left: #c99a2e solid 4px;
+    border-left: #4b58a8 solid 4px;
     margin: 21px 0;
 }
 
 .panel-content {
-    background-color: #f5f4ef;
-    color: #565a72;
+    background-color: #f6f7f4;
+    color: #3a3f5e;
     padding: 16px;
 }
 
 .panel-content p {
-    color: #565a72;
+    color: #3a3f5e;
 }
 
 .panel-item {

@@ -1,48 +1,25 @@
-<x-guest-layout>
-    <x-authentication-card>
-        <x-slot name="logo">
-            <x-authentication-card-logo />
-        </x-slot>
+<x-auth-layout>
+    <x-slot:title>Sign in</x-slot:title>
+    <x-slot:heading>Sign in to Dot.Emall</x-slot:heading>
+    <x-slot:lead>Accounts come from InfoDot. Sign in with InfoDot to buy, sell and follow your orders.</x-slot:lead>
 
-        <x-validation-errors class="mb-4" />
+    <x-validation-errors />
+    @session('status')<x-ds.alert tone="info">{{ $value }}</x-ds.alert>
+@endsession
 
-        @session('status')
-            <div class="mb-4 font-medium text-sm text-[var(--indigo)]">
-                {{ $value }}
-            </div>
-        @endsession
+    <x-ds.button :href="config('ecosystem.platforms.infodot.url', 'https://infodot.co.za')" size="lg" block icon="shield-check">Sign in with InfoDot</x-ds.button>
+    <p class="ds-muted" style="font-size: var(--text-sm);">InfoDot opens first. Choose Dot.Emall there and you arrive here signed in.</p>
 
-        <form method="POST" action="{{ route('login') }}">
-            @csrf
+    <p class="ds-divider"><span>Or use your Emall email and password</span></p>
 
-            <div>
-                <x-label for="email" value="{{ __('Email') }}" />
-                <x-input id="email" class="block mt-1 w-full" type="email" name="email" :value="old('email')" required autofocus autocomplete="username" />
-            </div>
-
-            <div class="mt-4">
-                <x-label for="password" value="{{ __('Password') }}" />
-                <x-input id="password" class="block mt-1 w-full" type="password" name="password" required autocomplete="current-password" />
-            </div>
-
-            <div class="block mt-4">
-                <label for="remember_me" class="flex items-center">
-                    <x-checkbox id="remember_me" name="remember" />
-                    <span class="ms-2 text-sm text-[var(--ink-soft)]">{{ __('Remember me') }}</span>
-                </label>
-            </div>
-
-            <div class="flex items-center justify-end mt-4">
-                @if (Route::has('password.request'))
-                    <a class="underline text-sm text-[var(--ink-soft)] hover:text-[var(--ink)] rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--gold)]" href="{{ route('password.request') }}">
-                        {{ __('Forgot your password?') }}
-                    </a>
-                @endif
-
-                <x-button class="ms-4">
-                    {{ __('Log in') }}
-                </x-button>
-            </div>
-        </form>
-    </x-authentication-card>
-</x-guest-layout>
+    <form method="POST" action="{{ route('login') }}" class="ds-stack" style="--stack: var(--s-4);">
+        @csrf
+        <x-ds.input name="email" label="Email" type="email" required autofocus autocomplete="username" />
+        <x-ds.input name="password" label="Password" type="password" required autocomplete="current-password" />
+        <x-ds.checkbox name="remember" label="Keep me signed in on this device" />
+        <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s-3);">
+            <x-ds.button type="submit" variant="quiet">Sign in with password</x-ds.button>
+            @if (Route::has('password.request'))<a href="{{ route('password.request') }}">Forgot your password?</a>@endif
+        </div>
+    </form>
+</x-auth-layout>

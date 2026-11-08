@@ -16,40 +16,41 @@
     $money = fn (int $cents) => $order->money($cents);
     $totalLabel = ! $order->requires_payment ? 'Total (unpaid)' : ($settled ? 'Total (paid)' : 'Total (due)');
 @endphp
-<x-app-layout>
+<x-dynamic-component :component="$isOperator ? 'operator-layout' : ($isSeller ? 'seller-layout' : 'account-layout')">
+    <x-slot:title>Order {{ $order->reference() }}</x-slot:title>
 
 <div style="padding:2rem 2.5rem 3rem;max-width:800px;">
 
-    <a href="{{ $backRoute }}" style="display:inline-flex;align-items:center;gap:0.3rem;font-size:0.75rem;color:#71717a;text-decoration:none;margin-bottom:1.25rem;">
-        <span class="material-symbols-rounded" style="font-size:15px;">arrow_back</span>
+    <a href="{{ $backRoute }}" style="display:inline-flex;align-items:center;gap:0.3rem;font-size:0.75rem;color:var(--ink-3);text-decoration:none;margin-bottom:1.25rem;">
+        <x-ds.icon name="arrow-left" :size="15" />
         {{ $backLabel }}
     </a>
 
     <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:0.6rem;flex-wrap:wrap;">
         <div>
-            <div style="font-family:'Syne',sans-serif;font-size:1.4rem;font-weight:800;color:#f4f4f5;">
+            <h1 style="font-family:var(--font-text);font-size:1.4rem;font-weight:800;color:var(--ink);margin:0;">
                 Order {{ $order->reference() }}
-            </div>
-            <div style="font-size:0.78rem;color:#71717a;margin-top:0.2rem;">Placed {{ $order->created_at->format('d M Y, H:i') }}@if($isSeller) · showing your items only @endif</div>
+            </h1>
+            <div style="font-size:0.78rem;color:var(--ink-3);margin-top:0.2rem;">Placed {{ $order->created_at->format('d M Y, H:i') }}@if($isSeller) · showing your items only @endif</div>
         </div>
         <x-status-pill :status="$shownStatus" />
     </div>
 
     @if($isSeller)
         @if($awaitingPayment)
-        <div style="margin-bottom:1.5rem;padding:0.7rem 1rem;border-radius:0.6rem;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.25);color:#f59e0b;font-size:0.8rem;" role="status">
+        <div style="margin-bottom:1.5rem;padding:0.7rem 1rem;border-radius:0.6rem;background:var(--brand-soft);border:1px solid var(--brand);color:var(--brand);font-size:0.8rem;" role="status">
             <strong>Awaiting payment.</strong> The buyer has not paid for this order yet. Do not ship it: you will be able to once it is paid.
         </div>
         @elseif($order->requires_payment)
-        <div style="margin-bottom:1.5rem;font-size:0.75rem;color:#a1a1aa;">
+        <div style="margin-bottom:1.5rem;font-size:0.75rem;color:var(--ink-2);">
             The buyer has paid. Payout is not available yet: your net amount is earned, not paid out.
         </div>
         @else
         <div style="margin-bottom:1.5rem;"></div>
         @endif
     @elseif(! $order->requires_payment)
-    <div style="font-size:0.75rem;color:#a1a1aa;margin-bottom:1.5rem;">
-        Payment is not collected on Dot.Emall yet. This order is <strong style="color:#f4f4f5;">pending and unpaid</strong>.
+    <div style="font-size:0.75rem;color:var(--ink-2);margin-bottom:1.5rem;">
+        Payment is not collected on Dot.Emall yet. This order is <strong style="color:var(--ink);">pending and unpaid</strong>.
     </div>
     @else
     <div class="dot-card" style="padding:1rem 1.25rem;margin-bottom:1.5rem;" role="status">
@@ -57,23 +58,23 @@
             <div>
                 <div style="display:flex;align-items:center;gap:0.6rem;flex-wrap:wrap;">
                     @if($settled)
-                    <span style="font-size:0.7rem;font-weight:700;color:#22c55e;text-transform:uppercase;letter-spacing:0.08em;">Payment received</span>
+                    <span style="font-size:0.7rem;font-weight:700;color:var(--pos);text-transform:uppercase;letter-spacing:0.08em;">Payment received</span>
                     @elseif($order->status === OrderStatus::Cancelled)
-                    <span style="font-size:0.7rem;font-weight:700;color:#a1a1aa;text-transform:uppercase;letter-spacing:0.08em;">Cancelled, nothing due</span>
+                    <span style="font-size:0.7rem;font-weight:700;color:var(--ink-2);text-transform:uppercase;letter-spacing:0.08em;">Cancelled, nothing due</span>
                     @elseif($order->payment_status === \App\Enums\PaymentStatus::Failed)
-                    <span style="font-size:0.7rem;font-weight:700;color:#f87171;text-transform:uppercase;letter-spacing:0.08em;">Payment failed</span>
+                    <span style="font-size:0.7rem;font-weight:700;color:var(--crit);text-transform:uppercase;letter-spacing:0.08em;">Payment failed</span>
                     @else
-                    <span style="font-size:0.7rem;font-weight:700;color:#f59e0b;text-transform:uppercase;letter-spacing:0.08em;">Awaiting payment</span>
+                    <span style="font-size:0.7rem;font-weight:700;color:var(--brand);text-transform:uppercase;letter-spacing:0.08em;">Awaiting payment</span>
                     @endif
                     @if($paystack->isTestMode())
-                    <span style="padding:0.1rem 0.45rem;border-radius:4px;background:rgba(245,158,11,0.14);color:#f59e0b;font-weight:700;letter-spacing:0.06em;font-size:0.62rem;">TEST MODE</span>
+                    <span style="padding:0.1rem 0.45rem;border-radius:4px;background:var(--brand-soft);color:var(--brand);font-weight:700;letter-spacing:0.06em;font-size:0.62rem;">TEST MODE</span>
                     @endif
                 </div>
                 @if($settled)
-                <div style="font-size:0.78rem;color:#a1a1aa;margin-top:0.3rem;">{{ $order->paid_at ? 'Paid '.$order->paid_at->format('d M Y, H:i').'. ' : '' }}Your order is now with the seller.</div>
+                <div style="font-size:0.78rem;color:var(--ink-2);margin-top:0.3rem;">{{ $order->paid_at ? 'Paid '.$order->paid_at->format('d M Y, H:i').'. ' : '' }}Your order is now with the seller.</div>
                 @elseif($order->isPayable())
-                <div class="metric-val" style="font-size:1.3rem;color:#f4f4f5;margin-top:0.3rem;">{{ $money($order->totalCents()) }}</div>
-                <div style="font-size:0.72rem;color:#71717a;margin-top:0.3rem;">
+                <div class="metric-val" style="font-size:1.3rem;color:var(--ink);margin-top:0.3rem;">{{ $money($order->totalCents()) }}</div>
+                <div style="font-size:0.72rem;color:var(--ink-3);margin-top:0.3rem;">
                     Paid securely on Paystack; Dot.Emall never sees your card details.
                     Pay by {{ $order->created_at->copy()->addMinutes($paystack->unpaidWindowMinutes())->format('d M, H:i') }} or the order is cancelled and the items go back into stock.
                     @if($paystack->isTestMode())No real money moves: use a Paystack test card.@endif
@@ -84,14 +85,14 @@
             <form method="POST" action="{{ route('orders.pay', $order) }}">
                 @csrf
                 <button type="submit" class="dot-btn dot-btn-primary">
-                    <span class="material-symbols-rounded" style="font-size:16px;">lock</span>
+                    <x-ds.icon name="lock" :size="16" />
                     Pay now
                 </button>
             </form>
             @endif
         </div>
         @if($view['refunds']->isNotEmpty())
-        <div style="margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid rgba(255,255,255,0.06);font-size:0.75rem;color:#a1a1aa;">
+        <div style="margin-top:0.9rem;padding-top:0.8rem;border-top:1px solid var(--line);font-size:0.75rem;color:var(--ink-2);">
             @foreach($view['refunds'] as $refund)
             <div style="margin-bottom:0.25rem;">
                 @switch($refund->status)
@@ -112,17 +113,17 @@
     @endif
 
     @if (session('status'))
-    <div style="margin-bottom:1.25rem;padding:0.65rem 1rem;border-radius:0.6rem;background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.25);color:#4ade80;font-size:0.8rem;">
+    <div style="margin-bottom:1.25rem;padding:0.65rem 1rem;border-radius:0.6rem;background:var(--pos-bg);border:1px solid var(--pos);color:var(--pos);font-size:0.8rem;">
         {{ session('status') }}
     </div>
     @endif
     @if (session('error'))
-    <div style="margin-bottom:1.25rem;padding:0.65rem 1rem;border-radius:0.6rem;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.25);color:#f87171;font-size:0.8rem;" role="alert">
+    <div style="margin-bottom:1.25rem;padding:0.65rem 1rem;border-radius:0.6rem;background:var(--crit-bg);border:1px solid var(--crit);color:var(--crit);font-size:0.8rem;" role="alert">
         {{ session('error') }}
     </div>
     @endif
     @error('status')
-    <div style="margin-bottom:1.25rem;padding:0.65rem 1rem;border-radius:0.6rem;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.25);color:#f87171;font-size:0.8rem;">
+    <div style="margin-bottom:1.25rem;padding:0.65rem 1rem;border-radius:0.6rem;background:var(--crit-bg);border:1px solid var(--crit);color:var(--crit);font-size:0.8rem;">
         {{ $message }}
     </div>
     @enderror
@@ -138,16 +139,16 @@
                 : collect($item->status->sellerTransitions())->reject(fn ($s) => $s === OrderStatus::Cancelled);
             $linkable = $item->product && ! $item->product->trashed() && $item->product->is_active && $item->product->status === 'approved';
         @endphp
-        <div style="display:flex;align-items:center;gap:1rem;padding:1rem 1.25rem;{{ !$loop->last ? 'border-bottom:1px solid rgba(255,255,255,0.06);' : '' }}flex-wrap:wrap;{{ $cancelled ? 'opacity:0.6;' : '' }}">
+        <div style="display:flex;align-items:center;gap:1rem;padding:1rem 1.25rem;{{ !$loop->last ? 'border-bottom:1px solid var(--line);' : '' }}flex-wrap:wrap;{{ $cancelled ? 'opacity:0.6;' : '' }}">
             <div style="flex:1;min-width:200px;">
-                <div style="font-size:0.82rem;font-weight:700;color:#f4f4f5;{{ $cancelled ? 'text-decoration:line-through;' : '' }}">
+                <div style="font-size:0.82rem;font-weight:700;color:var(--ink);{{ $cancelled ? 'text-decoration:line-through;' : '' }}">
                     @if($linkable)
                         <a href="{{ route('products.show', $item->product) }}" style="color:inherit;text-decoration:none;">{{ $item->displayName() }}</a>
                     @else
                         {{ $item->displayName() }}
                     @endif
                 </div>
-                <div style="font-size:0.7rem;color:#71717a;">
+                <div style="font-size:0.7rem;color:var(--ink-3);">
                     @unless($isSeller){{ $item->displayStoreName() }} · @endunless
                     Qty {{ $item->quantity }} × {{ $order->amount($item->unit_price) }}
                     @if(! $linkable) · listing no longer sold @endif
@@ -155,9 +156,9 @@
             </div>
             <x-status-pill :status="$item->status" size="sm" />
             <div style="text-align:right;min-width:90px;">
-                <div style="font-family:'Syne',sans-serif;font-size:0.85rem;font-weight:700;color:#f4f4f5;{{ $cancelled ? 'text-decoration:line-through;' : '' }}">{{ $order->amount($item->total) }}</div>
+                <div style="font-family:var(--font-text);font-size:0.85rem;font-weight:700;color:var(--ink);{{ $cancelled ? 'text-decoration:line-through;' : '' }}">{{ $order->amount($item->total) }}</div>
                 @if(! $cancelled && (float) $item->discount_amount > 0)
-                <div style="font-size:0.65rem;color:#4ade80;">promo -{{ $order->amount($item->discount_amount) }}</div>
+                <div style="font-size:0.65rem;color:var(--pos);">promo -{{ $order->amount($item->discount_amount) }}</div>
                 @endif
             </div>
 
@@ -179,9 +180,9 @@
             @endif
 
             @if($canCancel)
-            <form method="POST" action="{{ route('order-items.cancel', $item) }}" onsubmit="return confirm('Cancel this item? It goes back into stock and the order total is recalculated.');">
+            <form method="POST" action="{{ route('order-items.cancel', $item) }}" data-confirm="Cancel this item? It goes back into stock and the order total is recalculated.">
                 @csrf
-                <button type="submit" class="dot-btn dot-btn-ghost" style="font-size:0.72rem;padding:0.35rem 0.7rem;color:#f87171;">Cancel item</button>
+                <button type="submit" class="dot-btn dot-btn-ghost" style="font-size:0.72rem;padding:0.35rem 0.7rem;color:var(--crit);">Cancel item</button>
             </form>
             @endif
 
@@ -194,53 +195,53 @@
 
     <div class="dot-card" style="padding:1.25rem 1.5rem;margin-bottom:1.5rem;">
         @if($view['fullOrder'])
-            <div style="display:flex;justify-content:space-between;font-size:0.8rem;color:#a1a1aa;margin-bottom:0.4rem;">
+            <div style="display:flex;justify-content:space-between;font-size:0.8rem;color:var(--ink-2);margin-bottom:0.4rem;">
                 <span>Subtotal</span>
                 <span>{{ $order->amount($order->subtotal) }}</span>
             </div>
             @if((float) $order->discount_amount > 0)
-            <div style="display:flex;justify-content:space-between;font-size:0.8rem;color:#4ade80;margin-bottom:0.4rem;">
+            <div style="display:flex;justify-content:space-between;font-size:0.8rem;color:var(--pos);margin-bottom:0.4rem;">
                 <span>Promo ({{ $order->promo_code }})</span>
                 <span>-{{ $order->amount($order->discount_amount) }}</span>
             </div>
             @endif
-            <div style="display:flex;justify-content:space-between;font-family:'Syne',sans-serif;font-size:1rem;font-weight:800;color:#f4f4f5;padding-top:0.6rem;border-top:1px solid rgba(255,255,255,0.06);">
+            <div style="display:flex;justify-content:space-between;font-family:var(--font-text);font-size:1rem;font-weight:800;color:var(--ink);padding-top:0.6rem;border-top:1px solid var(--line);">
                 <span>{{ $totalLabel }}</span>
                 <span>{{ $order->amount($order->total) }}</span>
             </div>
             @if($lines->contains(fn ($l) => $l->isCancelled()))
-            <div style="margin-top:0.6rem;font-size:0.7rem;color:#71717a;">Cancelled items are not counted in these totals.</div>
+            <div style="margin-top:0.6rem;font-size:0.7rem;color:var(--ink-3);">Cancelled items are not counted in these totals.</div>
             @endif
         @else
-            <div style="display:flex;justify-content:space-between;font-family:'Syne',sans-serif;font-size:1rem;font-weight:800;color:#f4f4f5;">
+            <div style="display:flex;justify-content:space-between;font-family:var(--font-text);font-size:1rem;font-weight:800;color:var(--ink);">
                 <span>Your items, net of promo</span>
                 <span>{{ $order->money($view['sellerNetCents']) }}</span>
             </div>
-            <div style="margin-top:0.6rem;font-size:0.7rem;color:#71717a;">Cancelled items are not counted. This is only your share of the order.@if($order->requires_payment && ! $awaitingPayment) Earned, not paid out: payout is not available yet.@endif</div>
+            <div style="margin-top:0.6rem;font-size:0.7rem;color:var(--ink-3);">Cancelled items are not counted. This is only your share of the order.@if($order->requires_payment && ! $awaitingPayment) Earned, not paid out: payout is not available yet.@endif</div>
         @endif
     </div>
 
     @if($view['shipping'])
     <div class="dot-card" style="padding:1.25rem 1.5rem;">
-        <div style="font-size:0.7rem;font-weight:700;color:#71717a;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.5rem;">
+        <div style="font-size:0.7rem;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.5rem;">
             {{ $isSeller ? 'Ship to' : 'Shipping details' }}
         </div>
-        <div style="font-size:0.85rem;font-weight:600;color:#f4f4f5;">{{ $view['shipping']['name'] }}</div>
+        <div style="font-size:0.85rem;font-weight:600;color:var(--ink);">{{ $view['shipping']['name'] }}</div>
         @if($view['shipping']['address'])
-        <div style="font-size:0.82rem;color:#d4d4d8;margin-top:0.15rem;">{{ $view['shipping']['address'] }}</div>
+        <div style="font-size:0.82rem;color:var(--ink);margin-top:0.15rem;">{{ $view['shipping']['address'] }}</div>
         @endif
         @if($view['shipping']['phone'])
-        <div style="font-size:0.82rem;color:#d4d4d8;margin-top:0.15rem;">{{ $view['shipping']['phone'] }}</div>
+        <div style="font-size:0.82rem;color:var(--ink);margin-top:0.15rem;">{{ $view['shipping']['phone'] }}</div>
         @endif
         @if($isSeller)
-        <div style="font-size:0.68rem;color:#71717a;margin-top:0.6rem;">Shown only while you have items left to ship.</div>
+        <div style="font-size:0.68rem;color:var(--ink-3);margin-top:0.6rem;">Shown only while you have items left to ship.</div>
         @endif
     </div>
     @elseif($isSeller)
-    <div class="dot-card" style="padding:1.1rem 1.5rem;font-size:0.78rem;color:#71717a;">
+    <div class="dot-card" style="padding:1.1rem 1.5rem;font-size:0.78rem;color:var(--ink-3);">
         The buyer's shipping details are hidden because none of your items on this order is waiting to ship.
     </div>
     @endif
 
 </div>
-</x-app-layout>
+</x-dynamic-component>

@@ -1,3 +1,4 @@
-<button {{ $attributes->merge(['type' => 'submit', 'class' => 'press inline-flex items-center px-7 py-3.5 bg-[var(--ink)] hover:bg-[var(--indigo)] text-white font-display font-semibold rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--gold)] focus:ring-offset-2 disabled:opacity-50']) }}>
+{{-- Jetstream's primary button, in the Shelf Edge skin. New views use <x-ds.button>. --}}
+<button {{ $attributes->merge(['type' => 'submit', 'class' => 'ds-btn ds-btn--primary']) }} data-ds-lock>
     {{ $slot }}
 </button>

@@ -29,7 +29,7 @@ class DashboardTest extends TestCase
             ->get('/dashboard')
             ->assertOk()
             ->assertViewIs('dashboard')
-            ->assertSee('Seller desk');
+            ->assertSee('Your account');
     }
 
     public function test_dashboard_shows_review_and_low_stock_widgets_for_the_sellers_own_products(): void

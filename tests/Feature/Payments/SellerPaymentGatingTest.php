@@ -65,7 +65,7 @@ class SellerPaymentGatingTest extends TestCase
         $page->assertDontSee('14 Protea Lane, Parkhurst');
 
         $this->actingAs($this->seller)->get(route('seller.orders.index'))
-            ->assertSee('awaiting payment');
+            ->assertSee('Awaiting payment');
     }
 
     public function test_after_payment_the_seller_can_fulfil_and_sees_the_address(): void

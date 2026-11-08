@@ -1,13 +1,6 @@
-<x-guest-layout>
-    <div class="pt-4 bg-[var(--paper)]">
-        <div class="min-h-screen flex flex-col items-center pt-6 sm:pt-0">
-            <div>
-                <x-authentication-card-logo />
-            </div>
-
-            <div class="w-full sm:max-w-2xl mt-6 p-6 bg-[var(--panel)] border border-[var(--line)] rounded-2xl shadow-[0_30px_60px_-30px_rgba(28,32,54,0.25)] overflow-hidden prose prose-headings:font-display prose-headings:text-[var(--ink)] prose-p:text-[var(--ink-soft)] prose-li:text-[var(--ink-soft)] prose-a:text-[var(--gold)] prose-strong:text-[var(--ink)]">
-                {!! $cookies !!}
-            </div>
-        </div>
-    </div>
-</x-guest-layout>
+<x-store-layout>
+    <x-slot:title>Cookie policy</x-slot:title>
+    <x-slot:heading>Cookie policy</x-slot:heading>
+    <x-slot:description>Cookie policy for Dot.Emall.</x-slot:description>
+    <article class="ds-prose" style="padding-block: var(--s-6) var(--s-4);">{!! $cookies !!}</article>
+</x-store-layout>

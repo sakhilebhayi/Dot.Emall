@@ -1,34 +1,16 @@
-<x-guest-layout>
-    <x-authentication-card>
-        <x-slot name="logo">
-            <x-authentication-card-logo />
-        </x-slot>
+<x-auth-layout>
+    <x-slot:title>Reset your password</x-slot:title>
+    <x-slot:heading>Forgot your password?</x-slot:heading>
+    <x-slot:lead>Tell us your email address and we will send a link that lets you choose a new one.</x-slot:lead>
 
-        <div class="mb-4 text-sm text-[var(--ink-soft)]">
-            {{ __('Forgot your password? No problem. Just let us know your email address and we will email you a password reset link that will allow you to choose a new one.') }}
-        </div>
+    <x-validation-errors />
+    @session('status')<x-ds.alert tone="pos">{{ $value }}</x-ds.alert>
+@endsession
 
-        @session('status')
-            <div class="mb-4 font-medium text-sm text-[var(--indigo)]">
-                {{ $value }}
-            </div>
-        @endsession
-
-        <x-validation-errors class="mb-4" />
-
-        <form method="POST" action="{{ route('password.email') }}">
-            @csrf
-
-            <div class="block">
-                <x-label for="email" value="{{ __('Email') }}" />
-                <x-input id="email" class="block mt-1 w-full" type="email" name="email" :value="old('email')" required autofocus autocomplete="username" />
-            </div>
-
-            <div class="flex items-center justify-end mt-4">
-                <x-button>
-                    {{ __('Email Password Reset Link') }}
-                </x-button>
-            </div>
-        </form>
-    </x-authentication-card>
-</x-guest-layout>
+    <form method="POST" action="{{ route('password.email') }}" class="ds-stack" style="--stack: var(--s-4);">
+        @csrf
+        <x-ds.input name="email" label="Email" type="email" required autofocus autocomplete="username" />
+        <x-ds.button type="submit">Email me a reset link</x-ds.button>
+        <a href="{{ route('login') }}">Back to sign in</a>
+    </form>
+</x-auth-layout>

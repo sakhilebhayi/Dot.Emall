@@ -131,6 +131,35 @@ jobs:
           npm ci --no-audit --no-fund
           npm run build
           test -s public/build/manifest.json
+          # Every path an @vite() call in the views names must be a manifest
+          # key, and every file the entries point at must exist and be non-empty
+          # ("Unable to locate file in Vite manifest" is a 500 on every page).
+          python3 - <<'MANIFEST'
+          import json, os, re, sys
+          build = 'public/build'
+          manifest = json.load(open(os.path.join(build, 'manifest.json')))
+          entries = {k: v for k, v in manifest.items() if v.get('isEntry')}
+          if not entries:
+              sys.exit('manifest.json lists no entry points')
+          wanted = set()
+          for root, _, names in os.walk('resources/views'):
+              for name in names:
+                  path = os.path.join(root, name)
+                  text = open(path, encoding='utf-8', errors='replace').read()
+                  if '@vite' in text:
+                      wanted.update(w.rstrip('.') for w in re.findall(r'resources/(?:css|js)/[A-Za-z0-9_./-]+', text))
+          absent = sorted(w for w in wanted if w not in manifest)
+          if not wanted or absent:
+              sys.exit('views ask for %s; not in the manifest: %s' % (sorted(wanted) or 'nothing', absent or 'n/a'))
+          files = set()
+          for v in entries.values():
+              files.add(v['file'])
+              files.update(v.get('css', []))
+          bad = sorted(f for f in files if not os.path.isfile(os.path.join(build, f)) or os.path.getsize(os.path.join(build, f)) == 0)
+          if bad:
+              sys.exit('built files missing or empty: %s' % bad)
+          print('manifest ok: %d entries, %d files, views need %s' % (len(entries), len(files), sorted(wanted)))
+          MANIFEST
 
       - name: Set up SSH
         run: |
@@ -352,6 +381,21 @@ jobs:
             echo "== docroot build/ did not exist; linked to $APPDIR/public/build"
           fi
 
+          # ---- fonts and images (R-43): the built CSS asks for /fonts/*.woff2 and the layouts for /images/*.png. Both folders are tracked, so the
+          # checkout above refreshed them, but a docroot that is not <app>/public serves its own copy (a link, or a stale folder). Same three cases as build/.
+          for STATIC in fonts images; do
+            STATICLINK="$DOCROOT/$STATIC"
+            if [ -L "$STATICLINK" ]; then
+              echo "== docroot $STATIC/ is a symlink; nothing to copy"
+            elif [ -d "$STATICLINK" ]; then
+              rsync -a --delete "public/$STATIC/" "$STATICLINK/"
+              echo "== docroot $STATIC/ is a real directory; mirrored from public/$STATIC"
+            else
+              ln -s "$APPDIR/public/$STATIC" "$STATICLINK"
+              echo "== docroot $STATIC/ did not exist; linked to $APPDIR/public/$STATIC"
+            fi
+          done
+
           # ---- database
           echo "== Pending migrations:"
           $PHP artisan migrate:status --pending 2>&1 | tail -25 || true
@@ -514,6 +558,18 @@ jobs:
           for ASSET in $(python3 -c "import json; m=json.load(open('public/build/manifest.json')); print(' '.join(sorted({v['file'] for v in m.values() if v.get('isEntry')} | {f for v in m.values() if v.get('isEntry') for f in v.get('css', [])})))"); do
             CODE=$(curl -s --max-time 30 -o /dev/null -w '%{http_code}' "$SITE_URL/build/$ASSET" || true)
             if [ "$CODE" = "200" ]; then echo "200 $SITE_URL/build/$ASSET"; else echo "::error::$SITE_URL/build/$ASSET answered ${CODE:-no response} (expected 200): the docroot is not serving the new build"; FAILED=1; fi
+          done
+          # Self-hosted fonts and the logo: the built CSS and the layouts name these files by absolute path. A docroot that does not serve /fonts/ or /images/
+          # leaves every page in the fallback face (or without its logo) with a 200 for the page itself, so they are checked here the way the built CSS is.
+          # A real font file is tens of kilobytes; a few hundred bytes is an error page served with a 200.
+          for FONT in fonts/schibsted-grotesk-var-latin.woff2 fonts/martian-mono-var-latin.woff2; do
+            CODE=$(curl -s --max-time 30 -o /dev/null -w '%{http_code}' "$SITE_URL/$FONT" || true)
+            SIZE=$(curl -s --max-time 30 -o /dev/null -w '%{size_download}' "$SITE_URL/$FONT" || echo 0)
+            if [ "$CODE" = "200" ] && [ "${SIZE:-0}" -gt 10000 ]; then echo "200 $SITE_URL/$FONT (${SIZE} bytes)"; else echo "::error::$SITE_URL/$FONT answered ${CODE:-no response}, ${SIZE:-0} bytes (expected 200 and a font file): the docroot is not serving public/fonts"; FAILED=1; fi
+          done
+          for IMG in images/emall-mark.png images/emall-wordmark.png; do
+            CODE=$(curl -s --max-time 30 -o /dev/null -w '%{http_code}' "$SITE_URL/$IMG" || true)
+            if [ "$CODE" = "200" ]; then echo "200 $SITE_URL/$IMG"; else echo "::error::$SITE_URL/$IMG answered ${CODE:-no response} (expected 200): the docroot is not serving public/images"; FAILED=1; fi
           done
           # A GET-only route answering POST is a harmless 405: ~1 KB in
           # production, an ~840 KB stack-trace page when APP_DEBUG is on.

@@ -1,0 +1,66 @@
+/* Design system, part 3: dialog, dropdown, tabs, table, drawer. All rely on native elements (dialog, details, table) and a few lines of script in resources/js/app.js. */
+
+/* Dialog: a native <dialog> opened with showModal(), so focus is trapped, Esc closes and the page behind is inert. On phones it is a bottom sheet. */
+.ds-dialog {
+    padding: 0; border: 0; border-radius: var(--r-sheet); background: var(--raised); color: var(--ink);
+    width: min(32rem, calc(100% - 2 * var(--s-3))); max-height: min(44rem, calc(100dvh - 2 * var(--s-4)));
+    box-shadow: var(--lift-2); overflow: hidden; margin: auto;
+}
+.ds-dialog[open] { display: flex; flex-direction: column; animation: ds-sheet-in var(--t-sheet) var(--ease) both; }
+.ds-dialog::backdrop { background: var(--scrim); }
+.ds-dialog__head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--s-3); padding: var(--s-4) var(--s-4) var(--s-2) var(--s-5); }
+.ds-dialog__head h2 { font-size: var(--text-lg); padding-block-start: var(--s-2); }
+.ds-dialog__body { padding: var(--s-2) var(--s-5) var(--s-4); overflow-y: auto; display: grid; gap: var(--s-3); }
+.ds-dialog__foot { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--s-2); padding: var(--s-3) var(--s-5) var(--s-4); border-top: 1px solid var(--line); background: var(--surface); }
+@keyframes ds-sheet-in { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@media (max-width: 40rem) {
+    .ds-dialog--sheet { margin: auto 0 0; width: 100%; max-width: 100%; border-end-start-radius: 0; border-end-end-radius: 0; max-height: 88dvh; padding-block-end: env(safe-area-inset-bottom); }
+    .ds-dialog--sheet .ds-dialog__foot .ds-btn { flex: 1 1 auto; }
+}
+/* Drawer: the same element, anchored to the inline start edge. */
+.ds-dialog--drawer { margin: 0; width: min(24rem, 90vw); max-width: 90vw; height: 100dvh; max-height: 100dvh; border-radius: 0 var(--r-sheet) var(--r-sheet) 0; }
+.ds-dialog--drawer[open] { animation: ds-drawer-in var(--t-sheet) var(--ease) both; }
+@keyframes ds-drawer-in { from { transform: translateX(-16px); opacity: 0; } to { transform: none; opacity: 1; } }
+body:has(dialog[open]) { overflow: hidden; }
+
+/* Dropdown */
+.ds-dropdown { position: relative; display: inline-block; }
+.ds-dropdown__panel {
+    position: absolute; z-index: 95; inset-block-start: calc(100% + var(--s-1)); inset-inline-end: 0; min-width: 14rem; max-width: min(22rem, calc(100vw - 2 * var(--s-3)));
+    padding: var(--s-1); background: var(--raised); border-radius: var(--r-control); box-shadow: var(--lift-1); transform-origin: top right;
+    animation: ds-pop var(--t-quick) var(--ease) both;
+}
+.ds-dropdown--start .ds-dropdown__panel { inset-inline-end: auto; inset-inline-start: 0; transform-origin: top left; }
+.ds-dropdown__panel[hidden] { display: none; }
+.ds-dropdown__item { display: flex; align-items: center; gap: var(--s-3); width: 100%; min-height: var(--tap); padding: var(--s-2) var(--s-3); border: 0; border-radius: var(--r-label); background: none; color: var(--ink); font: inherit; text-align: start; text-decoration: none; cursor: pointer; }
+.ds-dropdown__item:hover, .ds-dropdown__item:focus-visible { background: var(--brand-soft); color: var(--ink); }
+.ds-dropdown__item .ds-icon { color: var(--ink-2); }
+.ds-dropdown__item--danger { color: var(--crit); }
+.ds-dropdown__sep { height: 1px; background: var(--line); margin: var(--s-1) var(--s-2); border: 0; }
+.ds-dropdown__note { padding: var(--s-2) var(--s-3); font-size: var(--text-sm); color: var(--ink-2); }
+@keyframes ds-pop { from { opacity: 0; transform: translateY(-4px) scale(0.98); } to { opacity: 1; transform: none; } }
+
+/* Tabs */
+.ds-tabs__list { display: flex; gap: var(--s-1); border-bottom: 1px solid var(--line); overflow-x: auto; scrollbar-width: thin; }
+.ds-tabs__tab { flex: none; min-height: var(--tap); padding: 0 var(--s-4); border: 0; border-bottom: 2px solid transparent; margin-bottom: -1px; background: none; color: var(--ink-2); font: inherit; font-weight: 600; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; transition: color var(--t-quick) var(--ease); }
+.ds-tabs__tab:hover { color: var(--ink); }
+.ds-tabs__tab[aria-selected="true"], .ds-tabs__tab[aria-current="page"] { color: var(--ink); border-bottom-color: var(--brand); font-weight: 750; }
+.ds-tabs__panel { padding-block: var(--s-4); }
+.ds-tabs__panel[hidden] { display: none; }
+
+/* Table: a real table; under 40rem each row stacks into a labelled block (data-label on each cell). */
+.ds-table-wrap { overflow-x: auto; overscroll-behavior-x: contain; }
+.ds-table { width: 100%; border-collapse: collapse; font-size: var(--text-sm); }
+.ds-table caption { text-align: start; padding-block-end: var(--s-2); font-weight: 700; font-size: var(--text-base); }
+.ds-table th { text-align: start; font-weight: 650; color: var(--ink-2); padding: var(--s-3); border-bottom: 2px solid var(--ink); white-space: nowrap; }
+.ds-table td { padding: var(--s-3); border-bottom: 1px solid var(--line); vertical-align: top; }
+.ds-table tbody tr:hover { background: color-mix(in srgb, var(--sunken) 55%, transparent); }
+.ds-table .is-num { text-align: end; font-variant-numeric: tabular-nums lining-nums; }
+@media (max-width: 40rem) {
+    .ds-table--stack thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+    .ds-table--stack, .ds-table--stack tbody, .ds-table--stack tr, .ds-table--stack td { display: block; width: 100%; }
+    .ds-table--stack tr { padding-block: var(--s-3); border-bottom: 2px solid var(--line); }
+    .ds-table--stack td { display: flex; justify-content: space-between; gap: var(--s-4); border: 0; padding: var(--s-1) 0; text-align: end; }
+    .ds-table--stack td::before { content: attr(data-label); color: var(--ink-3); text-align: start; flex: none; }
+    .ds-table--stack td:not([data-label])::before { content: none; }
+}

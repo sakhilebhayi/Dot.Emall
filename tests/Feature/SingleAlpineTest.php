@@ -10,12 +10,16 @@ use PHPUnit\Framework\TestCase;
  */
 class SingleAlpineTest extends TestCase
 {
-    public function test_the_app_layout_does_not_load_a_second_alpine(): void
+    public function test_no_layout_loads_a_second_alpine(): void
     {
-        $layout = file_get_contents(dirname(__DIR__, 2).'/resources/views/layouts/app.blade.php');
+        $root = dirname(__DIR__, 2).'/resources/views/components/';
 
-        $this->assertIsString($layout);
-        $this->assertDoesNotMatchRegularExpression('/<script[^>]+alpinejs/i', $layout);
-        $this->assertStringContainsString('@livewireScripts', $layout);
+        foreach (['store-layout', 'account-layout', 'desk-shell', 'auth-layout'] as $layout) {
+            $source = file_get_contents($root.$layout.'.blade.php');
+
+            $this->assertIsString($source);
+            $this->assertDoesNotMatchRegularExpression('/<script[^>]+alpinejs/i', $source, $layout);
+            $this->assertStringContainsString('@livewireScripts', $source, $layout);
+        }
     }
 }

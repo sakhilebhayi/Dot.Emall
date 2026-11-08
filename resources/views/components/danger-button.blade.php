@@ -1,3 +1,4 @@
-<button {{ $attributes->merge(['type' => 'button', 'class' => 'inline-flex items-center justify-center px-4 py-2 bg-red-600 border border-transparent rounded-lg font-display font-semibold text-xs text-white uppercase tracking-widest hover:bg-red-500 active:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition ease-in-out duration-150']) }}>
+{{-- Jetstream's destructive button, in the Shelf Edge skin. New views use <x-ds.button variant="danger">. --}}
+<button {{ $attributes->merge(['type' => 'button', 'class' => 'ds-btn ds-btn--danger']) }}>
     {{ $slot }}
 </button>
