@@ -62,13 +62,20 @@ class SellerDashboard
 
         $revenueByCurrency = [Shop::currency() => 0];
 
-        $fulfillable()
-            ->where('status', OrderStatus::Delivered->value)
-            ->with('order:id,currency')
-            ->get(['id', 'order_id', 'total', 'discount_amount'])
-            ->each(function (OrderItem $line) use (&$revenueByCurrency) {
-                $currency = $line->order->currencyCode();
-                $revenueByCurrency[$currency] = ($revenueByCurrency[$currency] ?? 0) + $line->netCents();
+        // Summed by the database, one row per currency: a seller with tens of thousands of delivered lines used to have
+        // every one of them loaded into PHP (and an IN list of every order id) just to add them up (1.4 s at 50k lines).
+        // Same arithmetic as OrderItem::netCents(): whole cents of the line total less whole cents of its promo share.
+        OrderItem::query()
+            ->join('orders', 'orders.id', '=', 'order_items.order_id')
+            ->where('order_items.seller_id', $seller->id)
+            ->where('order_items.status', OrderStatus::Delivered->value)
+            ->whereIn('orders.id', Order::query()->fulfillable()->select('orders.id'))
+            ->groupBy('orders.currency')
+            ->selectRaw('orders.currency as currency, SUM(CASE WHEN ROUND(order_items.total * 100) > ROUND(order_items.discount_amount * 100) THEN ROUND(order_items.total * 100) - ROUND(order_items.discount_amount * 100) ELSE 0 END) as net_cents')
+            ->get()
+            ->each(function ($row) use (&$revenueByCurrency) {
+                $currency = Shop::isCode($row->currency) ? $row->currency : Shop::currency();
+                $revenueByCurrency[$currency] = ($revenueByCurrency[$currency] ?? 0) + (int) round((float) $row->net_cents);
             });
 
         ksort($revenueByCurrency);

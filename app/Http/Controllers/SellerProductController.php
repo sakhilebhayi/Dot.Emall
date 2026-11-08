@@ -14,6 +14,16 @@ use Illuminate\View\View;
 
 class SellerProductController extends Controller
 {
+    /**
+     * A price a database column can hold with room to spare: the money columns are decimal(12,2), a line is price x up
+     * to 99, so anything above this made checkout (and, on PostgreSQL, the listing itself) fail with a 500. Two
+     * decimals at most: a third one used to be rounded away silently (0.001 became a free listing).
+     */
+    public const MAX_PRICE = 10000000;
+
+    /** Far above any real shelf, far below the 32-bit integer the stock column is on PostgreSQL. */
+    public const MAX_STOCK = 10000000;
+
     public function index(): View
     {
         $store = auth()->user()->store;
@@ -51,10 +61,10 @@ class SellerProductController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string|max:2000',
-            'price' => 'required|numeric|min:0',
-            'compare_price' => 'nullable|numeric|min:0',
-            'stock' => 'required|integer|min:0',
-            'sku' => 'nullable|string|unique:products,sku',
+            'price' => 'required|numeric|decimal:0,2|min:0|max:'.self::MAX_PRICE,
+            'compare_price' => 'nullable|numeric|decimal:0,2|min:0|max:'.self::MAX_PRICE,
+            'stock' => 'required|integer|min:0|max:'.self::MAX_STOCK,
+            'sku' => 'nullable|string|max:255|unique:products,sku',
             'category_id' => 'nullable|exists:store_categories,id',
             ...ProductImages::rules(),
         ]);
@@ -91,6 +101,10 @@ class SellerProductController extends Controller
         $categories = StoreCategory::orderBy('name')->get();
         $product->load('images');
 
+        // The form is pre-filled with today's stock. Remember that number, so update() can tell "the seller changed the
+        // stock" from "the seller left it alone while buyers bought some of it".
+        session([self::stockSeenKey($product) => (int) $product->stock]);
+
         return view('products.edit', compact('product', 'categories'));
     }
 
@@ -107,24 +121,57 @@ class SellerProductController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string|max:2000',
-            'price' => 'required|numeric|min:0',
-            'compare_price' => 'nullable|numeric|min:0',
-            'stock' => 'required|integer|min:0',
-            'sku' => ['nullable', 'string', 'unique:products,sku,'.$product->id],
+            'price' => 'required|numeric|decimal:0,2|min:0|max:'.self::MAX_PRICE,
+            'compare_price' => 'nullable|numeric|decimal:0,2|min:0|max:'.self::MAX_PRICE,
+            'stock' => 'required|integer|min:0|max:'.self::MAX_STOCK,
+            'sku' => ['nullable', 'string', 'max:255', 'unique:products,sku,'.$product->id],
             'category_id' => 'nullable|exists:store_categories,id',
         ]);
 
-        $product->update([
-            'name' => $validated['name'],
-            'description' => $validated['description'] ?? null,
-            'price' => $validated['price'],
-            'compare_price' => $validated['compare_price'] ?? null,
-            'stock' => $validated['stock'],
-            'sku' => $validated['sku'] ?? null,
-            'category_id' => $validated['category_id'] ?? null,
-        ]);
+        $adjusted = DB::transaction(function () use ($product, $validated) {
+            // The row lock serialises this with checkout, which decrements stock under the same lock.
+            $current = Product::query()->lockForUpdate()->findOrFail($product->id);
 
-        return redirect()->route('seller.products.index')->with('status', 'Listing updated.');
+            $stock = $this->stockToStore($current, (int) $validated['stock']);
+
+            $current->update([
+                'name' => $validated['name'],
+                'description' => $validated['description'] ?? null,
+                'price' => $validated['price'],
+                'compare_price' => $validated['compare_price'] ?? null,
+                'stock' => $stock,
+                'sku' => $validated['sku'] ?? null,
+                'category_id' => $validated['category_id'] ?? null,
+            ]);
+
+            return $stock !== (int) $validated['stock'] ? $stock : null;
+        });
+
+        return redirect()->route('seller.products.index')->with('status', $adjusted === null
+            ? 'Listing updated.'
+            : "Listing updated. Stock is {$adjusted}, not the number on the form, because units were sold while you were editing.");
+    }
+
+    /**
+     * The form carries an absolute stock number. Written as it is, it overwrites every sale made since the form was
+     * drawn: a seller who only changed the price would put sold units back on the shelf and the shop would oversell.
+     * So the change the seller made (what they typed minus what the form showed) is applied to the stock as it is now.
+     * Without a remembered number (an expired session) the typed number is used as given.
+     */
+    private function stockToStore(Product $current, int $typed): int
+    {
+        $seen = session()->pull(self::stockSeenKey($current));
+
+        if (! is_int($seen)) {
+            return $typed;
+        }
+
+        return max(0, (int) $current->stock + ($typed - $seen));
+    }
+
+    private static function stockSeenKey(Product $product): string
+    {
+        return 'stock_seen.'.$product->id;
     }
 
     public function toggleActive(Product $product): RedirectResponse

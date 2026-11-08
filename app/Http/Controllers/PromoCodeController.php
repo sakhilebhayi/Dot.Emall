@@ -54,8 +54,9 @@ class PromoCodeController extends Controller
                     : null,
             ],
             'discount_type' => ['required', Rule::in(['percent', 'fixed'])],
-            'discount_value' => ['required', 'numeric', 'min:0.01'],
-            'max_uses' => ['nullable', 'integer', 'min:1'],
+            // decimal(10,2) column; a third decimal used to be rounded away, a larger number was a 500 on PostgreSQL.
+            'discount_value' => ['required', 'numeric', 'decimal:0,2', 'min:0.01', 'max:'.SellerProductController::MAX_PRICE],
+            'max_uses' => ['nullable', 'integer', 'min:1', 'max:'.SellerProductController::MAX_STOCK],
             'expires_at' => ['nullable', 'date', 'after:now'],
         ]);
 
