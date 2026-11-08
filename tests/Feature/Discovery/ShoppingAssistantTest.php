@@ -103,6 +103,37 @@ class ShoppingAssistantTest extends TestCase
         $this->assertStringContainsString('only suggest products that exist', implode(' ', $answer->notes));
     }
 
+    public function test_a_request_matched_only_in_part_does_not_claim_the_products_fit(): void
+    {
+        $answer = $this->ask('a flying lenovo for my dog');
+
+        $this->assertGreaterThan(0, $answer->total);
+        $this->assertStringContainsString('No product matches everything you asked for', $answer->suggestion['headline']);
+        $this->assertStringNotContainsString('that fit', $answer->suggestion['headline']);
+    }
+
+    public function test_a_request_that_fits_in_full_still_says_so(): void
+    {
+        $this->assertStringContainsString('that fit', $this->ask('hp laptop')->suggestion['headline']);
+    }
+
+    public function test_an_everyday_word_like_tell_is_not_corrected_into_a_brand(): void
+    {
+        $this->listing($this->store('Dell Corner'), 'Dell Inspiron Laptop', 10999.0, ['category_id' => $this->p['lenovo']->category_id, 'stock' => 4], 'Dell');
+        $this->reindex();
+
+        $answer = $this->ask('tell me about a laptop');
+
+        $this->assertNotContains('brand', array_column($answer->understood, 'kind'), 'the word "tell" is filler, not Dell');
+    }
+
+    public function test_a_question_about_something_the_catalogue_does_not_record_says_so(): void
+    {
+        $answer = $this->ask('what is the warranty on the hp laptop');
+
+        $this->assertStringContainsString('holds no record of warranty', implode(' ', $answer->notes));
+    }
+
     public function test_out_of_stock_is_said_when_that_is_all_there_is(): void
     {
         $this->p['pricey']->update(['stock' => 0]);

@@ -338,7 +338,7 @@ abstract class AbstractSearch implements SearchEngine
     /**
      * @return array{0: string, 1: list<mixed>, 2: string|null} order-by SQL, bindings, a note about the order
      */
-    private function ordering(SearchRequest $f, array $slots, string $mode, string $normalised, bool $relaxed): array
+    private function ordering(SearchRequest $f, array $slots, string $mode, string $normalised, bool $relaxed, bool $wordsBecameFilters = false): array
     {
         $min = (int) config('discovery.search.rating_min_reviews', 3);
         $units = (int) config('discovery.search.best_seller_min_units', 3);
@@ -359,7 +359,9 @@ abstract class AbstractSearch implements SearchEngine
             ],
             default => $slots !== []
                 ? ['score DESC, p.id DESC', [], $relaxed ? 'Ranked by how many of your words each product matches.' : null]
-                : ['CASE WHEN p.stock > 0 THEN 1 ELSE 0 END DESC, p.created_at DESC, p.id DESC', [], 'No search words: in-stock products first, then newest.'],
+                : ['CASE WHEN p.stock > 0 THEN 1 ELSE 0 END DESC, p.created_at DESC, p.id DESC', [], $wordsBecameFilters
+                    ? 'Your words became the filters shown above, so there is nothing left to rank by: in-stock products first, then newest.'
+                    : 'No search words: in-stock products first, then newest.'],
         };
     }
 
@@ -374,7 +376,7 @@ abstract class AbstractSearch implements SearchEngine
         $normalised = $slots === [] ? '' : implode(' ', array_map(fn ($s) => $s[0], $slots));
 
         $total = $this->count($f, $slots, $mode);
-        [$orderSql, $orderBindings, $sortNote] = $this->ordering($f, $slots, $mode, $normalised, $relaxed);
+        [$orderSql, $orderBindings, $sortNote] = $this->ordering($f, $slots, $mode, $normalised, $relaxed, ($chosen['inferred'] ?? []) !== []);
 
         $page = min($f->page, max(1, (int) ceil($total / $f->perPage)));
         $select = $this->query($f, $slots, $mode)
