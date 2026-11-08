@@ -115,8 +115,8 @@ class LegacyOrderCurrencyBackfillTest extends TestCase
         $id = $this->legacyOrder($this->insertUser());
         $this->migrateRest();
 
-        // The newest migration is the foreign-key index one (2026_11_08), then the currency column.
-        Artisan::call('migrate:rollback', ['--step' => 2, '--force' => true]);
+        // Every migration from the currency column onward, however many newer ones other work has added since.
+        Artisan::call('migrate:rollback', ['--step' => $this->migrationsFrom('2026_10_21_100000'), '--force' => true]);
 
         $this->assertFalse(Schema::hasColumn('orders', 'currency'));
         $this->assertSame(1, DB::table('orders')->where('id', $id)->count());
@@ -130,5 +130,13 @@ class LegacyOrderCurrencyBackfillTest extends TestCase
         $this->migrateRest();
 
         $this->assertSame('ZAR', DB::table('orders')->find($id)->currency);
+    }
+
+    private function migrationsFrom(string $prefix): int
+    {
+        return count(array_filter(
+            array_map('basename', glob(database_path('migrations/*.php'))),
+            fn (string $file) => strcmp(substr($file, 0, strlen($prefix)), $prefix) >= 0,
+        ));
     }
 }
