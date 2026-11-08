@@ -1,8 +1,8 @@
 {{--
   ds.option-picker: choose one option (size, colour, pack). A radio group, so it works without script and with a keyboard.
-  Props: name (required), label (required, the legend, e.g. "Size"), options (required: list of ['value' =>, 'label' =>, 'disabled' => false, 'swatch' => '#rrggbb' (colour data from the catalogue, optional), 'note' => 'Sold out']),
+  Props: name (required), label (required, the legend, e.g. "Size"), options (required: list of ['value' =>, 'label' =>, 'disabled' => false, 'swatch' => '#rrggbb' (colour data from the catalogue, optional), 'note' => 'Sold out', 'soldout' => false]),
          selected=null, type='chips' | 'swatch', required=false.
-  Unavailable options stay in the list: dashed, crossed, disabled, and their accessible name says so ("Large, unavailable"). Swatches always carry a text name for screen readers.
+  Unavailable options stay in the list: dashed, crossed, disabled, and their accessible name says so ("Large, unavailable"). An option with `soldout` => true stays selectable (dashed, "sold out" in its accessible name) for a choice that exists but has no stock, so the shopper can still ask to be told when it is back. Swatches always carry a text name for screen readers.
 --}}
 @props(['name', 'label', 'options' => [], 'selected' => null, 'type' => 'chips', 'required' => false])
 @php($current = collect($options)->firstWhere('value', $selected))
@@ -11,11 +11,12 @@
     <div class="ds-options__list">
         @foreach ($options as $i => $o)
             @php($off = (bool) ($o['disabled'] ?? false))
-            <label class="ds-option {{ $type === 'swatch' ? 'ds-option--swatch' : '' }}">
+            @php($sold = ! $off && (bool) ($o['soldout'] ?? false))
+            <label class="ds-option {{ $type === 'swatch' ? 'ds-option--swatch' : '' }} {{ $sold ? 'is-soldout' : '' }}">
                 <input type="radio" name="{{ $name }}" value="{{ $o['value'] }}" @checked((string) $selected === (string) $o['value']) @disabled($off) @if ($required && $i === 0) required @endif>
                 <span class="ds-option__face">
                     @if ($type === 'swatch')<span class="ds-swatch" @if (! empty($o['swatch'])) style="--swatch: {{ $o['swatch'] }}" @endif></span>@else{{ $o['label'] }}@endif
-                    <span class="ds-visually-hidden">@if ($type === 'swatch'){{ $o['label'] }}@endif{{ $off ? ', '.($o['note'] ?? 'unavailable') : '' }}</span>
+                    <span class="ds-visually-hidden">@if ($type === 'swatch'){{ $o['label'] }}@endif{{ $off ? ', '.($o['note'] ?? 'unavailable') : ($sold ? ', sold out' : '') }}</span>
                 </span>
             </label>
         @endforeach

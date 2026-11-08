@@ -19,7 +19,7 @@ class RouteBlocksTest extends TestCase
 
     public function test_every_block_registered_its_routes(): void
     {
-        foreach (['guest.orders.access', 'guest.orders.payment.callback', 'search.suggest', 'assistant.ask', 'review-photos.show', 'search', 'account.home', 'seller.dashboard', 'sell.start', 'dev.login', 'dev.logout', 'dev.kit', 'products.index', 'products.show', 'dashboard'] as $name) {
+        foreach (['guest.orders.access', 'guest.orders.payment.callback', 'search.suggest', 'assistant.ask', 'review-photos.show', 'search', 'account.home', 'seller.dashboard', 'sell.start', 'dev.login', 'dev.logout', 'dev.kit', 'products.index', 'products.show', 'dashboard', 'stores.index', 'stores.show', 'stores.message', 'wishlist.index', 'wishlist.toggle', 'wishlist.shared', 'account.alerts', 'products.cart', 'reviews.vote', 'questions.store'] as $name) {
             $this->assertTrue(Route::has($name), "route {$name} is not registered");
         }
     }

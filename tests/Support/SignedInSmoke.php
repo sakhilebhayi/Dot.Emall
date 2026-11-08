@@ -43,6 +43,9 @@ final class SignedInSmoke
     /** @var array<string, mixed> */
     private array $world = [];
 
+    /** @var array<string, string> */
+    private array $storefront = [];
+
     /**
      * Create the data. Returns the people, keyed 'seller', 'buyer', 'newcomer', 'operator'.
      *
@@ -69,9 +72,20 @@ final class SignedInSmoke
         $guestOrder = app(CheckoutService::class)->placeAsGuest('smoke-guest@example.test', [['variant_id' => ProductVariant::query()->where('product_id', $live->id)->value('id'), 'quantity' => 1]], ['shipping_address' => '2 Smoke Street, Testville', 'shipping_name' => 'Smoke Guest'], (string) Str::uuid());
         $guestLink = (string) parse_url((string) app(GuestOrderAccess::class)->url($guestOrder), PHP_URL_PATH);
 
+        $this->seedStorefront($buyer, $live);
+
         $this->world = compact('store', 'live', 'pending', 'order', 'line', 'seller', 'buyer', 'newcomer', 'operator', 'category', 'guestLink');
 
         return compact('seller', 'buyer', 'newcomer', 'operator');
+    }
+
+    /** R-43 W4: one saved product on a shared wishlist, so the share page, the wishlist and the alerts page have something to open. */
+    private function seedStorefront(User $buyer, Product $live): void
+    {
+        $lists = app(\App\Services\Discovery\Wishlists::class);
+        $lists->add($buyer, $live);
+        $lists->enableSharing($lists->defaultFor($buyer));
+        $this->storefront = ['wishToken' => (string) $lists->defaultFor($buyer)->share_token];
     }
 
     /**
@@ -134,6 +148,22 @@ final class SignedInSmoke
             ['who' => 'operator', 'uri' => '/operator/products'],
             ['who' => 'operator', 'uri' => '/operator/payments'],
             ['who' => 'operator', 'uri' => "/orders/{$order}"],
+            // w4: store pages, the product page in its other shapes, wishlist and alerts
+            ['who' => 'guest', 'uri' => '/stores'],
+            ['who' => 'guest', 'uri' => '/stores?q=smoke&region=Gauteng&sort=rating'],
+            ['who' => 'guest', 'uri' => '/stores/'.$w['store']->slug],
+            ['who' => 'guest', 'uri' => '/stores/'.$w['store']->slug.'?q=kettle&sort=price_asc&in_stock=1'],
+            ['who' => 'guest', 'uri' => '/stores/no-such-store', 'expect' => 404],
+            ['who' => 'guest', 'uri' => "/products/{$live}?reviews_sort=newest&reviews_verified=1&reviews_photos=1"],
+            ['who' => 'guest', 'uri' => "/products/{$live}?src=search&opt[Size]=M"],
+            ['who' => 'guest', 'uri' => '/wishlist/shared/'.$this->storefront['wishToken']],
+            ['who' => 'guest', 'uri' => '/wishlist/shared/'.str_repeat('z', 40), 'expect' => 404],
+            ['who' => 'buyer', 'uri' => "/products/{$live}"],
+            ['who' => 'buyer', 'uri' => '/stores/'.$w['store']->slug],
+            ['who' => 'buyer', 'uri' => '/wishlist'],
+            ['who' => 'buyer', 'uri' => '/account/alerts'],
+            ['who' => 'seller', 'uri' => "/products/{$live}"],
+            ['who' => 'seller', 'uri' => '/stores/'.$w['store']->slug],
         ];
     }
 

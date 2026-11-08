@@ -247,3 +247,5 @@ document.addEventListener('submit', (e) => {
     wide.addEventListener?.('change', sync);
     document.addEventListener('livewire:navigated', sync);
 })();
+
+import "./product.js";
