@@ -4,16 +4,19 @@ namespace App\Services\Seller;
 
 use App\Enums\OrderStatus;
 use App\Enums\ReturnStatus;
+use App\Models\Order;
 use App\Models\OrderGroup;
+use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\ProductAnswer;
 use App\Models\ProductQuestion;
 use App\Models\ReturnRequest;
 use App\Models\Review;
-use App\Models\OrderItem;
 use App\Models\Store;
 use App\Models\User;
 use App\Services\Catalogue\Inventory;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -26,8 +29,8 @@ class SellerDesk
 
     /**
      * @return array{
-     *   toShip: int, awaitingPayment: int, returns: int, returnsDueDays: ?int, lowStock: int, lowStockSample: \Illuminate\Support\Collection,
-     *   questions: int, reviews: int, rejected: \Illuminate\Support\Collection, pendingListings: int, total: int
+     *   toShip: int, awaitingPayment: int, returns: int, returnsDueDays: ?int, lowStock: int, lowStockSample: Collection,
+     *   questions: int, reviews: int, rejected: Collection, pendingListings: int, total: int
      * }
      */
     public function needsYou(Store $store, User $seller): array
@@ -64,7 +67,7 @@ class SellerDesk
             'toShip' => $toShip,
             'awaitingPayment' => $awaitingPayment,
             'returns' => $returns,
-            'returnsDueDays' => $next ? max(0, (int) now()->startOfDay()->diffInDays(\Illuminate\Support\Carbon::parse($next)->startOfDay(), false)) : null,
+            'returnsDueDays' => $next ? max(0, (int) now()->startOfDay()->diffInDays(Carbon::parse($next)->startOfDay(), false)) : null,
             'lowStock' => $low->count(),
             'lowStockSample' => $low->take(3),
             'questions' => $questions,
@@ -79,9 +82,9 @@ class SellerDesk
      * The newest parcels of this store for the dashboard: the seller's own slice of each order and nothing else. The buyer is
      * named only while something of theirs is still to pack or send (the same rule as the orders page); no address is read.
      *
-     * @return \Illuminate\Support\Collection<int, array{group: OrderGroup, order: \App\Models\Order, status: OrderStatus, awaitingPayment: bool, lineCount: int, netCents: int, buyerName: ?string}>
+     * @return Collection<int, array{group: OrderGroup, order: Order, status: OrderStatus, awaitingPayment: bool, lineCount: int, netCents: int, buyerName: ?string}>
      */
-    public function recentParcels(Store $store, int $limit = 6): \Illuminate\Support\Collection
+    public function recentParcels(Store $store, int $limit = 6): Collection
     {
         return OrderGroup::query()->where('store_id', $store->id)
             ->with(['order', 'items'])
@@ -135,14 +138,14 @@ class SellerDesk
             ->orderByDesc('product_answers.id')->limit(200)
             ->get(['product_questions.id as qid', 'product_questions.created_at as asked', 'product_answers.created_at as answered'])
             ->groupBy('qid')
-            ->map(fn ($rows) => max(0, \Illuminate\Support\Carbon::parse($rows->first()->asked)->diffInMinutes(\Illuminate\Support\Carbon::parse($rows->min('answered')), false)) / 60)
+            ->map(fn ($rows) => max(0, Carbon::parse($rows->first()->asked)->diffInMinutes(Carbon::parse($rows->min('answered')), false)) / 60)
             ->values()->all();
 
         $r = DB::table('review_responses')->join('reviews', 'reviews.id', '=', 'review_responses.review_id')
             ->where('review_responses.store_id', $store->id)
             ->orderByDesc('review_responses.id')->limit(100)
             ->get(['reviews.created_at as asked', 'review_responses.created_at as answered'])
-            ->map(fn ($row) => max(0, \Illuminate\Support\Carbon::parse($row->asked)->diffInMinutes(\Illuminate\Support\Carbon::parse($row->answered), false)) / 60)->all();
+            ->map(fn ($row) => max(0, Carbon::parse($row->asked)->diffInMinutes(Carbon::parse($row->answered), false)) / 60)->all();
 
         return [
             'questions' => ['hours' => $this->median($q), 'sample' => count($q)],

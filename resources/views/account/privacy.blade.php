@@ -18,11 +18,13 @@
     </x-ds.panel>
 
     <x-ds.panel title="Delete your account" id="delete">
-        @if ($blocker)
-            <x-ds.alert tone="cau" title="You cannot delete your account yet">{{ $blocker }}</x-ds.alert>
+        @if ($blockers)
+            <x-ds.alert tone="cau" title="You cannot delete your account yet">
+                <ul class="co-list">@foreach ($blockers as $reason)<li>{{ $reason }}</li>@endforeach</ul>
+            </x-ds.alert>
             <x-ds.button variant="danger" disabled>Delete my account</x-ds.button>
         @else
-            <p>Deleting removes your account, your addresses, your wishlist and your past orders and returns from Dot.Emall, and signs you out everywhere. Download your data first. It cannot be undone, and it asks for your password on the profile page. Your InfoDot account is not affected: that is managed at InfoDot.</p>
+            <p>Deleting removes your name, e-mail, photo, addresses, wishlist, saved searches and alerts from your account, and signs you out everywhere. Your past orders, returns and payment records stay, with the delivery details you gave at the time, because the sellers and Emall need them to account for the money; your account on them becomes "Former customer", and so do your reviews. Nobody can ask for a return on those orders afterwards. Download your data first. It cannot be undone, and it asks for your password on the profile page. Your InfoDot account is not affected: that is managed at InfoDot.</p>
             <x-ds.button :href="route('profile.show').'#delete'" variant="danger" icon="trash">Go to account deletion</x-ds.button>
         @endif
     </x-ds.panel>

@@ -222,6 +222,15 @@ class EmallDemoSeeder extends Seeder
                 DB::table('payment_events')->whereIn('order_id', $orderIds)->delete();
                 DB::table('refunds')->whereIn('order_id', $orderIds)->delete();
                 DB::table('payments')->whereIn('order_id', $orderIds)->delete();
+                // Since D-98 the keys from money records to users RESTRICT: everything the demo people own goes first, then the people.
+                DB::table('return_requests')->where(fn ($q) => $q->whereIn('requester_id', $userIds)->orWhereIn('seller_id', $userIds)->orWhereIn('order_id', $orderIds))->delete();
+                DB::table('ledger_entries')->where(fn ($q) => $q->whereIn('seller_id', $userIds)->orWhereIn('order_id', $orderIds))->delete();
+                DB::table('seller_order_notes')->whereIn('user_id', $userIds)->delete();
+                DB::table('content_reports')->whereIn('reporter_id', $userIds)->delete();
+                DB::table('review_responses')->whereIn('user_id', $userIds)->delete();
+                DB::table('product_answers')->whereIn('user_id', $userIds)->delete();
+                DB::table('product_questions')->whereIn('user_id', $userIds)->delete();
+                DB::table('order_groups')->where(fn ($q) => $q->whereIn('seller_id', $userIds)->orWhereIn('order_id', $orderIds))->delete();
                 DB::table('order_items')->whereIn('order_id', $orderIds)->delete();
                 DB::table('order_items')->whereIn('store_id', $storeIds)->delete();
                 DB::table('orders')->whereIn('id', $orderIds)->delete();

@@ -13,6 +13,7 @@ use App\Services\Discovery\CountedOrders;
 use App\Services\Shipping\BusinessDays;
 use App\Support\Money;
 use App\Support\Shop;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -314,7 +315,7 @@ class SellerAnalytics
     /**
      * Counted order lines of this store placed in the window. Aliases: oi (order_items), o (orders).
      */
-    private function lines(Store $store, Carbon $from, Carbon $to): \Illuminate\Database\Query\Builder
+    private function lines(Store $store, Carbon $from, Carbon $to): Builder
     {
         return $this->counted->lines()->where('oi.store_id', $store->id)->where('o.currency', Shop::currency())->whereBetween('o.created_at', [$from, $to]);
     }

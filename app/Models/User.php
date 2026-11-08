@@ -18,6 +18,9 @@ class User extends Authenticatable
 {
     use HasApiTokens;
 
+    /** What an account that was closed (anonymised, D-98) is called wherever its orders, reviews and questions are shown. */
+    public const FORMER_NAME = 'Former customer';
+
     /** @use HasFactory<UserFactory> */
     use HasFactory;
 
@@ -98,6 +101,10 @@ class User extends Authenticatable
      */
     public function publicName(): string
     {
+        if ($this->name === self::FORMER_NAME) {
+            return self::FORMER_NAME;
+        }
+
         $parts = preg_split('/\s+/', trim((string) $this->name), -1, PREG_SPLIT_NO_EMPTY) ?: [];
 
         if (count($parts) === 0) {

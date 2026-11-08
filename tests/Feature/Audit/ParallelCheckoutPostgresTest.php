@@ -18,6 +18,7 @@ use App\Services\CheckoutService;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Tests\Concerns\PurgesCommittedUsers;
 use Tests\TestCase;
 
 /**
@@ -31,6 +32,8 @@ use Tests\TestCase;
  */
 class ParallelCheckoutPostgresTest extends TestCase
 {
+    use PurgesCommittedUsers;
+
     /** @var array<int, int> */
     private array $userIds = [];
 
@@ -59,9 +62,8 @@ class ParallelCheckoutPostgresTest extends TestCase
         if (DB::connection()->getDriverName() === 'pgsql' && Schema::hasTable('products')) {
             DB::table('payment_events')->whereIn('reference', $this->paymentReferences)->delete();
             DB::table('payments')->whereIn('reference', $this->paymentReferences)->delete();
-            DB::table('notifications')->whereIn('notifiable_id', $this->userIds)->delete();
-            // Stores, products, promo codes, orders, lines and carts all cascade from their owner.
-            DB::table('users')->whereIn('id', $this->userIds)->delete();
+            // Orders, stores and ledger entries RESTRICT on their user (D-98): the records go first, then the people.
+            $this->purgeCommittedUsers($this->userIds);
         }
 
         parent::tearDown();

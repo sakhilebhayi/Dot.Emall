@@ -24,7 +24,7 @@ class DataExport
     {
         return [
             'exported_at' => now()->toIso8601String(),
-            'about' => 'Everything Dot.Emall holds about you in your own account. Deleting the account deletes these records, so keep this file if you need them.',
+            'about' => 'Everything Dot.Emall holds about you in your own account. Closing the account removes your profile, addresses, wishlist, saved searches and alerts; your orders and payment records stay under the name \'Former customer\'. Keep this file if you need a copy.',
             'profile' => ['name' => $user->name, 'email' => $user->email, 'created_at' => optional($user->created_at)->toIso8601String(), 'signed_in_with_infodot_at' => optional($user->infodot_signed_in_at)->toIso8601String()],
             'addresses' => Address::query()->where('user_id', $user->id)->get()->map(fn (Address $a) => $a->snapshot() + ['label' => $a->label, 'default_shipping' => $a->is_default_shipping, 'default_billing' => $a->is_default_billing])->all(),
             'orders' => Order::query()->where('user_id', $user->id)->with(['items', 'groups', 'refunds'])->orderBy('id')->get()->map(fn (Order $o) => [

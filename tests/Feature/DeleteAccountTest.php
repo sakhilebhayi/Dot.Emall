@@ -25,7 +25,8 @@ class DeleteAccountTest extends TestCase
             ->set('password', 'password')
             ->call('deleteUser');
 
-        $this->assertNull($user->fresh());
+        // Anonymised, not deleted (D-98): the row stays so any order keeps its owner.
+        $this->assertSame('Former customer', $user->fresh()->name);
     }
 
     public function test_correct_password_must_be_provided_before_account_can_be_deleted(): void

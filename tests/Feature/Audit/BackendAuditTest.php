@@ -247,7 +247,9 @@ class BackendAuditTest extends TestCase
 
         app(DeleteUser::class)->delete($buyer);
 
-        $this->assertNull($buyer->fresh());
+        // D-98: the person is anonymised; the order they placed stays.
+        $this->assertSame('Former customer', $buyer->fresh()->name);
+        $this->assertSame(1, $order->fresh()->items()->count());
     }
 
     public function test_a_seller_with_a_paid_line_to_ship_cannot_delete_the_account(): void
@@ -274,7 +276,7 @@ class BackendAuditTest extends TestCase
 
         app(DeleteUser::class)->delete($seller);
 
-        $this->assertNull($seller->fresh());
+        $this->assertSame('Former customer', $seller->fresh()->name);
         Storage::disk('public')->assertMissing('product-images/'.$product->id.'/a.jpg');
         $this->assertSame(0, CartItem::withoutGlobalScopes()->count());
     }
