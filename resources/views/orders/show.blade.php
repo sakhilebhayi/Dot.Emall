@@ -205,6 +205,12 @@
                 <span>-{{ $order->amount($order->discount_amount) }}</span>
             </div>
             @endif
+            @if($order->deliveryCents() > 0)
+            <div style="display:flex;justify-content:space-between;font-size:0.8rem;color:var(--ink-2);margin-bottom:0.4rem;">
+                <span>Delivery</span>
+                <span>{{ $order->money($order->deliveryCents()) }}</span>
+            </div>
+            @endif
             <div style="display:flex;justify-content:space-between;font-family:var(--font-text);font-size:1rem;font-weight:800;color:var(--ink);padding-top:0.6rem;border-top:1px solid var(--line);">
                 <span>{{ $totalLabel }}</span>
                 <span>{{ $order->amount($order->total) }}</span>

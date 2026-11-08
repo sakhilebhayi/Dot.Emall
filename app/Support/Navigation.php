@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Services\Catalogue\CategoryTree;
 use Throwable;
 
 /**
@@ -85,29 +86,33 @@ final class Navigation
     }
 
     /**
-     * Top-level categories with their children for the mega menu and the phone drawer. Reads the existing categories table; returns [] when there is
-     * none (or the database is unreachable). Feature work may pass its own `categories` prop to <x-store-layout> instead.
+     * Top-level categories with their children for the mega menu and the phone drawer: the shared category tree, active
+     * categories only, and only those a shopper can buy from (a category with no listed product leads to an empty page, so it
+     * is not offered). Returns [] when there is none (or the database is unreachable). Feature work may pass its own `categories`
+     * prop to <x-store-layout> instead.
      *
      * @return list<array{name: string, href: string, children: list<array{name: string, href: string}>}>
      */
     public static function categories(): array
     {
         try {
-            if (! class_exists(\App\Models\StoreCategory::class)) {
-                return [];
-            }
-            $link = static function ($category): string {
-                $named = Shell::first(['categories.show'], ['category' => $category->slug ?? $category->id]);
+            $link = static function (array $category): string {
+                $named = Shell::first(['categories.show'], ['category' => $category['slug'] ?? $category['id']]);
 
-                return $named['url'] !== '#' ? $named['url'] : (Shell::routeExists('products.index') ? route('products.index', ['category' => $category->id]) : '#');
+                return $named['url'] !== '#' ? $named['url'] : (Shell::routeExists('products.index') ? route('products.index', ['category' => $category['id']]) : '#');
             };
 
-            return \App\Models\StoreCategory::query()->whereNull('parent_id')->with(['children' => fn ($q) => $q->orderBy('name')])->orderBy('name')->get()
-                ->map(fn ($c) => [
-                    'name' => $c->name,
-                    'href' => $link($c),
-                    'children' => $c->children->map(fn ($k) => ['name' => $k->name, 'href' => $link($k)])->all(),
-                ])->all();
+            return array_values(array_map(
+                fn (array $root) => [
+                    'name' => $root['name'],
+                    'href' => $link($root),
+                    'children' => array_values(array_map(
+                        fn (array $child) => ['name' => $child['name'], 'href' => $link($child)],
+                        array_filter($root['children'], fn (array $child) => $child['rollup_count'] > 0),
+                    )),
+                ],
+                array_filter(app(CategoryTree::class)->tree(), fn (array $root) => $root['rollup_count'] > 0),
+            ));
         } catch (Throwable) {
             return [];
         }

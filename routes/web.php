@@ -183,6 +183,8 @@ if (app()->environment('local', 'testing')) {
             ->when(ctype_digit($user), fn ($q) => $q->where('id', (int) $user), fn ($q) => $q->where('email', $user))
             ->firstOrFail();
 
+        // Switching person: drop the previous person's session data first, or Jetstream's session guard sees a different password hash and signs the new person out again.
+        $request->session()->flush();
         auth()->login($account);
         $request->session()->regenerate();
 

@@ -1,0 +1,64 @@
+<?php
+
+namespace Tests\Feature\Integration;
+
+use App\Models\Store;
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Route;
+use Tests\TestCase;
+
+/**
+ * The routes file carries four marked blocks from four workstreams (data-a, data-b, integration, dev). They must all be
+ * there, none may shadow another, and the integration aliases must be what they claim to be: the same page under the name
+ * the shell navigation asks for, with the same access rules as the page they alias.
+ */
+class RouteBlocksTest extends TestCase
+{
+    use RefreshDatabase;
+
+    public function test_every_block_registered_its_routes(): void
+    {
+        foreach (['guest.orders.access', 'guest.orders.payment.callback', 'search.suggest', 'assistant.ask', 'review-photos.show', 'search', 'account.home', 'seller.dashboard', 'sell.start', 'dev.login', 'dev.logout', 'dev.kit', 'products.index', 'products.show', 'dashboard'] as $name) {
+            $this->assertTrue(Route::has($name), "route {$name} is not registered");
+        }
+    }
+
+    public function test_the_literal_search_paths_are_not_swallowed_by_a_parameter_route(): void
+    {
+        $this->assertSame('/search', parse_url(route('search'), PHP_URL_PATH));
+        $this->assertSame('/search/suggest', parse_url(route('search.suggest'), PHP_URL_PATH));
+        $this->get('/search/suggest?q=ab')->assertOk()->assertJsonStructure(['products', 'categories']);
+        $this->get('/search?q=nothing-matches-this')->assertOk()->assertSee('Nothing matches that');
+    }
+
+    public function test_the_aliases_open_the_page_they_alias_for_the_people_it_is_for(): void
+    {
+        $this->get('/account')->assertRedirect('/login');
+        $this->get('/sell/dashboard')->assertRedirect('/login');
+        $this->get('/sell/start')->assertRedirect('/login');
+
+        $seller = User::factory()->withPersonalTeam()->create();
+        Store::factory()->create(['owner_id' => $seller->id, 'name' => 'Alias Stores']);
+
+        $this->actingAs($seller->fresh());
+        $dashboard = $this->get('/dashboard')->assertOk()->getContent();
+
+        $this->get('/sell/dashboard')->assertOk()->assertSee('Seller desk')->assertSee('Alias Stores');
+        $this->get('/account')->assertOk()->assertSee('Seller desk');
+        $this->assertStringContainsString('Seller desk', $dashboard);
+        $this->get('/sell/start')->assertRedirect($this->get('/sell')->headers->get('Location')); // a seller who already has a store is sent where /sell sends them
+
+        $this->actingAs(User::factory()->withPersonalTeam()->create())->get('/sell/start')->assertOk();
+    }
+
+    public function test_the_shell_navigation_resolves_the_aliases_instead_of_leaving_pending_links(): void
+    {
+        $buyer = User::factory()->withPersonalTeam()->create();
+        $html = $this->actingAs($buyer)->get('/dashboard')->assertOk()->getContent();
+
+        $this->assertStringNotContainsString('data-pending-route="account.home"', $html);
+        $this->assertStringNotContainsString('data-pending-route="search"', $html);
+        $this->assertStringContainsString(route('account.home'), $html);
+    }
+}

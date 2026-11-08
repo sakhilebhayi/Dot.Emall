@@ -237,3 +237,13 @@ document.addEventListener('submit', (e) => {
     const f = e.target;
     if (f instanceof HTMLFormElement && f.dataset.confirm && !window.confirm(f.dataset.confirm)) { e.preventDefault(); e.stopImmediatePropagation(); }
 }, true);
+
+/* Listing filters (products/index): a <details> that is a toggle on a phone and the always-visible filter panel from 64rem, where its
+   summary is hidden by CSS. A closed <details> hides its content, so on a wide screen it must be open whatever the server drew. */
+(() => {
+    const wide = window.matchMedia('(min-width: 64rem)');
+    const sync = () => { if (wide.matches) $$('.ds-shop__filters-toggle').forEach((d) => { d.open = true; }); };
+    sync();
+    wide.addEventListener?.('change', sync);
+    document.addEventListener('livewire:navigated', sync);
+})();

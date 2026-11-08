@@ -49,6 +49,8 @@
 .ds-header__link:hover { background: var(--sunken); color: var(--ink); }
 .ds-header__link .ds-label-text { display: none; }
 @media (min-width: 64rem) { .ds-header__link .ds-label-text { display: inline; } .ds-header__link { padding: 0 var(--s-3); } }
+/* On a phone the account button is its icon (the name stays for screen readers): a first name beside the bell and the cart pushes the logo underneath them. */
+@media (max-width: 63.99rem) { .ds-header__actions .ds-dropdown > .ds-header__link > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; } }
 .ds-cart-link { position: relative; }
 .ds-cart-link .ds-count { position: absolute; inset-block-start: 0.15rem; inset-inline-start: 1.35rem; animation: ds-stamp var(--t-base) var(--ease) both; }
 @media (min-width: 64rem) { .ds-cart-link .ds-count { position: static; animation: none; } }

@@ -37,6 +37,7 @@ class IndexesPostgresTest extends TestCase
             'price history of a variant' => ['product_price_history', 'select * from product_price_history where variant_id = ? order by changed_at, id', [1]],
             'category subtree by path prefix' => ['store_categories', "select id from store_categories where path like '/7/%'", []],
             'children of a category in order' => ['store_categories', 'select * from store_categories where parent_id = ? order by sort_order', [1]],
+            'newest listed products (the storefront listing)' => ['products', "select * from products where status = 'approved' and is_active = true order by created_at desc limit 12", []],
             'listed products of a category' => ['products', "select id from products where category_id = ? and status = 'approved' and is_active = true", [1]],
             'facet counts per value' => ['product_attributes', "select value, count(*) from product_attributes where key = 'ram' group by value", []],
             'facet numeric range' => ['product_attributes', "select product_id from product_attributes where key = 'ram' and value_number between 8 and 16", []],

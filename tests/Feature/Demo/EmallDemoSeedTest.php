@@ -165,6 +165,10 @@ class EmallDemoSeedTest extends TestCase
         $otherStore = Store::factory()->create(['owner_id' => $other->id]);
         $otherProduct = Product::factory()->create(['store_id' => $otherStore->id, 'category_id' => null]);
 
+        $baseline = collect(['orders', 'order_items', 'order_groups', 'shipments', 'shipment_events', 'return_requests', 'ledger_entries', 'payments', 'wishlist_items', 'saved_searches', 'product_alerts',
+            'product_questions', 'product_answers', 'reviews', 'addresses', 'shipping_methods', 'collections', 'product_attributes', 'notifications', 'search_queries', 'product_views', 'commerce_events', 'promo_codes'])
+            ->mapWithKeys(fn (string $table) => [$table => DB::table($table)->count()])->all();
+
         $this->artisan('emall:demo-seed')->assertExitCode(0);
         $counts = $this->counts();
 
@@ -177,9 +181,9 @@ class EmallDemoSeedTest extends TestCase
 
         (new EmallDemoSeeder)->purge();
 
-        foreach (['orders', 'order_items', 'order_groups', 'shipments', 'shipment_events', 'return_requests', 'ledger_entries', 'payments', 'wishlist_items', 'saved_searches', 'product_alerts',
-            'product_questions', 'product_answers', 'reviews', 'addresses', 'shipping_methods', 'collections', 'product_attributes', 'notifications', 'search_queries', 'product_views', 'commerce_events', 'promo_codes'] as $table) {
-            $this->assertSame(0, DB::table($table)->count(), "{$table} still has rows after purge");
+        // Compared with what was there before the seeder ran: on PostgreSQL the parallel audit tests commit rows of their own.
+        foreach ($baseline as $table => $before) {
+            $this->assertSame($before, DB::table($table)->count(), "{$table} has rows the seeder made after purge");
         }
 
         $this->assertSame(1, DB::table('product_variants')->count(), 'only the other shop\'s product keeps its variant');
