@@ -46,10 +46,19 @@ final class Navigation
     public static function operator(): array
     {
         return [
-            ['label' => 'Moderation', 'route' => 'operator.products.index', 'icon' => 'flag', 'match' => ['operator.products.*', 'operator.moderation*']],
+            ['label' => 'Needs a person', 'route' => 'operator.home', 'icon' => 'home', 'match' => ['operator.home']],
+            ['label' => 'Listings', 'route' => 'operator.products.index', 'icon' => 'box', 'match' => ['operator.products.*', 'operator.flags.*']],
+            ['label' => 'Stores', 'route' => 'operator.stores.index', 'icon' => 'store', 'match' => ['operator.stores.*']],
+            ['label' => 'Reports', 'route' => 'operator.reports', 'icon' => 'flag', 'match' => ['operator.reports*']],
+            ['label' => 'Reviews and Q&A', 'route' => 'operator.moderation.index', 'icon' => 'message', 'match' => ['operator.moderation.*']],
+            ['label' => 'Returns', 'route' => 'operator.returns.index', 'icon' => 'return', 'match' => ['operator.returns.*']],
             ['label' => 'Payments', 'route' => 'operator.payments.index', 'icon' => 'card', 'match' => ['operator.payments.*', 'operator.refunds.*']],
-            ['label' => 'Reports', 'route' => 'operator.reports', 'icon' => 'message', 'match' => ['operator.reports*']],
+            ['label' => 'Ledger', 'route' => 'operator.ledger.index', 'icon' => 'receipt', 'match' => ['operator.ledger.*']],
             ['label' => 'Metrics', 'route' => 'operator.metrics', 'icon' => 'chart', 'match' => ['operator.metrics*']],
+            ['label' => 'Merchandising', 'route' => 'operator.merch.index', 'icon' => 'tag', 'match' => ['operator.merch.*', 'operator.collections.*', 'operator.search.*', 'operator.catalogue.*']],
+            ['label' => 'People', 'route' => 'operator.people.index', 'icon' => 'user', 'match' => ['operator.people.*', 'operator.team*']],
+            ['label' => 'Platform health', 'route' => 'operator.health', 'icon' => 'shield-check', 'match' => ['operator.health']],
+            ['label' => 'Audit trail', 'route' => 'operator.audit', 'icon' => 'list', 'match' => ['operator.audit']],
         ];
     }
 

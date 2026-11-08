@@ -7,6 +7,7 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Middleware\SubstituteBindings;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -16,6 +17,8 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias(['operator' => EnsurePlatformOperator::class]);
+        // Decide who may enter before a route parameter is resolved, so a non-operator gets the same refusal for an id that exists and one that does not.
+        $middleware->prependToPriorityList(before: SubstituteBindings::class, prepend: EnsurePlatformOperator::class);
 
         // Baseline browser protections (enforced headers plus a report-only CSP) on every response.
         $middleware->append(SecurityHeaders::class);

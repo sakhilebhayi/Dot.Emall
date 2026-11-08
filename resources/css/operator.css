@@ -1,0 +1,165 @@
+/*
+ * The operator desk (R-43 W7). Operate mode on the Shelf Edge system: tokens and the ds components first, this file only for what an
+ * operator's queues need that the kit does not have (a ranked wait list, filter chips, a decision block, a detail layout, small
+ * charts). Everything uses the tokens from tokens.css; no literal colour, no inline style. Classes are prefixed op-.
+ */
+
+/* ---- Needs a person: a ranked list, not a grid of tiles. The oldest wait carries the weight. ------------------------------------ */
+.op-wait { list-style: none; margin: 0; padding: 0; border-top: 2px solid var(--ink); }
+.op-wait__row { display: grid; grid-template-columns: minmax(3.5rem, auto) minmax(0, 1fr); grid-template-areas: "n body" "n age"; gap: var(--s-1) var(--s-4); padding-block: var(--s-4); border-bottom: 1px solid var(--line); align-items: baseline; }
+.op-wait__n { grid-area: n; font-size: var(--text-xl); font-weight: 750; line-height: 1; font-variant-numeric: tabular-nums lining-nums; text-align: end; color: var(--ink); }
+.op-wait__row:first-child .op-wait__n { font-size: var(--text-2xl); }
+.op-wait__body { grid-area: body; min-width: 0; display: grid; gap: var(--s-1); }
+.op-wait__body a { font-weight: 700; color: var(--ink); text-decoration: none; display: inline-flex; align-items: center; gap: var(--s-2); min-height: var(--tap); }
+.op-wait__body a:hover { color: var(--brand); text-decoration: underline; }
+.op-wait__note { color: var(--ink-2); font-size: var(--text-sm); }
+.op-wait__age { grid-area: age; color: var(--ink-3); font-size: var(--text-sm); }
+.op-wait__age strong { color: var(--ink); font-weight: 650; }
+@media (min-width: 48rem) {
+    .op-wait__row { grid-template-columns: 5rem minmax(0, 1fr) minmax(9rem, auto); grid-template-areas: "n body age"; align-items: center; }
+    .op-wait__age { text-align: end; }
+}
+.op-clear { display: flex; flex-wrap: wrap; gap: var(--s-2) var(--s-5); list-style: none; margin: 0; padding: 0; color: var(--ink-2); font-size: var(--text-sm); }
+.op-clear li { display: inline-flex; align-items: center; gap: var(--s-2); min-height: var(--tap); }
+.op-clear .ds-icon { color: var(--pos); }
+
+/* ---- Page structure: a main column and a side column of facts, divided by a hairline, never floating cards. -------------------- */
+.op-split { display: grid; gap: var(--s-6); align-items: start; }
+@media (min-width: 64rem) { .op-split { grid-template-columns: minmax(0, 1fr) 20rem; gap: var(--s-7); } .op-split--wide-aside { grid-template-columns: minmax(0, 1fr) 24rem; } }
+.op-side { display: grid; gap: var(--s-5); align-content: start; }
+@media (min-width: 64rem) { .op-side { border-inline-start: 1px solid var(--line); padding-inline-start: var(--s-5); } }
+.op-block { display: grid; gap: var(--s-3); }
+.op-block > h2, .op-block > h3 { font-size: var(--text-md); font-weight: 700; }
+.op-block + .op-block { padding-block-start: var(--s-5); border-top: 1px solid var(--line); }
+.op-muted { color: var(--ink-3); font-size: var(--text-sm); }
+.op-lead { color: var(--ink-2); max-width: var(--measure); }
+.op-prose { max-width: var(--measure); overflow-wrap: anywhere; white-space: pre-line; }
+.op-quote { margin: 0; padding: var(--s-3) var(--s-4); background: var(--sunken); border-radius: var(--r-control); color: var(--ink); overflow-wrap: anywhere; white-space: pre-line; }
+.op-quote small { display: block; color: var(--ink-3); margin-block-start: var(--s-1); }
+.op-row-link { color: var(--ink); font-weight: 650; text-decoration: none; }
+.op-row-link:hover { color: var(--brand); text-decoration: underline; }
+.op-thumb { width: 3.5rem; height: 3.5rem; object-fit: cover; border-radius: var(--r-photo); background: var(--photo-ground); display: block; }
+.op-thumbs { display: flex; flex-wrap: wrap; gap: var(--s-2); }
+.op-thumbs img { width: 6rem; height: 6rem; object-fit: cover; border-radius: var(--r-photo); background: var(--photo-ground); }
+.op-code { font-family: var(--font-code); font-size: var(--text-xs); overflow-wrap: anywhere; }
+.op-num { font-variant-numeric: lining-nums; }
+/* The shell sets tabular figures on every table, which also widens the punctuation of running text in a cell. Prose in an operator table stays proportional; figures (.is-num) stay tabular. */
+.ds-ctx-operator main table { font-variant-numeric: lining-nums; }
+.ds-ctx-operator main table .is-num, .ds-ctx-operator main table .op-code { font-variant-numeric: tabular-nums lining-nums; }
+/* The section heading names a table; its caption stays for assistive technology only. */
+.op-block .ds-table caption { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.op-block[hidden], [data-when-type][hidden] { display: none; }
+.op-block > details > summary { justify-self: start; }
+
+/* ---- Filters: chips that are links (the page is a real GET, so a filter is shareable), plus one search field. -------------------- */
+.op-filters { display: flex; flex-wrap: wrap; align-items: end; gap: var(--s-3) var(--s-4); padding-block: var(--s-3) var(--s-4); }
+.op-filters .ds-field { min-width: 11rem; flex: 1 1 11rem; max-width: 20rem; }
+.op-chips { display: flex; flex-wrap: wrap; gap: var(--s-2); list-style: none; margin: 0; padding: 0; }
+.op-chips a { display: inline-flex; align-items: center; gap: var(--s-2); min-height: var(--tap); padding-inline: var(--s-4); border: 1px solid var(--line-strong); border-radius: var(--r-pill); color: var(--ink); text-decoration: none; font-size: var(--text-sm); font-weight: 600; background: var(--surface); transition: background var(--t-quick) var(--ease), border-color var(--t-quick) var(--ease); }
+.op-chips a:hover { background: var(--sunken); }
+.op-chips a[aria-current="page"], .op-chips a[aria-current="true"] { background: var(--ink); color: var(--ground); border-color: var(--ink); }
+.op-chips .op-chips__n { font-variant-numeric: tabular-nums lining-nums; opacity: 0.85; font-weight: 500; }
+
+/* ---- Decision block: a button that opens a reason field. The reason is the point; it is never optional where another party is affected. */
+.op-decisions { display: flex; flex-wrap: wrap; gap: var(--s-2); align-items: start; }
+.op-decide { flex: 1 1 100%; }
+.op-decide > summary { list-style: none; cursor: pointer; width: max-content; max-width: 100%; }
+.op-decide > summary::-webkit-details-marker { display: none; }
+.op-decide[open] > summary { margin-block-end: var(--s-3); }
+.op-decide__form { display: grid; gap: var(--s-3); max-width: 38rem; padding: var(--s-4); background: var(--sunken); border-radius: var(--r-control); }
+.op-decide__form .ds-field__hint { margin: 0; }
+.op-decide__actions { display: flex; flex-wrap: wrap; gap: var(--s-2); }
+.op-inline { display: flex; flex-wrap: wrap; gap: var(--s-2); align-items: start; }
+.op-inline form { display: contents; }
+@media (min-width: 40rem) { .op-decisions .op-decide { flex: 0 1 auto; } .op-decisions .op-decide[open] { flex: 1 1 100%; } }
+
+/* ---- Items in a queue that read as a row on a phone: used where a table would hide columns. --------------------------------------- */
+.op-items { list-style: none; margin: 0; padding: 0; border-top: 2px solid var(--ink); }
+.op-item { display: grid; gap: var(--s-3); padding-block: var(--s-4); border-bottom: 1px solid var(--line); }
+.op-item__head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--s-1) var(--s-4); }
+.op-item__head strong { font-weight: 700; }
+.op-item__meta { display: flex; flex-wrap: wrap; gap: var(--s-1) var(--s-4); color: var(--ink-3); font-size: var(--text-sm); }
+.op-item__body { max-width: var(--measure); overflow-wrap: anywhere; white-space: pre-line; }
+.op-listing { display: grid; grid-template-columns: 4.5rem minmax(0, 1fr); gap: var(--s-3) var(--s-4); align-items: start; }
+.op-listing .op-thumb { width: 4.5rem; height: 4.5rem; }
+@media (min-width: 48rem) { .op-listing { grid-template-columns: 4.5rem minmax(0, 1fr) auto; } }
+
+/* ---- Evidence and the trust ladder (the seller's data; claimed numbers are labelled claimed). ---------------------------------------- */
+.op-ladder { list-style: none; margin: 0; padding: 0; display: grid; }
+.op-ladder li { display: grid; grid-template-columns: 1.5rem minmax(0, 1fr); gap: var(--s-1) var(--s-3); padding-block: var(--s-2); border-bottom: 1px solid var(--line); font-size: var(--text-sm); }
+.op-ladder li > .ds-icon { margin-block-start: 2px; }
+.op-ladder [data-state="yes"] > .ds-icon { color: var(--pos); }
+.op-ladder [data-state="claimed"] > .ds-icon { color: var(--cau); }
+.op-ladder [data-state="no"] > .ds-icon { color: var(--ink-3); }
+.op-ladder small { display: block; color: var(--ink-3); }
+.op-rule { display: grid; gap: var(--s-2); }
+.op-rule__name { font-weight: 700; }
+
+/* ---- Health ----------------------------------------------------------------------------------------------------------------------- */
+.op-state { display: inline-flex; }
+
+/* ---- Small honest charts (dataviz): one series in the brand colour, zero baseline, thin bars, a table view beside them. --------------- */
+.op-chart { display: block; width: 100%; height: auto; max-height: 14rem; overflow: visible; }
+.op-chart__bar { fill: var(--brand); }
+.op-chart__base { stroke: var(--ink); stroke-width: 1; }
+.op-chart__grid { stroke: var(--line); stroke-width: 1; }
+.op-chart__text { fill: var(--ink-3); font-size: 13px; font-family: var(--font-text); font-variant-numeric: tabular-nums lining-nums; }
+.op-chart__hit:hover + .op-chart__bar, .op-chart__hit:focus + .op-chart__bar { fill: var(--brand-hover); }
+.op-chart-figure { margin: 0; display: grid; gap: var(--s-2); }
+.op-chart-figure figcaption { font-weight: 700; }
+.op-chart-figure details summary { cursor: pointer; color: var(--brand); font-size: var(--text-sm); min-height: var(--tap); display: flex; align-items: center; }
+
+/* ---- Metric rows: the label, then the figure with the evidence behind it, then the definition in words. ------------------------------- */
+.op-metrics { list-style: none; margin: 0; padding: 0; border-top: 2px solid var(--ink); }
+.op-metric { display: grid; gap: var(--s-1) var(--s-5); padding-block: var(--s-4); border-bottom: 1px solid var(--line); grid-template-columns: minmax(0, 1fr); }
+.op-metric__label { font-weight: 700; }
+.op-metric__main { display: grid; gap: var(--s-1); min-width: 0; }
+.op-metric__main p { margin: 0; }
+.op-metric__figure { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--s-1) var(--s-3); }
+.op-metric__value { font-size: var(--text-xl); font-weight: 750; line-height: 1.1; font-variant-numeric: lining-nums; }
+.op-metric__value[data-empty] { font-size: var(--text-md); font-weight: 600; color: var(--ink-3); }
+.op-metric__basis { color: var(--ink-3); font-size: var(--text-sm); }
+.op-metric__def { color: var(--ink-2); font-size: var(--text-sm); max-width: var(--measure); }
+@media (min-width: 48rem) { .op-metric { grid-template-columns: 11rem minmax(0, 1fr); align-items: baseline; } }
+
+/* ---- Charts: two small honest charts side by side above the figures. ---------------------------------------------------------------- */
+.op-charts { display: grid; gap: var(--s-5) var(--s-6); grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 48rem) { .op-charts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.op-charts > .op-block, .op-charts .op-chart-figure + .op-chart-figure { border-top: 0; padding-block-start: 0; }
+
+/* ---- Collection rule builder and live preview ------------------------------------------------------------------------------------- */
+.op-form-grid { display: grid; gap: var(--s-4); grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 48rem) { .op-form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .op-form-grid .op-span { grid-column: 1 / -1; } }
+.op-preview { min-height: 6rem; display: grid; gap: var(--s-2); align-content: start; }
+.op-preview ol { margin: 0; padding-inline-start: var(--s-5); display: grid; gap: var(--s-1); }
+.op-preview[aria-busy="true"] { opacity: 0.6; }
+.op-found { list-style: none; margin: 0; padding: 0; display: grid; }
+.op-found li { display: flex; justify-content: space-between; gap: var(--s-3); align-items: center; padding-block: var(--s-2); border-bottom: 1px solid var(--line); font-size: var(--text-sm); }
+.op-picked { display: flex; flex-wrap: wrap; gap: var(--s-2); list-style: none; margin: 0; padding: 0; }
+
+/* ---- Category tree ---------------------------------------------------------------------------------------------------------------- */
+.op-tree { list-style: none; margin: 0; padding: 0; }
+.op-tree li a { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); min-height: var(--tap); padding-inline: var(--s-2); color: var(--ink); text-decoration: none; border-radius: var(--r-control); }
+.op-tree li a:hover { background: var(--sunken); }
+.op-tree li a[aria-current="page"] { background: var(--brand-soft); font-weight: 700; }
+.op-tree li[data-hidden] a { color: var(--ink-3); }
+.op-tree .op-tree__n { color: var(--ink-3); font-size: var(--text-sm); font-variant-numeric: tabular-nums lining-nums; }
+
+/* ---- Hub ------------------------------------------------------------------------------------------------------------------------- */
+.op-hub { list-style: none; margin: 0; padding: 0; border-top: 2px solid var(--ink); }
+.op-hub li a { display: grid; gap: var(--s-1); padding-block: var(--s-4); border-bottom: 1px solid var(--line); color: var(--ink); text-decoration: none; }
+.op-hub li a:hover strong { color: var(--brand); text-decoration: underline; }
+.op-hub li a span { color: var(--ink-2); font-size: var(--text-sm); max-width: var(--measure); }
+
+.op-tree li[data-depth="1"] { padding-inline-start: var(--s-4); }
+.op-tree li[data-depth="2"] { padding-inline-start: var(--s-6); }
+.op-tree li[data-depth="3"] { padding-inline-start: var(--s-7); }
+.op-tree li[data-depth="4"] { padding-inline-start: var(--s-8); }
+
+/* Synonym chips: the word and the button that removes it, drawn as one pill. */
+.op-chips li > .op-inline { gap: 0; border: 1px solid var(--line-strong); border-radius: var(--r-pill); background: var(--surface); padding-inline-start: var(--s-4); align-items: center; }
+.op-chips__word { font-size: var(--text-sm); font-weight: 600; }
+
+/* Consecutive chip rows (a view switch, then a status filter) read as two groups, not one wrapped row. */
+nav:has(> .op-chips) + nav:has(> .op-chips), nav:has(> .op-chips) + form, nav:has(> .op-chips) + p { margin-block-start: var(--s-3); }
+.op-charts { margin-block-start: var(--s-5); }

@@ -3,16 +3,18 @@
 namespace App\Services\Community;
 
 use App\Models\ContentReport;
+use App\Models\Product;
 use App\Models\ProductAnswer;
 use App\Models\ProductQuestion;
 use App\Models\Review;
+use App\Models\Store;
 use App\Models\User;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
- * "Report" on a review, question or answer. A report goes to the operator queue; it never hides anything by itself
+ * "Report" on a review, question, answer, listing (`product`) or store. A report goes to the operator queue; it never hides anything by itself
  * (a pile of reports must not be a way to silence a seller). One report per person per item; not on your own words.
  */
 class ContentReports
@@ -58,6 +60,9 @@ class ContentReports
             'review' => Review::query()->published()->whereKey($id)->value('user_id'),
             'question' => ProductQuestion::query()->published()->whereKey($id)->value('user_id'),
             'answer' => ProductAnswer::query()->published()->whereKey($id)->value('user_id'),
+            // A listing or a store is reported against its owner (the seller), so a seller cannot report their own.
+            'product' => Product::query()->browsable()->whereKey($id)->with('store:id,owner_id')->first()?->store?->owner_id,
+            'store' => Store::query()->where('is_active', true)->whereKey($id)->value('owner_id'),
             default => null,
         };
     }
