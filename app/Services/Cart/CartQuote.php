@@ -120,6 +120,12 @@ class CartQuote
 
         foreach ($candidates as $promo) {
             $eligible = (int) ($itemsByStore[$promo->store_id] ?? 0);
+
+            // The seller's conditions (minimum spend, a cap per buyer). A guest's e-mail is not known yet; checkout enforces it.
+            if ($promo->refusalFor($eligible, auth()->id()) !== null) {
+                continue;
+            }
+
             $discount = Money::discountCents($promo->discount_type, $promo->discount_value, $eligible);
 
             if ($eligible > 0 && $discount > $bestDiscount) {

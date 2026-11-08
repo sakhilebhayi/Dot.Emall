@@ -128,6 +128,23 @@ class ProductImages
         }
     }
 
+    /**
+     * One picture for a store (its logo or banner): the same checks and re-encoding as a listing photo, written to the public
+     * disk under "store-media/{store id}/" with a random name. Returns the stored path; the caller removes the one it replaces.
+     *
+     * @throws ValidationException
+     */
+    public function storeMedia(UploadedFile $file, int $storeId, string $field): string
+    {
+        [$binary, $extension] = $this->prepare($file, 0);
+
+        // prepare() reports against "images.0"; the form field is "logo" or "banner".
+        $path = "store-media/{$storeId}/{$field}-".Str::random(24).".{$extension}";
+        Storage::disk('public')->put($path, $binary);
+
+        return $path;
+    }
+
     public function remove(ProductImage $image): void
     {
         DB::transaction(function () use ($image) {
