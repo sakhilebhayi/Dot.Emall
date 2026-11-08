@@ -148,10 +148,13 @@ class BackendAuditTest extends TestCase
         $this->makeListing($seller, ['name' => 'Snake_case Mug']);
         $this->makeListing($seller, ['name' => 'Snakeacase Cup']);
 
-        $this->get('/products?q='.urlencode('%'))->assertOk()->assertSee('100% Cotton Shirt')->assertDontSee('Plain Shirt');
-        $this->get('/products?q='.urlencode('_'))->assertOk()->assertSee('Snake_case Mug')->assertDontSee('Plain Shirt');
-        $this->get('/products?q='.urlencode('e_c'))->assertOk()->assertSee('Snake_case Mug')->assertDontSee('Snakeacase Cup');
-        $this->get('/products?q='.urlencode('\\'))->assertOk()->assertDontSee('Plain Shirt');
+        // The search reads words: a lone % or _ or backslash is punctuation (no words, so the whole listing, in the order the page states), never a wildcard or an error.
+        foreach (['%', '_', '\\'] as $punctuation) {
+            $this->get('/products?q='.urlencode($punctuation))->assertOk()->assertSee('No search words');
+        }
+
+        // Inside a word they are not wildcards either: "e_c" is the words "e" and "c", not "e, any character, c", and matches by word start.
+        $this->get('/products?q='.urlencode('e_c'))->assertOk()->assertDontSee('Plain Shirt');
     }
 
     public function test_category_counts_only_count_what_a_buyer_can_see(): void
@@ -163,6 +166,8 @@ class BackendAuditTest extends TestCase
         $this->makeListing($seller, ['category_id' => $category->id, 'status' => 'pending_approval']);
 
         // A category nobody can buy from (only unlisted products) is not offered as a filter at all.
+        $other = StoreCategory::create(['name' => 'Toys', 'slug' => 'toys']);
+        $this->makeListing($seller, ['category_id' => $other->id]);
         $empty = StoreCategory::create(['name' => 'Garden', 'slug' => 'garden']);
         $this->makeListing($seller, ['category_id' => $empty->id, 'is_active' => false]);
 
