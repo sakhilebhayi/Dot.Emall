@@ -70,7 +70,7 @@
 @media (max-width: 63.99rem) { .ds-header__actions .ds-dropdown > .ds-header__link > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; } }
 .ds-cart-link { position: relative; }
 /* The count is drawn in place on first paint (no fade: a half-transparent "3" read as a glitch, D-181). Phones pin it to the top right of the icon, inside its own 44px box. */
-.ds-header__actions .ds-count { position: absolute; z-index: 1; inset-block-start: 0.15rem; inset-inline-end: 0; min-width: 1.2rem; height: 1.2rem; font-size: 0.6875rem; box-shadow: 0 0 0 2px var(--ground); }
+.ds-icon-btn > .ds-count, .ds-header__actions .ds-count { position: absolute; z-index: 1; inset-block-start: 0.15rem; inset-inline-end: 0; min-width: 1.2rem; height: 1.2rem; font-size: 0.6875rem; box-shadow: 0 0 0 2px var(--ground); }
 .ds-header__actions .ds-cart-link .ds-count { inset-inline-end: -0.1rem; }
 @media (min-width: 64rem) { .ds-header__actions .ds-cart-link .ds-count { position: static; box-shadow: none; min-width: 1.35rem; height: 1.35rem; font-size: 0.75rem; } }
 @keyframes ds-stamp { from { transform: scale(1.5); opacity: 0; } 60% { transform: scale(0.94); opacity: 1; } to { transform: none; } }
