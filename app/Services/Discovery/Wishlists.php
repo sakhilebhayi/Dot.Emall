@@ -81,6 +81,14 @@ class Wishlists
             ->where('variant_key', $variantId ?? 0)->delete() > 0;
     }
 
+    /** Takes the product off the person's lists whatever variant was saved. */
+    public function removeProduct(User $user, Product|int $product): bool
+    {
+        $lists = Wishlist::query()->where('user_id', $user->id)->pluck('id');
+
+        return WishlistItem::query()->whereIn('wishlist_id', $lists)->where('product_id', $product instanceof Product ? $product->id : $product)->delete() > 0;
+    }
+
     public function has(User $user, Product $product): bool
     {
         return WishlistItem::query()->whereIn('wishlist_id', Wishlist::query()->where('user_id', $user->id)->select('id'))

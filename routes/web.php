@@ -449,6 +449,49 @@ Route::middleware([
 });
 // --- end w6 ---
 
+// --- w4 ---
+// Product page actions, store pages, wishlist, alerts, reviews, questions and reports (R-43 W4). Throttles are inline middleware
+// parameters or the `community` limiter that DiscoveryServiceProvider defines; nothing is registered from this file.
+Route::get('/stores', [\App\Http\Controllers\StorefrontController::class, 'index'])->name('stores.index');
+Route::get('/stores/{store:slug}', [\App\Http\Controllers\StorefrontController::class, 'show'])->name('stores.show');
+Route::post('/products/{product}/cart', [\App\Http\Controllers\ProductCartController::class, 'store'])->middleware('throttle:60,1')->name('products.cart');
+Route::post('/products/{product}/bundle', [\App\Http\Controllers\ProductCartController::class, 'bundle'])->middleware('throttle:30,1')->name('products.bundle');
+Route::post('/delivery-region', [\App\Http\Controllers\DeliveryRegionController::class, 'store'])->middleware('throttle:30,1')->name('delivery.region');
+Route::get('/wishlist/shared/{token}', [\App\Http\Controllers\WishlistController::class, 'shared'])->middleware('throttle:60,1')->where('token', '[A-Za-z0-9]{40,64}')->name('wishlist.shared');
+
+Route::middleware([
+    'auth:sanctum',
+    config('jetstream.auth_session'),
+    'verified',
+])->group(function () {
+    Route::get('/wishlist', [\App\Http\Controllers\WishlistController::class, 'index'])->name('wishlist.index');
+    Route::post('/wishlist/sharing', [\App\Http\Controllers\WishlistController::class, 'sharing'])->name('wishlist.sharing');
+    Route::post('/wishlist/{product}', [\App\Http\Controllers\WishlistController::class, 'toggle'])->middleware('throttle:60,1')->whereNumber('product')->name('wishlist.toggle');
+    Route::delete('/wishlist/items/{item}', [\App\Http\Controllers\WishlistController::class, 'destroy'])->name('wishlist.items.destroy');
+    Route::post('/wishlist/items/{item}/cart', [\App\Http\Controllers\WishlistController::class, 'toCart'])->name('wishlist.items.cart');
+    Route::post('/wishlist/items/{item}/alert', [\App\Http\Controllers\WishlistController::class, 'alert'])->name('wishlist.items.alert');
+
+    Route::get('/account/alerts', [\App\Http\Controllers\ProductAlertController::class, 'index'])->name('account.alerts');
+    Route::post('/products/{product}/alerts', [\App\Http\Controllers\ProductAlertController::class, 'store'])->middleware('throttle:community')->name('alerts.store');
+    Route::delete('/account/alerts/{alert}', [\App\Http\Controllers\ProductAlertController::class, 'destroy'])->name('alerts.destroy');
+
+    Route::patch('/reviews/{review}', [\App\Http\Controllers\ReviewActionController::class, 'update'])->name('reviews.update');
+    Route::post('/reviews/{review}/vote', [\App\Http\Controllers\ReviewActionController::class, 'vote'])->middleware('throttle:community')->name('reviews.vote');
+    Route::post('/reviews/{review}/report', [\App\Http\Controllers\ReviewActionController::class, 'report'])->middleware('throttle:community')->name('reviews.report');
+    Route::post('/reviews/{review}/reply', [\App\Http\Controllers\ReviewActionController::class, 'respond'])->middleware('throttle:community')->name('reviews.reply');
+
+    Route::post('/products/{product}/questions', [\App\Http\Controllers\ProductQuestionController::class, 'store'])->middleware('throttle:community')->name('questions.store');
+    Route::post('/questions/{question}/answers', [\App\Http\Controllers\ProductQuestionController::class, 'answer'])->middleware('throttle:community')->name('questions.answer');
+    Route::delete('/questions/{question}', [\App\Http\Controllers\ProductQuestionController::class, 'destroy'])->name('questions.destroy');
+    Route::post('/questions/{question}/report', [\App\Http\Controllers\ProductQuestionController::class, 'report'])->middleware('throttle:community')->name('questions.report');
+    Route::post('/answers/{answer}/report', [\App\Http\Controllers\ProductQuestionController::class, 'reportAnswer'])->middleware('throttle:community')->name('answers.report');
+
+    Route::post('/products/{product}/report', [\App\Http\Controllers\ReportController::class, 'product'])->middleware('throttle:community')->name('products.report');
+    Route::post('/stores/{store:slug}/report', [\App\Http\Controllers\ReportController::class, 'store'])->middleware('throttle:community')->name('stores.report');
+    Route::post('/stores/{store:slug}/messages', [\App\Http\Controllers\StorefrontController::class, 'message'])->middleware('throttle:6,60')->name('stores.message');
+});
+// --- end w4 ---
+
 // --- dev ---
 // Local-only sign-in for design and audit sessions (docs/R43_DEMO.md). Registered only in the
 // 'local' and 'testing' environments, so it does not exist in production: the route is absent, not guarded.

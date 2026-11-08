@@ -34,12 +34,26 @@ class ProductAlerts
             throw ValidationException::withMessages(['product' => 'This product is not available.']);
         }
 
-        if ($kind === ProductAlert::BACK_IN_STOCK && $product->stock > 0) {
-            throw ValidationException::withMessages(['kind' => 'This product is in stock now. You can buy it, or set a price alert instead.']);
+        // An alert on one choice (a size, a colour) is about THAT variant's stock and price, not the product's cheapest or total.
+        $variant = null;
+
+        if ($variantId !== null) {
+            $variant = ProductVariant::query()->where('product_id', $product->id)->where('is_active', true)->find($variantId);
+
+            if ($variant === null) {
+                throw ValidationException::withMessages(['variant_id' => 'That choice is not available.']);
+            }
         }
 
-        if ($kind === ProductAlert::PRICE_DROP && $targetPrice !== null && ($targetPrice <= 0 || $targetPrice >= (float) $product->price)) {
-            throw ValidationException::withMessages(['target_price' => 'Choose a target price below the current price of '.number_format((float) $product->price, 2).'.']);
+        $stock = $variant !== null ? (int) $variant->stock : (int) $product->stock;
+        $price = $variant !== null ? (string) $variant->price : (string) $product->price;
+
+        if ($kind === ProductAlert::BACK_IN_STOCK && $stock > 0) {
+            throw ValidationException::withMessages(['kind' => 'This is in stock now. You can buy it, or set a price alert instead.']);
+        }
+
+        if ($kind === ProductAlert::PRICE_DROP && $targetPrice !== null && ($targetPrice <= 0 || $targetPrice >= (float) $price)) {
+            throw ValidationException::withMessages(['target_price' => 'Choose a target price below the current price of '.number_format((float) $price, 2).'.']);
         }
 
         $key = $variantId ?? 0;
@@ -51,7 +65,7 @@ class ProductAlerts
 
         $attributes = [
             'variant_id' => $variantId,
-            'baseline_price' => $product->price,
+            'baseline_price' => $price,
             'target_price' => $kind === ProductAlert::PRICE_DROP ? $targetPrice : null,
             'last_notified_price' => null,
             'active' => true,

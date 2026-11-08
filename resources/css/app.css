@@ -21,6 +21,7 @@
 @import "./operator.css";
 @import "./checkout.css";
 @import "./seller.css";
+@import "./product.css";
 @import "tailwindcss/components";
 @import "tailwindcss/utilities";
 

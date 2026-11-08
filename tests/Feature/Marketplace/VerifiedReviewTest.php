@@ -182,11 +182,11 @@ class VerifiedReviewTest extends TestCase
         $stranger = $this->makeBuyer();
         $this->purchase($buyer, $product, OrderStatus::Delivered);
 
-        $this->actingAs($buyer)->get(route('products.show', $product))->assertOk()->assertSee('Leave a review')->assertSee(route('reviews.store', $product), false);
+        $this->actingAs($buyer)->get(route('products.show', $product))->assertOk()->assertSee('Write a review')->assertSee(route('reviews.store', $product), false);
 
         $page = $this->actingAs($stranger)->get(route('products.show', $product))->assertOk();
         $page->assertDontSee(route('reviews.store', $product), false);
-        $page->assertSee('an order containing it has been delivered');
+        $page->assertSee('delivered or collected');
     }
 
     public function test_the_buyer_who_already_reviewed_sees_no_form_again(): void

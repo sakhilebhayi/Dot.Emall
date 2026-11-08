@@ -4,6 +4,7 @@ namespace App\Services\Discovery;
 
 use App\Models\Product;
 use App\Models\ProductAlert;
+use App\Models\ProductVariant;
 use App\Models\SavedSearch;
 use App\Models\User;
 use App\Notifications\BackInStockNotification;
@@ -51,6 +52,11 @@ class AlertEvaluator
             ->with(['user', 'product.store'])->orderBy('id')
             ->chunkById(100, function ($alerts) use (&$sent) {
                 foreach ($alerts as $alert) {
+                    // An alert on one choice waits for THAT variant, not for any stock anywhere on the product.
+                    if ($alert->variant_id !== null && ! ProductVariant::query()->whereKey($alert->variant_id)->where('is_active', true)->where('stock', '>', 0)->exists()) {
+                        continue;
+                    }
+
                     $claimed = ProductAlert::query()->whereKey($alert->id)->where('active', true)
                         ->update(['active' => false, 'triggered_at' => now()]);
 
@@ -73,7 +79,13 @@ class AlertEvaluator
             ->with(['user', 'product.store'])->orderBy('id')
             ->chunkById(100, function ($alerts) use (&$sent) {
                 foreach ($alerts as $alert) {
-                    $price = (float) $alert->product->price;
+                    $variant = $alert->variant_id !== null ? ProductVariant::query()->where('is_active', true)->find($alert->variant_id) : null;
+
+                    if ($alert->variant_id !== null && $variant === null) {
+                        continue;
+                    }
+
+                    $price = (float) ($variant?->price ?? $alert->product->price);
                     $baseline = (float) $alert->baseline_price;
                     $limit = $alert->target_price !== null ? min($baseline, (float) $alert->target_price) : $baseline;
 

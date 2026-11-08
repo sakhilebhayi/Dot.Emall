@@ -4,6 +4,7 @@ namespace App\Services\Community;
 
 use App\Models\Store;
 use App\Models\User;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -24,6 +25,21 @@ class StoreMembers
             ->where('teams.user_id', $store->owner_id)
             ->where('team_user.user_id', $user->id)
             ->exists();
+    }
+
+    /**
+     * Everyone who speaks for a store: its owner and the members of a team the owner leads. Used to tell them about a shopper's message.
+     *
+     * @return Collection<int, User>
+     */
+    public function people(Store $store): Collection
+    {
+        $teamUserIds = DB::table('team_user')
+            ->join('teams', 'teams.id', '=', 'team_user.team_id')
+            ->where('teams.user_id', $store->owner_id)
+            ->pluck('team_user.user_id');
+
+        return User::query()->whereIn('id', $teamUserIds->push($store->owner_id)->unique()->all())->get();
     }
 
     public function isOperator(User $user): bool
