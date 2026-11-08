@@ -123,6 +123,6 @@ class StoreManagementTest extends TestCase
     {
         $seller = $this->makeSeller();
 
-        $this->actingAs($seller)->get(route('dashboard'))->assertSee(route('seller.store.edit'), false);
+        $this->actingAs($seller)->get(route('seller.dashboard'))->assertSee(route('seller.store.edit'), false);
     }
 }

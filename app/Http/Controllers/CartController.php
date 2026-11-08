@@ -2,11 +2,18 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\CartItem;
 use App\Models\Product;
 use App\Models\ProductVariant;
+use App\Services\Addresses\AddressRules;
 use App\Services\Cart\CartManager;
 use App\Services\Cart\CartProblem;
+use App\Services\Cart\CartQuote;
+use App\Services\Checkout\CartPage;
+use App\Services\Checkout\CheckoutDraft;
+use App\Services\Discovery\Wishlists;
+use App\Support\Throttles;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Validation\Rule;
 use App\Services\CheckoutException;
 use App\Services\CheckoutService;
 use App\Services\PaymentService;
@@ -20,52 +27,16 @@ use Illuminate\View\View;
 use InvalidArgumentException;
 
 /**
- * Cart and the checkout entry point. CartItem applies
- * App\Models\Concerns\HasUserScope, so every cart query is already scoped
- * to the signed-in user and another user's cart line 404s on route-model
- * binding. user_id is still set explicitly at create time.
+ * The cart, for a guest (a session cart) and a signed-in person (cart_items) alike, through App\Services\Cart\CartManager. The page
+ * is drawn by App\Services\Checkout\CartPage from a server-side quote; every control posts a REQUEST (a quantity, a code, a delivery
+ * method) and the server decides. `checkout` below is the older single-form entry point for signed-in buyers, kept for callers that
+ * still post to it; the checkout page (CheckoutController) is the front door.
  */
 class CartController extends Controller
 {
-    public function index(PaystackConfig $paystack): View
+    public function index(Request $request, CartPage $page): View
     {
-        $items = CartItem::with(['product.store', 'product.images', 'variant'])->get();
-
-        $subtotal = $items->sum(fn (CartItem $item) => $item->quantity * ($item->variant ?? $item->product)->price);
-
-        // Lines that cannot be bought as they stand: the listing was
-        // switched off / its store closed, or stock dropped below the
-        // quantity in the cart. Shown per line, and they hold back checkout
-        // until the buyer fixes them (the server re-checks regardless).
-        $problems = [];
-        foreach ($items as $item) {
-            $product = $item->product;
-            $stock = $item->variant?->stock ?? $product->stock;
-
-            if (! $product->is_active || $product->status !== 'approved' || ! $product->store->is_active || ($item->variant && ! $item->variant->is_active)) {
-                $problems[$item->id] = 'No longer available. Remove it to continue.';
-            } elseif ($item->quantity > $stock) {
-                $problems[$item->id] = $stock === 0
-                    ? 'Out of stock now. Remove it to continue.'
-                    : "Only {$stock} left. Lower the quantity to continue.";
-            }
-        }
-
-        return view('cart.index', [
-            'items' => $items,
-            'subtotal' => $subtotal,
-            'problems' => $problems,
-            // One fresh token per page render: the single-use key for this
-            // submission of the checkout form (see CheckoutService::place()).
-            'checkoutToken' => (string) Str::uuid(),
-            'paystack' => [
-                'enabled' => $paystack->isUsable(),
-                'refused' => $paystack->isMisconfigured(),
-                'testMode' => $paystack->isTestMode(),
-                'currency' => $paystack->currency(),
-                'windowMinutes' => $paystack->unpaidWindowMinutes(),
-            ],
-        ]);
+        return view('cart.index', $page->for($request));
     }
 
     public function store(Request $request, CartManager $cart): RedirectResponse
@@ -101,26 +72,125 @@ class CartController extends Controller
         return redirect()->route('cart.index')->with('status', "Added \"{$product->name}\" to cart.");
     }
 
-    public function update(Request $request, CartItem $cartItem, CartManager $cart): RedirectResponse
+    public function update(Request $request, ProductVariant $variant, CartManager $cart): RedirectResponse
     {
+        $this->mustBeInCart($request, $variant, $cart);
+
         $validated = $request->validate([
             'quantity' => ['required', 'integer', 'min:1', 'max:99'],
         ]);
 
         try {
-            $cart->setQuantity($request->user(), (int) $cartItem->variant_id, (int) $validated['quantity']);
+            $cart->setQuantity($request->user(), $variant->id, (int) $validated['quantity']);
         } catch (CartProblem $e) {
-            return back()->withErrors(['quantity' => $e->getMessage()]);
+            return redirect()->route('cart.index')->withErrors(['quantity' => $e->getMessage()])->with('quantity_variant', $variant->id);
         }
 
         return redirect()->route('cart.index')->with('status', 'Quantity updated.');
     }
 
-    public function destroy(CartItem $cartItem): RedirectResponse
+    public function destroy(Request $request, ProductVariant $variant, CartManager $cart): RedirectResponse
     {
-        $cartItem->delete();
+        $this->mustBeInCart($request, $variant, $cart);
+        $cart->remove($request->user(), $variant->id);
 
         return redirect()->route('cart.index')->with('status', 'Item removed from cart.');
+    }
+
+    /** Moves a line to the wishlist: saved first, then taken out of the cart, so a failure never loses the item. */
+    public function moveToWishlist(Request $request, ProductVariant $variant, CartManager $cart, Wishlists $wishlists): RedirectResponse
+    {
+        $this->mustBeInCart($request, $variant, $cart);
+
+        $product = $variant->product()->firstOrFail();
+        $wishlists->add($request->user(), $product, $variant->id);
+        $cart->remove($request->user(), $variant->id);
+
+        return redirect()->route('cart.index')->with('status', "Moved \"{$product->name}\" to your wishlist.");
+    }
+
+    /** Previews a promo code against this cart (no use is counted; checkout counts it) and keeps it for checkout when it applies. */
+    public function applyPromo(Request $request, CartManager $cart, CartQuote $quote, CheckoutDraft $draft): RedirectResponse
+    {
+        $code = trim((string) $request->validate(['promo_code' => ['required', 'string', 'max:40']], [
+            'promo_code.required' => 'Type a promo code first.',
+        ])['promo_code']);
+
+        $keys = [Throttles::promoUserKey($request->user()?->id ?? 'guest:'.sha1((string) $request->session()->getId())), Throttles::promoIpKey($request->ip())];
+
+        foreach ($keys as $key) {
+            if (RateLimiter::tooManyAttempts($key, Throttles::PROMO_MAX_FAILURES)) {
+                return back()->withInput()->withErrors(['promo_code' => 'Too many promo code attempts. Try again in '.RateLimiter::availableIn($key).' seconds.']);
+            }
+        }
+
+        $lines = $cart->lines($request->user());
+        $result = $quote->quote($lines, $draft->region($request->user()), $code, $draft->methods());
+
+        if ($result->promo === null) {
+            foreach ($keys as $key) {
+                RateLimiter::hit($key, Throttles::PROMO_WINDOW_SECONDS);
+            }
+
+            return back()->withInput()->withErrors(['promo_code' => $result->promoProblem ?? 'That code is not valid for the items in your cart.']);
+        }
+
+        $draft->merge(['promo_code' => $result->promo->code]);
+
+        return redirect()->route('cart.index')->with('status', 'Code '.$result->promo->code.' applied. The discount is in the total below.');
+    }
+
+    public function clearPromo(CheckoutDraft $draft): RedirectResponse
+    {
+        $draft->forget('promo_code');
+
+        return redirect()->route('cart.index')->with('status', 'Promo code removed.');
+    }
+
+    /** The estimate form: where the parcels are going, for delivery prices before an address exists. */
+    public function setRegion(Request $request, CheckoutDraft $draft): RedirectResponse
+    {
+        $data = $request->validate([
+            'province' => ['required', Rule::in(AddressRules::PROVINCES)],
+            'postal_code' => ['nullable', 'regex:/^\d{4}$/'],
+        ], ['province.required' => 'Choose a province.', 'province.in' => 'Choose one of the nine provinces.', 'postal_code.regex' => 'A South African postal code is four digits.']);
+
+        $draft->merge(['region' => ['province' => $data['province'], 'postal_code' => $data['postal_code'] ?? null, 'country' => 'ZA']]);
+
+        return redirect()->route('cart.index')->with('status', 'Delivery prices updated for '.$data['province'].'.');
+    }
+
+    /** One delivery method per seller (store id => method id). The server re-prices and refuses a method the store does not offer here. */
+    public function setDelivery(Request $request, CartManager $cart, CartQuote $quote, CheckoutDraft $draft): RedirectResponse
+    {
+        $data = $request->validate(['shipping_methods' => ['required', 'array'], 'shipping_methods.*' => ['nullable', 'integer']]);
+        $lines = $cart->lines($request->user());
+        $result = $quote->quote($lines, $draft->region($request->user()), $draft->promo());
+        $chosen = [];
+
+        foreach ($data['shipping_methods'] as $storeId => $methodId) {
+            $group = $result->groups[(int) $storeId] ?? null;
+
+            if ($group !== null && $methodId !== null && collect($group['options'])->contains(fn ($o) => $o->methodId === (int) $methodId)) {
+                $chosen[(int) $storeId] = (int) $methodId;
+            }
+        }
+
+        $draft->merge(['shipping_methods' => $chosen + $draft->methods()]);
+
+        return redirect()->route('cart.index')->with('status', 'Delivery choice updated.');
+    }
+
+    public function acceptPrices(Request $request, CartPage $page): RedirectResponse
+    {
+        $page->acceptPrices($request->user());
+
+        return redirect()->route('cart.index')->with('status', 'Prices accepted. The total below is what you will pay.');
+    }
+
+    private function mustBeInCart(Request $request, ProductVariant $variant, CartManager $cart): void
+    {
+        abort_unless($cart->lines($request->user())->contains(fn ($l) => $l->variant->id === $variant->id), 404);
     }
 
     /**

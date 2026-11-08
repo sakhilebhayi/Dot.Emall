@@ -1,0 +1,145 @@
+/* Cart, checkout, orders, returns, account and help pages (R-43 W5). Tokens only: no literal colour, no transition on everything, no animation at rest. */
+
+.co-gap { margin-block-end: var(--s-4); }
+.co-note { font-size: var(--text-sm); }
+.co-h3 { font-size: var(--text-base); font-weight: 700; margin-block: var(--s-4) var(--s-2); }
+.co-list { margin: 0; padding-inline-start: 1.1rem; display: grid; gap: var(--s-1); }
+.co-plain { list-style: none; margin: 0; padding: 0; }
+.co-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s-2) var(--s-4); padding-block: var(--s-3); border-top: 1px solid var(--line); }
+.co-row:last-child { border-bottom: 1px solid var(--line); }
+.co-grid2 { display: grid; gap: 0 var(--s-7); }
+@media (min-width: 52rem) { .co-grid2 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.co-fix { color: var(--cau); font-weight: 600; font-size: var(--text-sm); }
+.co-empty { padding-block: var(--s-5); }
+.co-steps { margin-block: var(--s-2) var(--s-5); }
+
+/* Two columns: the work on the left, the label that states the total on the right (under it on a phone). */
+.co-layout { display: grid; gap: var(--s-6); align-items: start; padding-block-end: var(--s-7); }
+.co-main { display: grid; gap: var(--s-5); min-width: 0; }
+.co-side { display: grid; gap: var(--s-4); min-width: 0; align-content: start; }
+@media (min-width: 64rem) {
+    .co-layout { grid-template-columns: minmax(0, 1fr) 24rem; gap: var(--s-7); }
+    .co-side { position: sticky; inset-block-start: 9.5rem; }
+}
+.co-label { --label-behind: var(--ground); }
+.co-label .ds-label__row dd, .co-total, .co-orderline__total, .co-option__price { font-variant-numeric: lining-nums; }
+.co-act { display: grid; gap: var(--s-3); justify-items: stretch; }
+.co-act .ds-btn--link { justify-self: center; }
+.co-panel { padding: var(--s-4); }
+.co-inline { display: grid; gap: var(--s-3); }
+.co-region { display: grid; gap: var(--s-3); }
+
+/* A parcel: one seller's lines, their delivery choice and what that parcel costs. Bands with hairlines, not cards. */
+.co-parcel { border-top: 2px solid var(--ink); padding-block-start: var(--s-3); }
+.co-parcel__head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--s-1) var(--s-4); }
+.co-parcel__head h2 { font-size: var(--text-lg); text-wrap: balance; }
+.co-parcel__method { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--s-1) var(--s-2); margin-block: var(--s-3); }
+.co-parcel__method .ds-icon { align-self: center; flex: none; }
+.co-parcel__sum { margin: var(--s-3) 0 0; display: grid; gap: var(--s-1); }
+.co-parcel__sum > div { display: flex; justify-content: space-between; gap: var(--s-4); }
+.co-parcel__sum dd { font-variant-numeric: lining-nums; }
+.co-parcel__sum dt { color: var(--ink-2); }
+.co-parcel__sum dd { margin: 0; text-align: end; }
+.co-parcel__total { font-weight: 700; border-top: 1px solid var(--line); padding-top: var(--s-2); margin-top: var(--s-1); }
+.co-line-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-1) var(--s-4); }
+.co-line-actions form { margin: 0; }
+.co-qty { display: flex; align-items: center; gap: var(--s-2); }
+.co-signin-link { font-size: var(--text-sm); }
+.co-delivery { margin-block-start: var(--s-4); }
+.co-delivery h3 { font-size: var(--text-base); font-weight: 700; margin-block-end: var(--s-1); }
+.co-option { padding-inline: var(--s-3); border: 1px solid var(--line); border-radius: var(--r-control); background: var(--surface); margin-block-end: var(--s-2); }
+.co-option:has(input:checked) { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+.co-option:has(input:focus-visible) { outline: 2px solid var(--focus); outline-offset: 2px; }
+.co-option .ds-choice__text { flex: 1; min-width: 0; }
+.co-option .ds-choice__label { display: flex; justify-content: space-between; gap: var(--s-4); }
+.co-option__price { white-space: nowrap; }
+
+/* Checkout: four steps in one page. A step that is not reachable yet is quiet, never hidden. */
+.co-multi { display: flex; gap: var(--s-3); align-items: flex-start; padding: var(--s-3) var(--s-4); background: var(--brand-soft); border-radius: var(--r-control); margin-block-end: var(--s-5); }
+.co-multi .ds-icon { flex: none; margin-top: 0.1rem; }
+.co-step { display: grid; gap: var(--s-4); padding-block: var(--s-4) var(--s-5); border-top: 2px solid var(--line); min-width: 0; }
+.co-step[data-state="current"] { border-top-color: var(--brand); }
+.co-step[data-state="done"] { border-top-color: var(--ink); }
+.co-step > h2 { text-wrap: balance; display: flex; align-items: center; gap: var(--s-3); font-size: var(--text-lg); }
+.co-step[data-state="todo"] > h2 { color: var(--ink-3); }
+.co-step__n { display: inline-grid; place-items: center; width: 1.75rem; height: 1.75rem; border-radius: 50%; border: 2px solid currentColor; font-size: var(--text-sm); font-variant-numeric: tabular-nums; }
+.co-stepact { display: flex; flex-wrap: wrap; gap: var(--s-3); }
+.co-fields { display: grid; gap: var(--s-4); }
+.co-fields__pair { display: grid; gap: var(--s-4); grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 40rem) { .co-fields__pair { grid-template-columns: 2fr 1fr; } }
+.co-newaddr > summary { cursor: pointer; font-weight: 650; min-height: var(--tap); display: flex; align-items: center; }
+.co-newaddr[open] > summary { margin-block-end: var(--s-3); }
+.co-parcels { display: grid; gap: var(--s-4); }
+.co-parcelopt legend { font-weight: 700; margin-block-end: var(--s-2); }
+.co-review h3 { font-size: var(--text-base); font-weight: 700; margin-block-start: var(--s-3); }
+.co-review .ds-cartline:last-of-type { border-bottom: 0; }
+.co-terms { display: grid; gap: var(--s-2); padding: var(--s-4); background: var(--sunken); border-radius: var(--r-control); }
+.co-terms h3 { font-size: var(--text-base); font-weight: 700; }
+.co-fakepay { display: flex; flex-wrap: wrap; gap: var(--s-3); }
+
+/* Orders. */
+.co-payment .co-payment__actions { display: flex; flex-wrap: wrap; gap: var(--s-3); margin-block: var(--s-3); }
+.co-orderline { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--s-2) var(--s-4); padding-block: var(--s-3); border-top: 1px solid var(--line); }
+.co-orderline.is-cancelled .co-orderline__name { text-decoration: line-through; color: var(--ink-3); }
+.co-orderline__name { font-weight: 650; }
+.co-orderline__name a { color: var(--ink); text-decoration: none; }
+.co-orderline__name a:hover { text-decoration: underline; }
+.co-orderline__side { display: grid; gap: var(--s-1); justify-items: end; align-content: start; }
+.co-orderline__total { font-weight: 700; }
+.co-orderline__actions { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2) var(--s-3); }
+.co-orderline__actions form { margin: 0; }
+.co-orderline__return { grid-column: 1 / -1; display: flex; gap: var(--s-2); align-items: flex-start; font-size: var(--text-sm); color: var(--ink-2); }
+.co-shipment { background: var(--sunken); border-radius: var(--r-control); padding: var(--s-4); margin-block-start: var(--s-3); display: grid; gap: var(--s-3); }
+.co-shipment h3 { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); font-size: var(--text-base); font-weight: 700; }
+.co-events { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s-2); border-inline-start: 2px dashed var(--line-strong); padding-inline-start: var(--s-4); }
+.co-events__when { font-variant-numeric: tabular-nums; color: var(--ink-3); margin-inline-end: var(--s-2); font-size: var(--text-sm); }
+.co-contact { margin-block-start: var(--s-3); }
+.co-contact > summary { cursor: pointer; min-height: var(--tap); display: flex; align-items: center; font-weight: 650; color: var(--brand); }
+.co-contact[open] > summary { margin-block-end: var(--s-2); }
+.co-contact form { display: grid; gap: var(--s-3); }
+.co-money { margin: 0; display: grid; gap: var(--s-2); }
+.co-money > div { display: flex; justify-content: space-between; gap: var(--s-4); }
+.co-money dd { font-variant-numeric: lining-nums; }
+.co-money dt { color: var(--ink-2); }
+.co-money dd { margin: 0; text-align: end; }
+.co-money__total { border-top: var(--perf); padding-top: var(--s-3); margin-top: var(--s-1); font-weight: 750; font-size: var(--text-md); }
+.co-money__total dt { color: var(--ink); }
+.co-filter { display: grid; gap: var(--s-3); align-items: end; margin-block-end: var(--s-4); }
+@media (min-width: 48rem) { .co-filter { grid-template-columns: minmax(12rem, 20rem) minmax(10rem, 14rem) auto auto; } }
+.co-rowactions { display: flex; flex-wrap: wrap; gap: var(--s-2); align-items: center; }
+.co-rowactions form { margin: 0; }
+
+/* Returns and account forms. */
+.co-form { display: grid; gap: var(--s-4); max-width: 40rem; }
+.co-toggles { display: flex; flex-wrap: wrap; gap: var(--s-2) var(--s-6); }
+.co-addresses { list-style: none; margin: 0 0 var(--s-6); padding: 0; display: grid; gap: var(--s-4); grid-template-columns: repeat(auto-fill, minmax(min(100%, 19rem), 1fr)); }
+.co-photos { list-style: none; margin: var(--s-3) 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--s-2); }
+.co-photos img { width: 7.5rem; height: 7.5rem; object-fit: cover; border-radius: var(--r-photo); background: var(--photo-ground); display: block; }
+
+/* Help: a reading page. */
+.co-helpnav { display: flex; flex-wrap: wrap; gap: var(--s-1) var(--s-4); padding-block: var(--s-2) var(--s-4); border-bottom: 1px solid var(--line); margin-block-end: var(--s-5); }
+.co-helpnav a { min-height: var(--tap); display: inline-flex; align-items: center; color: var(--ink-2); text-decoration: none; border-bottom: 2px solid transparent; }
+.co-helpnav a:hover { color: var(--ink); }
+.co-helpnav a[aria-current="page"] { color: var(--ink); font-weight: 700; border-bottom-color: var(--brand); }
+.co-prose { max-width: var(--measure); display: grid; gap: var(--s-3); padding-block-end: var(--s-7); }
+.co-prose h2 { font-size: var(--text-lg); margin-block-start: var(--s-5); }
+.co-prose ul, .co-prose ol { margin: 0; padding-inline-start: 1.25rem; display: grid; gap: var(--s-2); }
+.co-faq { display: grid; gap: var(--s-2); margin: 0; }
+.co-faq dt { font-weight: 700; margin-block-start: var(--s-3); }
+.co-faq dd { margin: 0; color: var(--ink-2); }
+.co-steps-list { counter-reset: how; list-style: none; padding: 0 !important; }
+.co-steps-list li { counter-increment: how; display: grid; grid-template-columns: 2.5rem 1fr; gap: var(--s-3); }
+.co-steps-list li::before { content: counter(how, decimal-leading-zero); font-family: var(--font-code); font-size: var(--text-sm); color: var(--ink-3); padding-top: 0.2rem; }
+
+/* Receipt: reads on paper. */
+.co-receipt { display: grid; gap: var(--s-4); max-width: 46rem; padding-block-end: var(--s-7); }
+.co-receipt h2 { font-size: var(--text-lg); margin-block-start: var(--s-4); }
+.co-receipt .is-cancelled td { color: var(--ink-3); text-decoration: line-through; }
+.co-money--receipt { max-width: 22rem; margin-inline-start: auto; }
+@media print {
+    .ds-skip, .ds-header, .ds-awning, .ds-catnav, .ds-util, .ds-footer, .ds-bottombar, .ds-account__rail, .ds-subnav, .ds-banners, .ds-toasts, .ds-page-header__actions { display: none !important; }
+    .ds-main { padding: 0; }
+    body { background: Canvas; color: CanvasText; }
+}
+.co-total { font-weight: 700; white-space: nowrap; }
+.co-layout { margin-block-start: var(--s-4); }

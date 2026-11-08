@@ -17,6 +17,8 @@ final class Status
         'packing' => ['Packing', 'box', 'info'],
         'shipped' => ['Shipped', 'truck', 'info'],
         'delivered' => ['Delivered', 'package-check', 'pos'],
+        'ready_for_collection' => ['Ready for collection', 'pin', 'info'],
+        'collected' => ['Collected', 'bag', 'pos'],
         'cancelled' => ['Cancelled', 'x-circle', 'neutral'],
         'refunded' => ['Refunded', 'undo', 'neutral'],
         'return_requested' => ['Return requested', 'return', 'cau'],

@@ -68,7 +68,7 @@ class CartStockTest extends TestCase
         $buyer = $this->makeBuyer();
         $item = CartItem::withoutGlobalScopes()->create(['user_id' => $buyer->id, 'product_id' => $product->id, 'quantity' => 1]);
 
-        $this->actingAs($buyer)->patch(route('cart.update', $item), ['quantity' => 5])->assertRedirect(route('cart.index'))->assertSessionHasNoErrors();
+        $this->actingAs($buyer)->patch(route('cart.update', $item->variant_id), ['quantity' => 5])->assertRedirect(route('cart.index'))->assertSessionHasNoErrors();
 
         $this->assertSame(5, $item->fresh()->quantity);
     }
@@ -79,7 +79,7 @@ class CartStockTest extends TestCase
         $buyer = $this->makeBuyer();
         $item = CartItem::withoutGlobalScopes()->create(['user_id' => $buyer->id, 'product_id' => $product->id, 'quantity' => 2]);
 
-        $this->actingAs($buyer)->patch(route('cart.update', $item), ['quantity' => 6])->assertSessionHasErrors('quantity');
+        $this->actingAs($buyer)->patch(route('cart.update', $item->variant_id), ['quantity' => 6])->assertSessionHasErrors('quantity');
 
         $this->assertSame(2, $item->fresh()->quantity);
     }
@@ -91,7 +91,7 @@ class CartStockTest extends TestCase
         $item = CartItem::withoutGlobalScopes()->create(['user_id' => $buyer->id, 'product_id' => $product->id, 'quantity' => 2]);
 
         foreach ([0, -1, 100, 'abc', 1.5] as $bad) {
-            $this->actingAs($buyer)->patch(route('cart.update', $item), ['quantity' => $bad])->assertSessionHasErrors('quantity');
+            $this->actingAs($buyer)->patch(route('cart.update', $item->variant_id), ['quantity' => $bad])->assertSessionHasErrors('quantity');
         }
 
         $this->assertSame(2, $item->fresh()->quantity);
@@ -103,7 +103,7 @@ class CartStockTest extends TestCase
         $owner = $this->makeBuyer();
         $item = CartItem::withoutGlobalScopes()->create(['user_id' => $owner->id, 'product_id' => $product->id, 'quantity' => 1]);
 
-        $this->actingAs($this->makeBuyer())->patch(route('cart.update', $item), ['quantity' => 2])->assertNotFound();
+        $this->actingAs($this->makeBuyer())->patch(route('cart.update', $item->variant_id), ['quantity' => 2])->assertNotFound();
 
         $this->assertSame(1, $item->fresh()->quantity);
     }
@@ -118,8 +118,8 @@ class CartStockTest extends TestCase
         $page = $this->actingAs($buyer)->get(route('cart.index'))->assertOk();
 
         $page->assertSee('Only 1 left');
-        $page->assertSee('Fix the items marked above before placing your order');
-        $page->assertDontSee('>Place order<', false);
+        $page->assertSee('Fix the items marked above before you check out');
+        $page->assertDontSee('href="'.route('checkout.show').'"', false);
     }
 
     public function test_the_cart_page_offers_a_single_use_checkout_token(): void
@@ -128,8 +128,8 @@ class CartStockTest extends TestCase
         $buyer = $this->makeBuyer();
         CartItem::withoutGlobalScopes()->create(['user_id' => $buyer->id, 'product_id' => $product->id, 'quantity' => 1]);
 
-        $first = $this->actingAs($buyer)->get(route('cart.index'))->getContent();
-        $second = $this->actingAs($buyer)->get(route('cart.index'))->getContent();
+        $first = $this->actingAs($buyer)->get(route('checkout.show'))->getContent();
+        $second = $this->actingAs($buyer)->get(route('checkout.show'))->getContent();
 
         preg_match('/name="checkout_token" value="([0-9a-f-]{36})"/', $first, $a);
         preg_match('/name="checkout_token" value="([0-9a-f-]{36})"/', $second, $b);

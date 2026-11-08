@@ -251,3 +251,4 @@ document.addEventListener('submit', (e) => {
 import './discover.js';
 /* The operator desk (R-43 W7). */
 import "./operator.js";
+import './checkout.js';

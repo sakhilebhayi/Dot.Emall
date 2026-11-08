@@ -48,7 +48,7 @@ trait AssertsResponsiveShell
 
     protected function assertScrollsHorizontally(DOMXPath $xpath, string $label): void
     {
-        $wrapper = $xpath->query('//div[contains(concat(" ", normalize-space(@class), " "), " table-scroll ")][@role="region"][@aria-label="'.$label.'"][@tabindex="0"]');
+        $wrapper = $xpath->query('//div[contains(concat(" ", normalize-space(@class), " "), " table-scroll ") or contains(concat(" ", normalize-space(@class), " "), " ds-table-wrap ")][@role="region"][@aria-label="'.$label.'"][@tabindex="0"]');
         $this->assertSame(1, $wrapper->length, "table region \"{$label}\" is an overflow-x container");
         $this->assertGreaterThan(0, $xpath->query('.//table', $wrapper->item(0))->length, "\"{$label}\" wraps a table");
     }

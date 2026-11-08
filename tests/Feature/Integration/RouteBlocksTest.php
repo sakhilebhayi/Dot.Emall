@@ -42,11 +42,10 @@ class RouteBlocksTest extends TestCase
         Store::factory()->create(['owner_id' => $seller->id, 'name' => 'Alias Stores']);
 
         $this->actingAs($seller->fresh());
-        $dashboard = $this->get('/dashboard')->assertOk()->getContent();
-
+        // /dashboard is a doorway: a seller goes to the seller desk, and /account is the buyer's overview (W5), not the seller desk.
+        $this->get('/dashboard')->assertRedirect(route('seller.dashboard'));
         $this->get('/sell/dashboard')->assertOk()->assertSee('Seller desk')->assertSee('Alias Stores');
-        $this->get('/account')->assertOk()->assertSee('Seller desk');
-        $this->assertStringContainsString('Seller desk', $dashboard);
+        $this->get('/account')->assertOk()->assertSee('<title>Your account | Dot.Emall</title>', false)->assertSee('Open your seller desk');
         $this->get('/sell/start')->assertRedirect($this->get('/sell')->headers->get('Location')); // a seller who already has a store is sent where /sell sends them
 
         $this->actingAs(User::factory()->withPersonalTeam()->create())->get('/sell/start')->assertOk();
@@ -55,7 +54,7 @@ class RouteBlocksTest extends TestCase
     public function test_the_shell_navigation_resolves_the_aliases_instead_of_leaving_pending_links(): void
     {
         $buyer = User::factory()->withPersonalTeam()->create();
-        $html = $this->actingAs($buyer)->get('/dashboard')->assertOk()->getContent();
+        $html = $this->actingAs($buyer)->get('/account')->assertOk()->getContent();
 
         $this->assertStringNotContainsString('data-pending-route="account.home"', $html);
         $this->assertStringNotContainsString('data-pending-route="search"', $html);

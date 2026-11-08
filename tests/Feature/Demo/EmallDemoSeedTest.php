@@ -141,7 +141,10 @@ class EmallDemoSeedTest extends TestCase
         $link = app(GuestOrderAccess::class)->url($order);
         $this->assertNotNull($link);
 
-        $this->get(parse_url($link, PHP_URL_PATH))->assertStatus(200)->assertJsonFragment(['order' => $order->reference(), 'payment_status' => 'paid']);
+        // The link opens the order page for the browser (W5) and still answers a small JSON summary to a client that asks for JSON.
+        $this->getJson(parse_url($link, PHP_URL_PATH))->assertStatus(200)->assertJsonFragment(['order' => $order->reference(), 'payment_status' => 'paid']);
+        $this->get(parse_url($link, PHP_URL_PATH))->assertRedirect(route('guest.orders.show', $order));
+        $this->get(route('guest.orders.show', $order))->assertOk()->assertSee($order->reference());
 
         // --- discovery data exists for people to find
         $this->assertGreaterThan(0, DB::table('wishlist_items')->count());

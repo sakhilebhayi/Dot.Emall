@@ -19,6 +19,7 @@
 @import "./legacy.css";
 @import "./kit.css";
 @import "./operator.css";
+@import "./checkout.css";
 @import "tailwindcss/components";
 @import "tailwindcss/utilities";
 

@@ -2,6 +2,7 @@
 
 namespace Tests\Support;
 
+use App\Models\Address;
 use App\Models\Brand;
 use App\Models\CartItem;
 use App\Models\Collection;
@@ -42,6 +43,7 @@ final class SignedInSmoke
         'user/confirm-password' => "Fortify's own page; it redirects when a password confirmation is still fresh, so its status depends on the session",
         'user/confirmed-password-status' => 'JSON status, not a page',
         'operator/reports/{type}/{id}' => 'opened as /operator/reports/product/{id}: the {type} segment is a word, which the pattern matcher does not collapse',
+        'account/returns/{return}' => 'needs a delivered line inside its return window; covered by ReturnFlowTest',
     ];
 
     /** @var array<string, mixed> */
@@ -79,7 +81,10 @@ final class SignedInSmoke
         $return = (new ReturnRequest)->forceFill(['order_item_id' => $line->id, 'order_id' => $order->id, 'requester_id' => $buyer->id, 'seller_id' => $seller->id, 'reason_category' => 'faulty', 'status' => 'escalated', 'refund_cents' => 12000, 'escalated_at' => now(), 'escalation_reason' => 'buyer_disputed_decline', 'respond_by' => now()->addDays(10)]);
         $return->save();
 
-        $this->world = compact('store', 'live', 'pending', 'order', 'line', 'seller', 'buyer', 'newcomer', 'operator', 'category', 'guestLink', 'report', 'collection', 'return');
+        $address = Address::create(['user_id' => $buyer->id, 'recipient_name' => 'Smoke Buyer', 'line1' => '1 Smoke Street', 'city' => 'Testville', 'province' => 'Gauteng', 'postal_code' => '2000', 'country' => 'ZA', 'is_default_shipping' => true]);
+        $item = $order->items()->first();
+
+        $this->world = compact('store', 'live', 'pending', 'order', 'line', 'seller', 'buyer', 'newcomer', 'operator', 'category', 'guestLink', 'report', 'collection', 'return', 'address', 'item');
 
         return compact('seller', 'buyer', 'newcomer', 'operator');
     }
@@ -115,7 +120,15 @@ final class SignedInSmoke
             ['who' => 'guest', 'uri' => '/account/saved-searches', 'expect' => 302],
             ['who' => 'guest', 'uri' => '/search/suggest?q=ke'],
             ['who' => 'guest', 'uri' => '/search/suggest?q=smoke%20kit'],
-            ['who' => 'guest', 'uri' => $w['guestLink']],
+            ['who' => 'guest', 'uri' => $w['guestLink'], 'expect' => 302],
+            ['who' => 'guest', 'uri' => '/cart'],
+            ['who' => 'guest', 'uri' => '/checkout', 'expect' => 302],
+            ['who' => 'guest', 'uri' => '/help'],
+            ['who' => 'guest', 'uri' => '/help/delivery'],
+            ['who' => 'guest', 'uri' => '/help/returns'],
+            ['who' => 'guest', 'uri' => '/help/contact'],
+            ['who' => 'guest', 'uri' => '/help/selling'],
+            ['who' => 'guest', 'uri' => "/guest/orders/{$order}", 'expect' => 404],
             ['who' => 'guest', 'uri' => "/products/{$live}"],
             ['who' => 'guest', 'uri' => "/products/{$pending}", 'expect' => 404],
             ['who' => 'guest', 'uri' => '/login'],
@@ -123,12 +136,21 @@ final class SignedInSmoke
             ['who' => 'guest', 'uri' => '/up'],
             ['who' => 'guest', 'uri' => '/dashboard', 'expect' => 302],
             // buyer
-            ['who' => 'buyer', 'uri' => '/dashboard'],
+            ['who' => 'buyer', 'uri' => '/dashboard', 'expect' => 302],
             ['who' => 'buyer', 'uri' => '/products'],
             ['who' => 'buyer', 'uri' => "/products/{$live}"],
             ['who' => 'buyer', 'uri' => '/cart'],
             ['who' => 'buyer', 'uri' => '/orders'],
             ['who' => 'buyer', 'uri' => "/orders/{$order}"],
+            ['who' => 'buyer', 'uri' => "/orders/{$order}/receipt"],
+            ['who' => 'buyer', 'uri' => "/orders/{$order}/items/{$w['item']->id}/return", 'expect' => 302],
+            ['who' => 'buyer', 'uri' => '/checkout'],
+            ['who' => 'buyer', 'uri' => '/account/returns'],
+            ['who' => 'buyer', 'uri' => '/account/addresses'],
+            ['who' => 'buyer', 'uri' => "/account/addresses/{$w['address']->id}/edit"],
+            ['who' => 'buyer', 'uri' => '/account/notifications'],
+            ['who' => 'buyer', 'uri' => '/account/privacy'],
+            ['who' => 'buyer', 'uri' => '/account/privacy/export'],
             ['who' => 'buyer', 'uri' => '/user/profile'],
             ['who' => 'buyer', 'uri' => '/teams/create'],
             ['who' => 'buyer', 'uri' => '/teams/'.$w['buyer']->personalTeam()->id],
@@ -142,7 +164,7 @@ final class SignedInSmoke
             ['who' => 'newcomer', 'uri' => '/sell/start'],
             ['who' => 'newcomer', 'uri' => '/sell/products', 'expect' => 200],
             // seller
-            ['who' => 'seller', 'uri' => '/dashboard'],
+            ['who' => 'seller', 'uri' => '/dashboard', 'expect' => 302],
             ['who' => 'seller', 'uri' => '/sell/dashboard'],
             ['who' => 'seller', 'uri' => "/products/{$pending}"],
             ['who' => 'seller', 'uri' => '/sell/store/edit'],

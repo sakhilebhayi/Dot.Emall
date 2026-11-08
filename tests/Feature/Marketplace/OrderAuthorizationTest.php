@@ -40,7 +40,7 @@ class OrderAuthorizationTest extends TestCase
         $this->actingAs($user)
             ->get(route('orders.show', $order))
             ->assertOk()
-            ->assertViewIs('orders.show');
+            ->assertViewIs('orders.buyer');
     }
 
     public function test_a_user_cannot_view_another_users_order(): void

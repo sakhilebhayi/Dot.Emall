@@ -205,10 +205,10 @@ class DesignSystemTest extends TestCase
         $this->assertSame('', emall_pending('products.index'));
         $this->assertSame(route('products.index'), emall_route('products.index'));
         $this->assertNull(emall_pending_name('products.index'));
-        $this->assertSame(0, \App\Support\Shell::cartCount(), 'no cart service yet: the count is 0');
+        $this->assertSame(0, \App\Support\Shell::cartCount(), 'an empty cart counts 0');
 
         $html = $this->get('/')->getContent();
-        $this->assertStringContainsString('data-pending-route="help.returns"', $html, 'the footer points at a route the feature work registers');
+        $this->assertStringNotContainsString('data-pending-route="help.returns"', $html, 'the help pages exist now (W5), so the footer link resolves');
     }
 
     public function test_the_dev_gallery_is_registered_only_inside_the_local_and_testing_block(): void

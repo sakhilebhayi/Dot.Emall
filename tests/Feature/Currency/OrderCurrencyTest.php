@@ -86,7 +86,7 @@ class OrderCurrencyTest extends TestCase
             $order->items()->update(['status' => 'delivered']);
         }
 
-        $page = $this->actingAs($seller)->get(route('dashboard'))->assertOk();
+        $page = $this->actingAs($seller)->get(route('seller.dashboard'))->assertOk();
 
         $page->assertSee('R1,234.56')->assertSee('€2,469.12');
         // No grand total that adds rand to euro.
@@ -99,7 +99,7 @@ class OrderCurrencyTest extends TestCase
         $seller = $this->makeSeller();
 
         $this->assertSame(['ZAR' => 0], app(SellerDashboard::class)->summary($seller)['revenueByCurrency']);
-        $this->actingAs($seller)->get(route('dashboard'))->assertSee('R0.00');
+        $this->actingAs($seller)->get(route('seller.dashboard'))->assertSee('R0.00');
     }
 
     public function test_the_recent_orders_net_is_in_each_orders_own_currency(): void

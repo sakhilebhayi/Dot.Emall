@@ -120,7 +120,7 @@ $ok = $response->getStatusCode() === 302 && str_ends_with((string) $response->he
 $failures += $ok ? 0 : 1;
 printf("%-9s %-46s %d%s\n", 'sso', 'POST /auth/ecosystem (handoff token)', $response->getStatusCode(), $ok ? '  -> /cart, cookie set' : '   <-- FAIL (expected 302 to /cart with a session cookie)');
 
-foreach (['/cart', '/orders', '/dashboard'] as $uri) {
+foreach (['/cart', '/orders', '/account'] as $uri) {
     Auth::forgetGuards();
     Auth::shouldUse('web');
     $next = Request::create('https://'.$host.$uri, 'GET', [], $cookies);
