@@ -112,14 +112,27 @@ class ChromePolishTest extends TestCase
         $this->assertStringNotContainsString('header down', $html);
     }
 
-    public function test_the_empty_state_is_a_ticket_stub_with_no_icon_slot(): void
+    public function test_the_empty_state_is_a_ticket_stub_whose_punch_carries_the_states_own_glyph(): void
     {
-        $html = Blade::render('<x-ds.empty-state title="Nothing here" icon="cart">Say why.<x-slot:actions><x-ds.button href="/">Go</x-ds.button></x-slot:actions></x-ds.empty-state>');
+        $cart = Blade::render('<x-ds.empty-state title="Nothing here" icon="cart">Say why.<x-slot:actions><x-ds.button href="/">Go</x-ds.button></x-slot:actions></x-ds.empty-state>');
+        $heart = Blade::render('<x-ds.empty-state title="Nothing here" icon="heart">Say why.</x-ds.empty-state>');
 
-        $this->assertStringContainsString('ds-empty__stub', $html);
-        $this->assertStringContainsString('ds-empty__punch', $html);
-        $this->assertStringContainsString('Nothing here', $html);
-        $this->assertSame(0, substr_count(explode('ds-empty__text', $html)[0], '<svg'), 'no icon before the words');
+        $this->assertStringContainsString('ds-empty__stub', $cart);
+        $this->assertStringContainsString('ds-empty__punch--glyph', $cart);
+        $this->assertStringContainsString('Nothing here', $cart);
+        $this->assertSame(1, substr_count(explode('ds-empty__text', $cart)[0], '<svg'), 'one glyph in the punch, before the words');
+        $this->assertNotSame(preg_replace('/\s+/', '', explode('ds-empty__text', $cart)[0]), preg_replace('/\s+/', '', explode('ds-empty__text', $heart)[0]), 'a cart and a wishlist do not share one picture');
+    }
+
+    public function test_an_empty_state_with_no_icon_or_an_unknown_one_keeps_the_empty_ring_and_never_the_fallback_square(): void
+    {
+        foreach (['<x-ds.empty-state title="Nothing here">Why.</x-ds.empty-state>', '<x-ds.empty-state title="Nothing here" icon="no-such-glyph-xyz">Why.</x-ds.empty-state>'] as $template) {
+            $html = Blade::render($template);
+
+            $this->assertStringContainsString('ds-empty__punch', $html);
+            $this->assertStringNotContainsString('ds-empty__punch--glyph', $html);
+            $this->assertSame(0, substr_count(explode('ds-empty__text', $html)[0], '<svg'));
+        }
     }
 
     public function test_the_account_pages_do_not_repeat_their_navigation_in_a_top_strip(): void
