@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Auth\EcosystemAuthController;
+use App\Http\Controllers\AssistantController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\CspReportController;
 use App\Http\Controllers\DashboardController;
@@ -14,6 +15,8 @@ use App\Http\Controllers\ProductImageController;
 use App\Http\Controllers\ProductModerationController;
 use App\Http\Controllers\PromoCodeController;
 use App\Http\Controllers\ReviewController;
+use App\Http\Controllers\ReviewPhotoController;
+use App\Http\Controllers\SearchSuggestController;
 use App\Http\Controllers\SellerOrderController;
 use App\Http\Controllers\SellerProductController;
 use App\Http\Controllers\StoreController;
@@ -70,6 +73,14 @@ Route::get('/cookies', function () {
 // that spends, stores or discloses something about a person is behind auth.
 Route::get('/products', [ProductController::class, 'index'])->name('products.index');
 Route::get('/products/{product}', [ProductController::class, 'show'])->name('products.show');
+
+// --- data-b ---
+// JSON endpoints for discovery. Their rate limiters (suggest, assistant) are defined in DiscoveryServiceProvider, never here.
+Route::get('/search/suggest', SearchSuggestController::class)->middleware('throttle:suggest')->name('search.suggest');
+Route::post('/assistant/ask', AssistantController::class)->middleware('throttle:assistant')->name('assistant.ask');
+// Review photos live on the private disk and are streamed only to people allowed to see the review.
+Route::get('/review-photos/{photo}', ReviewPhotoController::class)->name('review-photos.show');
+// --- /data-b ---
 
 Route::middleware([
     'auth:sanctum',

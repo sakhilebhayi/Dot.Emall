@@ -80,6 +80,7 @@ final class SignedInSmoke
             ['who' => 'guest', 'uri' => '/'],
             ['who' => 'guest', 'uri' => '/products'],
             ['who' => 'guest', 'uri' => '/products?q=kettle'],
+            ['who' => 'guest', 'uri' => '/search/suggest?q=ke'],
             ['who' => 'guest', 'uri' => "/products/{$live}"],
             ['who' => 'guest', 'uri' => "/products/{$pending}", 'expect' => 404],
             ['who' => 'guest', 'uri' => '/login'],

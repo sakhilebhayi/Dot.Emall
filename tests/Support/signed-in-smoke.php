@@ -65,7 +65,7 @@ foreach ($smoke->pages() as $page) {
 // alias (a missing one is a 500 for the operator, a 403 for everyone else); these prove the limiters.
 $app['session.store']->flush();
 Auth::forgetGuards();
-foreach (['checkout', 'webhooks'] as $limiter) {
+foreach (['checkout', 'webhooks', 'suggest', 'assistant', 'community'] as $limiter) {
     $ok = RateLimiter::limiter($limiter) !== null;
     $failures += $ok ? 0 : 1;
     printf("%-9s %-46s %s\n", 'limiter', $limiter, $ok ? 'registered' : 'MISSING   <-- FAIL');
