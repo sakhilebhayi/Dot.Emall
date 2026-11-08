@@ -159,3 +159,7 @@
 /* Synonym chips: the word and the button that removes it, drawn as one pill. */
 .op-chips li > .op-inline { gap: 0; border: 1px solid var(--line-strong); border-radius: var(--r-pill); background: var(--surface); padding-inline-start: var(--s-4); align-items: center; }
 .op-chips__word { font-size: var(--text-sm); font-weight: 600; }
+
+/* Consecutive chip rows (a view switch, then a status filter) read as two groups, not one wrapped row. */
+nav:has(> .op-chips) + nav:has(> .op-chips), nav:has(> .op-chips) + form, nav:has(> .op-chips) + p { margin-block-start: var(--s-3); }
+.op-charts { margin-block-start: var(--s-5); }
