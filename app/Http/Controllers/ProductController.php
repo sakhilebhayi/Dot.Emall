@@ -114,37 +114,19 @@ class ProductController extends Controller
     }
 
     /**
-     * Product detail page: gallery, store info, reviews, add-to-cart form.
-     * Inactive products / products under an inactive store 404 for
-     * everyone except the owning seller (matches AuctionPolicy's draft
-     * handling for the equivalent buyer-facing case).
+     * Product detail page. The page itself is built by ProductPageController and the Storefront services (R-43 W4); this stays
+     * as the target of the products.show route so the route table and every link keep working.
      */
-    public function show(Product $product, ReviewService $reviews): View
+    public function show(Request $request, Product $product): View|\Illuminate\Http\Response
     {
-        $isOwner = auth()->check() && auth()->id() === $product->store->owner_id;
-
-        abort_unless(
-            $isOwner || ($product->is_active && $product->status === 'approved' && $product->store->is_active),
-            404
+        return app(ProductPageController::class)->show(
+            $request,
+            $product,
+            app(\App\Services\Storefront\ProductPage::class),
+            app(\App\Services\Storefront\ProductReviews::class),
+            app(\App\Services\Community\ProductQuestions::class),
+            app(\App\Services\Discovery\Recommender::class),
+            app(\App\Services\Discovery\RecentlyViewed::class),
         );
-
-        // Only published reviews are shown: one held for the operator or removed never reaches the page.
-        $product->load(['store', 'category', 'images', 'reviews' => fn ($q) => $q->published()->with('user')]);
-
-        $user = auth()->user();
-
-        // A guest who clicks "Sign in to buy" should land back on this page.
-        if ($user === null) {
-            session(['url.intended' => url()->current()]);
-        }
-
-        $hasReviewed = $user !== null && $reviews->hasReviewed($user, $product);
-        $canReview = $user !== null && ! $hasReviewed && Gate::forUser($user)->allows('create', [Review::class, $product]);
-
-        return view('products.show', [
-            'product' => $product,
-            'hasReviewed' => $hasReviewed,
-            'canReview' => $canReview,
-        ]);
     }
 }
