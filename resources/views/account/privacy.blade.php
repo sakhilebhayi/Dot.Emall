@@ -10,7 +10,7 @@
 
     <x-ds.panel title="What we keep, and why">
         <ul class="co-list">
-            <li>Your orders and their payments are kept as financial records.</li>
+            <li>Your orders, returns and payments are kept while your account exists, so you and the sellers can follow them.</li>
             <li>Your sign-in comes from InfoDot. Your InfoDot account is managed there, not here.</li>
             <li>What you looked at and searched for is kept under a code, not your name, and deleted after 90 days.</li>
             <li>Read the <a href="{{ route('policy.show') }}">privacy policy</a> and <a href="{{ route('cookies') }}">cookie policy</a>.</li>
@@ -22,7 +22,7 @@
             <x-ds.alert tone="cau" title="You cannot delete your account yet">{{ $blocker }}</x-ds.alert>
             <x-ds.button variant="danger" disabled>Delete my account</x-ds.button>
         @else
-            <p>Deleting removes your account, your addresses and your wishlist, and signs you out everywhere. It cannot be undone, and it asks for your password on the profile page. Your InfoDot account is not affected: that is managed at InfoDot.</p>
+            <p>Deleting removes your account, your addresses, your wishlist and your past orders and returns from Dot.Emall, and signs you out everywhere. Download your data first. It cannot be undone, and it asks for your password on the profile page. Your InfoDot account is not affected: that is managed at InfoDot.</p>
             <x-ds.button :href="route('profile.show').'#delete'" variant="danger" icon="trash">Go to account deletion</x-ds.button>
         @endif
     </x-ds.panel>

@@ -35,7 +35,7 @@ class CartPage
         $user = $request->user();
         $lines = $this->cart->lines($user);
         $region = $this->draft->region($user);
-        $result = $this->quote->quote($lines, $region, $this->draft->promo(), $this->draft->methods());
+        $result = $this->draft->quote($this->quote, $lines, $user);
 
         // A code that stopped applying (expired, used up, the cart changed) is dropped out loud, not left in a silent state.
         $promoNotice = null;
@@ -43,7 +43,7 @@ class CartPage
         if ($this->draft->promo() !== null && $result->promo === null) {
             $promoNotice = 'The code '.strtoupper((string) $this->draft->promo()).' no longer applies to the items in your cart, so it was removed.';
             $this->draft->forget('promo_code');
-            $result = $this->quote->quote($lines, $region, null, $this->draft->methods());
+            $result = $this->draft->quote($this->quote, $lines, $user, null, false);
         }
 
         $changes = $this->priceChanges($lines);

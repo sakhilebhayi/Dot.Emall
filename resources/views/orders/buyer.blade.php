@@ -95,7 +95,8 @@
 
                     @foreach ($parcel['shipments'] as $s)
                         <div class="co-shipment">
-                            <h3><x-ds.icon name="truck" :size="18" /> Sent {{ $s['shipment']->shipped_at?->format('j M Y, H:i') }} <span class="ds-muted">Details from the seller</span></h3>
+                            <h3><x-ds.icon name="truck" :size="18" /> Sent {{ $s['shipment']->shipped_at?->format('j M Y, H:i') }}</h3>
+                            <p class="ds-muted co-note">Details from the seller</p>
                             <dl class="ds-dl">
                                 @if ($s['carrier'])<dt>Carrier</dt><dd>{{ $s['carrier'] }}</dd>@endif
                                 @if ($s['tracking_number'])

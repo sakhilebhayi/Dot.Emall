@@ -81,11 +81,11 @@
                     <p class="ds-muted co-note"><a href="{{ route('account.addresses') }}">Manage your address book</a></p>
                     <details class="co-newaddr" {{ $useNew || collect($errors->keys())->contains(fn ($k) => str_starts_with($k, 'address.')) ? 'open' : '' }}>
                         <summary>Enter an address</summary>
-                        @include('checkout._address-fields', ['values' => $typed, 'provinces' => $provinces])
+                        @include('checkout._address-fields', ['values' => $typed, 'provinces' => $provinces, 'withPhone' => false])
                         <x-ds.checkbox label="Save this address to my address book" name="save_address" value="1" :checked="(bool) old('save_address', $draft['save_address'] ?? false)" />
                     </details>
                 @else
-                    @include('checkout._address-fields', ['values' => $typed, 'provinces' => $provinces])
+                    @include('checkout._address-fields', ['values' => $typed, 'provinces' => $provinces, 'withPhone' => false])
                     @if ($signedIn)<x-ds.checkbox label="Save this address to my address book" name="save_address" value="1" :checked="(bool) old('save_address', $draft['save_address'] ?? true)" />@endif
                 @endif
 
@@ -153,15 +153,10 @@
                         </div>
                     @endforeach
 
-                    <div class="co-promo">
-                        <x-ds.input label="Promo code (optional)" name="promo_code" id="co-promo" :value="$val('promo_code')" autocomplete="off" hint="Press Update delivery options to check a code before you pay." />
-                    </div>
-
                     <div class="co-terms">
                         <h3>Returns and your rights</h3>
                         <p>You can ask for a return within {{ $returnDays }} days of delivery. If an item is faulty, not as described or the wrong one, the seller pays for the return. If you changed your mind, you pay for it. Refunds go back through Paystack once the seller has the item. We apply the {{ $returnDays }}-day period that South African law (ECTA section 44) sets for online sales to every order, as our standard.</p>
-                        <x-ds.checkbox label="I have read and accept the terms and the returns summary" name="terms" value="1" :checked="(bool) old('terms')" />
-                        <p class="ds-muted co-note"><a href="{{ route('terms.show') }}">Terms of service</a>, <a href="{{ route('policy.show') }}">privacy policy</a> and <a href="{{ route('help.returns') }}">how returns work</a>.</p>
+                        <p class="ds-muted co-note">The box to accept these is beside the pay button. <a href="{{ route('terms.show') }}">Terms of service</a>, <a href="{{ route('policy.show') }}">privacy policy</a> and <a href="{{ route('help.returns') }}">how returns work</a>.</p>
                     </div>
                 @endif
             </section>
@@ -169,6 +164,9 @@
 
         <aside class="co-side" aria-label="Order total">
             @include('checkout._label', ['quote' => $quote, 'heading' => 'Total to pay', 'behind' => 'var(--ground)'])
+            <div class="co-promo">
+                <x-ds.input label="Promo code (optional)" name="promo_code" id="co-promo" :value="$val('promo_code')" autocomplete="off" hint="Press Show or Update delivery options to check a code before you pay." />
+            </div>
             <div class="co-act">
                 @if ($gatewayClosed)
                     <x-ds.button variant="primary" size="lg" block disabled>Payments are not open yet</x-ds.button>
@@ -176,6 +174,7 @@
                     <x-ds.button variant="primary" size="lg" block disabled>Pay {{ Shop::money($quote->totalCents) }}</x-ds.button>
                     <p class="ds-muted co-note">{{ ! $deliveryDone ? 'Set your delivery details first.' : 'Something in your cart needs fixing first.' }}</p>
                 @else
+                    <x-ds.checkbox label="I have read and accept the terms and the returns summary" name="terms" value="1" :checked="(bool) old('terms')" />
                     <x-ds.button type="submit" variant="primary" size="lg" block icon="lock" data-pay>{{ $paystackUsable ? 'Pay '.Shop::money($quote->totalCents).' securely' : 'Place order for '.Shop::money($quote->totalCents) }}</x-ds.button>
                     <p class="ds-muted co-note" data-pay-note>By paying you place an order for {{ Shop::money($quote->totalCents) }}. {{ $paystackUsable ? 'Press once: the button locks while we take you to Paystack.' : 'No payment is taken.' }}</p>
                 @endif

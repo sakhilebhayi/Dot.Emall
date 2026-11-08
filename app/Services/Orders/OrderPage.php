@@ -115,7 +115,7 @@ class OrderPage
         }
 
         if ($order->requires_payment) {
-            $steps[] = ['key' => 'paid', 'label' => 'Payment received', 'at' => $order->paid_at, 'state' => $order->payment_status->isSettled() ? 'done' : 'current',
+            $steps[] = ['key' => 'paid', 'label' => $order->payment_status->isSettled() ? 'Payment received' : 'Payment', 'at' => $order->paid_at, 'state' => $order->payment_status->isSettled() ? 'done' : 'current',
                 'note' => $order->payment_status->isSettled() ? null : 'Waiting for Paystack to confirm payment.'];
         }
 

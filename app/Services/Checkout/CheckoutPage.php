@@ -39,7 +39,7 @@ class CheckoutPage
 
         $draft = $this->draft->all();
         $region = $this->draft->region($user);
-        $quote = $this->quote->quote($lines, $region, $this->draft->promo(), $this->draft->methods());
+        $quote = $this->draft->quote($this->quote, $lines, $user);
 
         $addresses = $user !== null ? Address::query()->where('user_id', $user->id)->orderByDesc('is_default_shipping')->orderBy('id')->get() : collect();
         $contactDone = $user !== null || filled($draft['email'] ?? null);

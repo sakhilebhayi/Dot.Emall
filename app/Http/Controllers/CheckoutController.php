@@ -41,6 +41,11 @@ class CheckoutController extends Controller
             return redirect()->route('cart.index')->with('warning', 'Your cart is empty, so there is nothing to check out.');
         }
 
+        // A line that cannot be bought as it stands is fixed in the cart, where it is explained, never papered over here.
+        if ($data['quote']->problems !== []) {
+            return redirect()->route('cart.index')->with('error', 'Something in your cart needs fixing before you can check out. It is marked below.');
+        }
+
         return view('checkout.show', $data);
     }
 
@@ -66,7 +71,7 @@ class CheckoutController extends Controller
             }
         }
 
-        $result = $quote->quote($cart->lines($request->user()), $draft->region($request->user()), $draft->promo(), $draft->methods());
+        $result = $draft->quote($quote, $cart->lines($request->user()), $request->user());
         $stuck = collect($result->groups)->first(fn ($g) => ! $g['can_deliver']);
 
         if ($stuck !== null) {
@@ -102,7 +107,6 @@ class CheckoutController extends Controller
             'shipping_methods.*' => ['nullable', 'integer'],
             'promo_code' => ['nullable', 'string', 'max:40'],
         ]);
-        $validator->setCustomMessages(['terms.accepted' => 'Tick the box to confirm you have read the terms and the returns summary.']);
         $input = $this->validated($validator);
 
         $lines = $cart->lines($user);
@@ -115,6 +119,7 @@ class CheckoutController extends Controller
             $destination['shipping_phone'] = $input['phone'] ?? null;
         } else {
             $destination['address'] = $input['address'];
+            $destination['address']['phone'] = $input['address']['phone'] ?? $input['phone'] ?? null;
             $destination['shipping_phone'] = $input['phone'] ?? ($input['address']['phone'] ?? null);
         }
 
@@ -246,6 +251,7 @@ class CheckoutController extends Controller
         }
 
         $validator = Validator::make($request->all(), $rules, [
+            'terms.accepted' => 'Tick the box to confirm you have read the terms and the returns summary.',
             'email.required' => 'Enter your e-mail address so we can send your order link.',
             'email.email' => 'That e-mail address does not look right.',
             'address.required' => 'Enter a delivery address.',

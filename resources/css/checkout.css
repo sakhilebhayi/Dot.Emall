@@ -22,6 +22,7 @@
     .co-side { position: sticky; inset-block-start: 9.5rem; }
 }
 .co-label { --label-behind: var(--ground); }
+.co-label .ds-label__row dd, .co-total, .co-orderline__total, .co-option__price { font-variant-numeric: lining-nums; }
 .co-act { display: grid; gap: var(--s-3); justify-items: stretch; }
 .co-act .ds-btn--link { justify-self: center; }
 .co-panel { padding: var(--s-4); }
@@ -31,11 +32,12 @@
 /* A parcel: one seller's lines, their delivery choice and what that parcel costs. Bands with hairlines, not cards. */
 .co-parcel { border-top: 2px solid var(--ink); padding-block-start: var(--s-3); }
 .co-parcel__head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--s-1) var(--s-4); }
-.co-parcel__head h2 { font-size: var(--text-lg); }
+.co-parcel__head h2 { font-size: var(--text-lg); text-wrap: balance; }
 .co-parcel__method { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--s-1) var(--s-2); margin-block: var(--s-3); }
 .co-parcel__method .ds-icon { align-self: center; flex: none; }
 .co-parcel__sum { margin: var(--s-3) 0 0; display: grid; gap: var(--s-1); }
-.co-parcel__sum > div { display: flex; justify-content: space-between; gap: var(--s-4); font-variant-numeric: tabular-nums; }
+.co-parcel__sum > div { display: flex; justify-content: space-between; gap: var(--s-4); }
+.co-parcel__sum dd { font-variant-numeric: lining-nums; }
 .co-parcel__sum dt { color: var(--ink-2); }
 .co-parcel__sum dd { margin: 0; text-align: end; }
 .co-parcel__total { font-weight: 700; border-top: 1px solid var(--line); padding-top: var(--s-2); margin-top: var(--s-1); }
@@ -48,8 +50,9 @@
 .co-option { padding-inline: var(--s-3); border: 1px solid var(--line); border-radius: var(--r-control); background: var(--surface); margin-block-end: var(--s-2); }
 .co-option:has(input:checked) { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
 .co-option:has(input:focus-visible) { outline: 2px solid var(--focus); outline-offset: 2px; }
+.co-option .ds-choice__text { flex: 1; min-width: 0; }
 .co-option .ds-choice__label { display: flex; justify-content: space-between; gap: var(--s-4); }
-.co-option__price { font-variant-numeric: tabular-nums lining-nums; white-space: nowrap; }
+.co-option__price { white-space: nowrap; }
 
 /* Checkout: four steps in one page. A step that is not reachable yet is quiet, never hidden. */
 .co-multi { display: flex; gap: var(--s-3); align-items: flex-start; padding: var(--s-3) var(--s-4); background: var(--brand-soft); border-radius: var(--r-control); margin-block-end: var(--s-5); }
@@ -57,7 +60,7 @@
 .co-step { display: grid; gap: var(--s-4); padding-block: var(--s-4) var(--s-5); border-top: 2px solid var(--line); min-width: 0; }
 .co-step[data-state="current"] { border-top-color: var(--brand); }
 .co-step[data-state="done"] { border-top-color: var(--ink); }
-.co-step > h2 { display: flex; align-items: center; gap: var(--s-3); font-size: var(--text-lg); }
+.co-step > h2 { text-wrap: balance; display: flex; align-items: center; gap: var(--s-3); font-size: var(--text-lg); }
 .co-step[data-state="todo"] > h2 { color: var(--ink-3); }
 .co-step__n { display: inline-grid; place-items: center; width: 1.75rem; height: 1.75rem; border-radius: 50%; border: 2px solid currentColor; font-size: var(--text-sm); font-variant-numeric: tabular-nums; }
 .co-stepact { display: flex; flex-wrap: wrap; gap: var(--s-3); }
@@ -82,13 +85,12 @@
 .co-orderline__name a { color: var(--ink); text-decoration: none; }
 .co-orderline__name a:hover { text-decoration: underline; }
 .co-orderline__side { display: grid; gap: var(--s-1); justify-items: end; align-content: start; }
-.co-orderline__total { font-weight: 700; font-variant-numeric: tabular-nums lining-nums; }
+.co-orderline__total { font-weight: 700; }
 .co-orderline__actions { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2) var(--s-3); }
 .co-orderline__actions form { margin: 0; }
 .co-orderline__return { grid-column: 1 / -1; display: flex; gap: var(--s-2); align-items: flex-start; font-size: var(--text-sm); color: var(--ink-2); }
 .co-shipment { background: var(--sunken); border-radius: var(--r-control); padding: var(--s-4); margin-block-start: var(--s-3); display: grid; gap: var(--s-3); }
 .co-shipment h3 { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); font-size: var(--text-base); font-weight: 700; }
-.co-shipment h3 .ds-muted { font-weight: 400; font-size: var(--text-sm); }
 .co-events { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s-2); border-inline-start: 2px dashed var(--line-strong); padding-inline-start: var(--s-4); }
 .co-events__when { font-variant-numeric: tabular-nums; color: var(--ink-3); margin-inline-end: var(--s-2); font-size: var(--text-sm); }
 .co-contact { margin-block-start: var(--s-3); }
@@ -96,7 +98,8 @@
 .co-contact[open] > summary { margin-block-end: var(--s-2); }
 .co-contact form { display: grid; gap: var(--s-3); }
 .co-money { margin: 0; display: grid; gap: var(--s-2); }
-.co-money > div { display: flex; justify-content: space-between; gap: var(--s-4); font-variant-numeric: tabular-nums lining-nums; }
+.co-money > div { display: flex; justify-content: space-between; gap: var(--s-4); }
+.co-money dd { font-variant-numeric: lining-nums; }
 .co-money dt { color: var(--ink-2); }
 .co-money dd { margin: 0; text-align: end; }
 .co-money__total { border-top: var(--perf); padding-top: var(--s-3); margin-top: var(--s-1); font-weight: 750; font-size: var(--text-md); }
@@ -138,4 +141,5 @@
     .ds-main { padding: 0; }
     body { background: Canvas; color: CanvasText; }
 }
-.co-total { font-weight: 700; font-variant-numeric: tabular-nums lining-nums; white-space: nowrap; }
+.co-total { font-weight: 700; white-space: nowrap; }
+.co-layout { margin-block-start: var(--s-4); }

@@ -5,6 +5,9 @@ namespace App\Services\Checkout;
 use App\Models\Address;
 use App\Models\User;
 use App\Services\Addresses\AddressBook;
+use App\Services\Cart\CartQuote;
+use App\Services\Cart\QuoteResult;
+use Illuminate\Support\Collection;
 use App\Services\Shipping\Region;
 
 /**
@@ -48,6 +51,36 @@ class CheckoutDraft
         $draft = $this->all();
         unset($draft[$key]);
         session([self::KEY => $draft]);
+    }
+
+    /**
+     * The quote the pages show. Until the shopper chooses, each seller's cheapest way is NOT assumed to be collection: when the cheapest
+     * option is "collect it yourself" and the seller also delivers, delivery is the starting choice (the radio shows it and the shopper can
+     * move to collection with one press). The total the page shows and the one checkout checks are the same quote.
+     *
+     * @param  Collection<int, \App\Services\Cart\CartLine>  $lines
+     */
+    public function quote(CartQuote $quotes, Collection $lines, ?User $user, ?string $promo = null, bool $usePromo = true): QuoteResult
+    {
+        $region = $this->region($user);
+        $promo = $usePromo ? ($promo ?? $this->promo()) : null;
+        $methods = $this->methods();
+        $result = $quotes->quote($lines, $region, $promo, $methods);
+        $fill = [];
+
+        foreach ($result->groups as $storeId => $group) {
+            if (isset($methods[$storeId]) || $group['selected'] === null || ! $group['selected']->isCollection()) {
+                continue;
+            }
+
+            $delivery = collect($group['options'])->first(fn ($o) => ! $o->isCollection() && $o->methodId !== null);
+
+            if ($delivery !== null) {
+                $fill[$storeId] = $delivery->methodId;
+            }
+        }
+
+        return $fill === [] ? $result : $quotes->quote($lines, $region, $promo, $fill + $methods);
     }
 
     public function promo(): ?string

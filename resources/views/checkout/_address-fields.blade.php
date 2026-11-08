@@ -1,4 +1,4 @@
-{{-- The typed delivery address, one field per line of a South African address. Variables: $values (array, typed or saved), $provinces. Errors are read as address.<field>. --}}
+{{-- The typed delivery address, one field per line of a South African address. Variables: $values (array, typed or saved), $provinces, $withPhone (default true: checkout asks for the phone once, in Contact). Errors are read as address.<field>. --}}
 @php
     $v = fn (string $k) => old('address.'.$k, $values[$k] ?? '');
     $e = fn (string $k) => $errors->first('address.'.$k);
@@ -14,6 +14,6 @@
     </div>
     <x-ds.select label="Province" name="address[province]" id="addr-province" :options="array_combine($provinces, $provinces)" placeholder="Choose a province" :selected="(string) $v('province')" :error="$e('province')" required />
     <input type="hidden" name="address[country]" value="ZA">
-    <x-ds.input label="Phone for the courier (optional)" name="address[phone]" id="addr-phone" type="tel" :value="$v('phone')" :error="$e('phone')" autocomplete="tel" />
+    @if ($withPhone ?? true)<x-ds.input label="Phone for the courier (optional)" name="address[phone]" id="addr-phone" type="tel" :value="$v('phone')" :error="$e('phone')" autocomplete="tel" />@endif
     <x-ds.textarea label="Delivery instructions (optional)" name="address[instructions]" id="addr-instructions" rows="2" :value="$v('instructions')" :error="$e('instructions')" hint="For example a gate code or where to leave the parcel. The seller sees this only while they still have to send your parcel." />
 </div>
