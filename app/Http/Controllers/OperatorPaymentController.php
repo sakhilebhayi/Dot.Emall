@@ -13,6 +13,7 @@ use App\Services\Paystack\PaystackConfig;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 /**
@@ -99,7 +100,11 @@ class OperatorPaymentController extends Controller
 
     public function retryRefund(Refund $refund, Request $request, OperatorDecisions $decisions): RedirectResponse
     {
-        $refund = $decisions->retryRefund($refund, $request->user());
+        try {
+            $refund = $decisions->retryRefund($refund, $request->user());
+        } catch (ValidationException $e) {
+            return redirect()->route('operator.payments.index')->with('error', collect($e->errors())->flatten()->first());
+        }
 
         return redirect()->route('operator.payments.index')->with(
             $refund->status === RefundStatus::Pending ? 'error' : 'status',

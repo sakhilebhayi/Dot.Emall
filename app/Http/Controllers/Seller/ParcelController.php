@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Seller;
 
 use App\Enums\OrderStatus;
+use App\Models\LedgerEntry;
 use App\Models\OrderGroup;
 use App\Models\OrderItem;
+use App\Models\OrderStatusHistory;
 use App\Models\SellerOrderNote;
 use App\Models\Shipment;
 use App\Services\OrderLifecycle;
@@ -44,9 +46,9 @@ class ParcelController extends SellerController
             'shipBy' => $parcels->shipBy($group),
             'carriers' => $carriers->options(),
             'notes' => SellerOrderNote::query()->where('order_group_id', $group->id)->with('author:id,name')->latest('id')->get(),
-            'history' => \App\Models\OrderStatusHistory::query()->whereIn('order_item_id', $group->items->pluck('id'))->latest('id')->limit(30)->get(),
+            'history' => OrderStatusHistory::query()->whereIn('order_item_id', $group->items->pluck('id'))->latest('id')->limit(30)->get(),
             'paid' => $group->order->isFulfillable(),
-            'ledger' => \App\Models\LedgerEntry::query()->where('order_group_id', $group->id)->orderBy('id')->get(),
+            'ledger' => LedgerEntry::query()->where('order_group_id', $group->id)->orderBy('id')->get(),
         ]);
     }
 
@@ -182,6 +184,12 @@ class ParcelController extends SellerController
         ], ['item_ids.required' => 'Tick the items you are cancelling.', 'item_ids.min' => 'Tick the items you are cancelling.', 'reason.required' => 'Say why, so the buyer understands.', 'reason.min' => 'Say why, so the buyer understands.']);
 
         $lines = $group->items()->whereIn('id', $data['item_ids'])->get();
+
+        // D-151: an id that is not a line of THIS parcel (a stale page, a hand-made request) used to cancel nothing and still answer
+        // "Items cancelled and put back in stock". Say so, and change nothing, unless every ticked line is this parcel's.
+        if ($lines->isEmpty() || $lines->count() !== count(array_unique(array_map('intval', $data['item_ids'])))) {
+            return back()->withErrors(['item_ids' => 'Some of the items you ticked are not in this parcel, so nothing was cancelled. Reload the page and try again.'])->withInput();
+        }
 
         try {
             foreach ($lines as $line) {

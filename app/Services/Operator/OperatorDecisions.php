@@ -346,6 +346,16 @@ class OperatorDecisions
     {
         $this->operator($operator);
 
+        // D-152: only a refund that is still owed can be retried. A submitted or refunded one used to answer "Refund request sent to
+        // Paystack" and write a "Retried a refund" audit line for a call that was never made.
+        $refund->refresh();
+
+        if (! $refund->status->needsOperator()) {
+            throw ValidationException::withMessages(['status' => $refund->status === RefundStatus::Refunded
+                ? 'This refund is already done, so there is nothing to retry.'
+                : 'Paystack is already processing this refund. Wait for it to report, or mark it done by hand if you refunded it yourself.']);
+        }
+
         if ($refund->status === RefundStatus::Failed) {
             $refund->forceFill(['status' => RefundStatus::Pending, 'provider_refund_id' => null])->save();
         }
@@ -362,6 +372,11 @@ class OperatorDecisions
         $note = $this->reason($note, 'Write where you refunded it and the reference, so the books can be checked.');
 
         DB::transaction(function () use ($refund, $operator, $note) {
+            // D-152: a refund that is already done is not done twice (no second audit line, no overwritten note).
+            if (Refund::query()->lockForUpdate()->findOrFail($refund->id)->status === RefundStatus::Refunded) {
+                throw ValidationException::withMessages(['note' => 'This refund is already marked as done.']);
+            }
+
             $this->refunds->markDoneByOperator($refund, $operator, $note);
             $this->audit->record($operator, 'refund.mark_done', ['type' => 'refund', 'id' => $refund->id, 'label' => 'Refund #'.$refund->id], $note, ['order_id' => $refund->order_id, 'amount_cents' => $refund->amount_cents]);
         });
