@@ -78,7 +78,7 @@
                                     <span class="ds-muted">{{ $l['return_note'] }}</span>
                                 @endif
                                 @if ($l['can_cancel'])
-                                    <x-ds.button size="sm" variant="danger" icon="x-circle" data-dialog-open="cancel-{{ $item->id }}">Cancel item</x-ds.button>
+                                    <x-ds.button size="sm" :variant="$l['can_confirm'] ? 'quiet' : 'danger'" icon="x-circle" data-dialog-open="cancel-{{ $item->id }}" :class="$l['can_confirm'] ? 'co-orderline__cancel' : ''">Cancel item</x-ds.button>
                                     <x-ds.confirm-dialog :id="'cancel-'.$item->id" title="Cancel this item?" :action="$guest ? $r('items.cancel', $item) : route('order-items.cancel', $item)" confirmLabel="Cancel item">
                                         <p>{{ $l['name'] }} goes back into stock and the order total is recalculated.@if ($order->payment_status->isSettled()) You paid for it, so the refund is recorded and sent through Paystack.@endif This cannot be undone.</p>
                                     </x-ds.confirm-dialog>

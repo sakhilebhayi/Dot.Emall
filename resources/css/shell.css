@@ -23,6 +23,8 @@
 .ds-util__loc, .ds-util__test { display: flex; align-items: center; gap: var(--s-2); min-width: 0; }
 .ds-util .disc-region { white-space: nowrap; }
 .ds-util__test .ds-badge { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+/* On a phone the province chip and the test-mode pill wrap onto two lines rather than clip each other (jury 2 #11). */
+@media (max-width: 29.99rem) { .ds-util__row { flex-wrap: wrap; gap: 0 var(--s-4); } .ds-util__test .ds-badge { overflow: visible; white-space: normal; } }
 @media (min-width: 48rem) { .ds-util__links { display: flex; } }
 .ds-util:not(:has(.ds-util__loc > *, .ds-util__test > *)) .ds-util__row { justify-content: flex-end; }
 @media (max-width: 47.99rem) { .ds-util:not(:has(.ds-util__loc > *, .ds-util__test > *)) { display: none; } }

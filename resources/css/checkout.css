@@ -93,6 +93,8 @@
 .co-orderline__total { font-weight: 700; }
 .co-orderline__actions { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2) var(--s-3); }
 .co-orderline__actions form { margin: 0; }
+/* Next to the main action ("I have collected it") the cancel button steps back: quiet, pushed to the far end of the row (jury 2 #13). */
+.co-orderline__cancel { margin-inline-start: auto; }
 .co-orderline__return { grid-column: 1 / -1; display: flex; gap: var(--s-2); align-items: flex-start; font-size: var(--text-sm); color: var(--ink-2); }
 .co-shipment { background: var(--sunken); border-radius: var(--r-control); padding: var(--s-4); margin-block-start: var(--s-3); display: grid; gap: var(--s-3); }
 .co-shipment h3 { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); font-size: var(--text-base); font-weight: 700; }
