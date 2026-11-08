@@ -23,14 +23,19 @@ class ReviewController extends Controller
         $validated = $request->validate([
             'rating' => ['required', 'integer', 'min:1', 'max:5'],
             'body' => ['nullable', 'string', 'max:2000'],
+            'photos' => ['nullable', 'array', 'max:4'],
+            'photos.*' => ['file'],
         ]);
 
-        $review = $reviews->submit($request->user(), $product, (int) $validated['rating'], $validated['body'] ?? null);
+        $review = $reviews->submit($request->user(), $product, (int) $validated['rating'], $validated['body'] ?? null, $request->file('photos', []));
 
-        $product->loadMissing('store.owner');
-        $product->store->owner?->notify(new NewReviewNotification($review));
+        // A review held for the operator is not announced to the seller until it is released.
+        if ($review->status === Review::PUBLISHED) {
+            $product->loadMissing('store.owner');
+            $product->store->owner?->notify(new NewReviewNotification($review));
+        }
 
-        return redirect()->route('products.show', $product)->with('status', 'Review posted.');
+        return redirect()->route('products.show', $product)->with('status', $review->status === Review::PUBLISHED ? 'Review posted.' : 'Thanks. Your review is waiting for a quick check before it appears.');
     }
 
     public function destroy(Review $review, ReviewService $reviews): RedirectResponse

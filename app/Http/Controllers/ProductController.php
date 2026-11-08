@@ -88,7 +88,8 @@ class ProductController extends Controller
             404
         );
 
-        $product->load(['store', 'category', 'images', 'reviews.user']);
+        // Only published reviews are shown: one held for the operator or removed never reaches the page.
+        $product->load(['store', 'category', 'images', 'reviews' => fn ($q) => $q->published()->with('user')]);
 
         $user = auth()->user();
 
