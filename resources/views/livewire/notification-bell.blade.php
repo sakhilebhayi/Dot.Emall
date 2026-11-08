@@ -1,42 +1,31 @@
-<div class="topbar-bell" x-data @click.outside="$wire.open = false" @keydown.escape.window="$wire.open = false">
-    <button wire:click="toggle" type="button" class="topbar-btn" title="Notifications" aria-label="Notifications" aria-haspopup="true" aria-expanded="{{ $open ? 'true' : 'false' }}" style="position:relative;">
-        <span class="material-symbols-rounded" aria-hidden="true">notifications</span>
-        @if($this->unreadCount > 0)
-            <span style="position:absolute;top:-2px;right:-2px;min-width:15px;height:15px;padding:0 3px;border-radius:100px;background:#ef4444;color:#fff;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;line-height:1;">
-                {{ $this->unreadCount > 9 ? '9+' : $this->unreadCount }}
-            </span>
-        @endif
+{{-- The notification bell (Livewire). A disclosure: the button toggles a panel of the latest ten notices. Opens with Enter or Space, closes with Esc or a click outside. --}}
+<div class="ds-dropdown" x-data @click.outside="$wire.open = false" @keydown.escape.window="$wire.open = false" style="display: inline-block;">
+    <button wire:click="toggle" type="button" class="ds-icon-btn" aria-label="Notifications{{ $this->unreadCount > 0 ? ', '.$this->unreadCount.' unread' : '' }}" aria-haspopup="true" aria-expanded="{{ $open ? 'true' : 'false' }}">
+        <x-ds.icon name="bell" :size="22" />
+        @if ($this->unreadCount > 0)<span class="ds-count" style="position: absolute; inset-block-start: 0.2rem; inset-inline-end: 0.1rem;" aria-hidden="true">{{ $this->unreadCount > 9 ? '9+' : $this->unreadCount }}</span>@endif
     </button>
 
-    @if($open)
-    <div class="notif-panel">
-        <div style="display:flex;align-items:center;justify-content:space-between;padding:0.85rem 1rem;border-bottom:1px solid rgba(255,255,255,0.06);">
-            <span style="font-family:'Syne',sans-serif;font-size:12.5px;font-weight:700;color:#f4f4f5;">Notifications</span>
-            @if($this->unreadCount > 0)
-                <button wire:click="markAllAsRead" style="background:none;border:none;color:#f59e0b;font-size:11px;font-weight:600;cursor:pointer;padding:0;">Mark all read</button>
+    @if ($open)
+        <div class="ds-dropdown__panel" style="width: min(24rem, calc(100vw - 1.5rem));" role="region" aria-label="Notifications">
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); padding: var(--s-2) var(--s-3);">
+                <h2 style="font-size: var(--text-base);">Notifications</h2>
+                @if ($this->unreadCount > 0)<button wire:click="markAllAsRead" type="button" class="ds-btn ds-btn--link ds-btn--sm">Mark all read</button>@endif
+            </div>
+            <hr class="ds-dropdown__sep">
+            @if ($this->notifications->isEmpty())
+                <p class="ds-dropdown__note">No notifications yet.</p>
+            @else
+                <ul style="list-style: none; margin: 0; padding: 0; max-height: 22rem; overflow-y: auto;">
+                    @foreach ($this->notifications as $notification)
+                        <li>
+                            <button type="button" class="ds-dropdown__item" style="align-items: flex-start; flex-direction: column; gap: 2px; {{ $notification->read_at ? 'opacity: 0.7;' : '' }}" wire:click="markAsRead('{{ $notification->id }}')">
+                                <span style="font-weight: {{ $notification->read_at ? 500 : 700 }};">@unless ($notification->read_at)<span class="ds-visually-hidden">Unread: </span>@endunless{{ $notification->data['title'] ?? 'Notification' }}</span>
+                                <span class="ds-muted" style="font-size: var(--text-sm);">{{ $notification->data['message'] ?? '' }}</span>
+                            </button>
+                        </li>
+                    @endforeach
+                </ul>
             @endif
         </div>
-
-        @if($this->notifications->isEmpty())
-            <div style="text-align:center;padding:2rem 1rem;">
-                <span class="material-symbols-rounded" style="font-size:30px;color:#3f3f46;display:block;margin-bottom:0.5rem;">notifications_off</span>
-                <p style="font-size:0.75rem;color:#52525b;margin:0;">No notifications yet.</p>
-            </div>
-        @else
-            <div>
-                @foreach($this->notifications as $notification)
-                <div role="button" tabindex="0" class="notif-row" wire:click="markAsRead('{{ $notification->id }}')" wire:keydown.enter="markAsRead('{{ $notification->id }}')" wire:keydown.space.prevent="markAsRead('{{ $notification->id }}')" style="padding:0.7rem 1rem;border-bottom:1px solid rgba(255,255,255,0.05);cursor:pointer;{{ $notification->read_at ? 'opacity:0.55;' : '' }}">
-                    <div style="display:flex;align-items:center;gap:6px;">
-                        @if(!$notification->read_at)
-                            <span style="width:6px;height:6px;border-radius:50%;background:#f59e0b;flex-shrink:0;"></span>
-                        @endif
-                        <span style="font-size:12px;font-weight:600;color:#d4d4d8;">{{ $notification->data['title'] ?? 'Notification' }}</span>
-                    </div>
-                    <div style="font-size:11px;color:#71717a;margin-top:3px;line-height:1.4;">{{ $notification->data['message'] ?? '' }}</div>
-                </div>
-                @endforeach
-            </div>
-        @endif
-    </div>
     @endif
 </div>

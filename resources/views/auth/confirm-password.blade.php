@@ -1,28 +1,12 @@
-<x-guest-layout>
-    <x-authentication-card>
-        <x-slot name="logo">
-            <x-authentication-card-logo />
-        </x-slot>
+<x-auth-layout>
+    <x-slot:title>Confirm your password</x-slot:title>
+    <x-slot:heading>Confirm your password</x-slot:heading>
+    <x-slot:lead>This is a secure area. Please confirm your password before continuing.</x-slot:lead>
 
-        <div class="mb-4 text-sm text-[var(--ink-soft)]">
-            {{ __('This is a secure area of the application. Please confirm your password before continuing.') }}
-        </div>
-
-        <x-validation-errors class="mb-4" />
-
-        <form method="POST" action="{{ route('password.confirm') }}">
-            @csrf
-
-            <div>
-                <x-label for="password" value="{{ __('Password') }}" />
-                <x-input id="password" class="block mt-1 w-full" type="password" name="password" required autocomplete="current-password" autofocus />
-            </div>
-
-            <div class="flex justify-end mt-4">
-                <x-button class="ms-4">
-                    {{ __('Confirm') }}
-                </x-button>
-            </div>
-        </form>
-    </x-authentication-card>
-</x-guest-layout>
+    <x-validation-errors />
+    <form method="POST" action="{{ route('password.confirm') }}" class="ds-stack" style="--stack: var(--s-4);">
+        @csrf
+        <x-ds.input name="password" label="Password" type="password" required autofocus autocomplete="current-password" />
+        <x-ds.button type="submit">Confirm</x-ds.button>
+    </form>
+</x-auth-layout>

@@ -1,1 +1,1 @@
-<img src="{{ asset('images/logo.png') }}" alt="Dot.Emall" {{ $attributes }}>
+<x-ds.logo {{ $attributes }} :href="url('/')" />
