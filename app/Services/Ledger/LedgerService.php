@@ -119,7 +119,11 @@ class LedgerService
 
         $lines = $this->liveLines($group);
         $itemsNet = $lines->sum(fn (OrderItem $l) => $l->netCents());
-        $targetGross = $itemsNet + ($lines->isEmpty() ? 0 : $group->delivery_cents);
+
+        // The seller keeps the delivery fee of a parcel that was delivered, even when its only line is then returned and
+        // refunded (D-17: a return does not refund delivery). Only a parcel with every line cancelled has no delivery to earn.
+        $delivered = OrderItem::query()->where('order_group_id', $groupId)->where('status', '!=', OrderStatus::Cancelled->value)->exists();
+        $targetGross = $itemsNet + ($delivered ? $group->delivery_cents : 0);
         $targetCommission = (int) round($itemsNet * (float) $sale->commission_percent / 100);
 
         $dGross = $targetGross - (int) $entries->sum('gross_cents');

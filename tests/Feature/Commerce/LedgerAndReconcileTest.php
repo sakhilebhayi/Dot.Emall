@@ -238,6 +238,27 @@ class LedgerAndReconcileTest extends TestCase
         $this->assertSame(['held' => 0, 'released' => 14000], ['held' => $balance['held'], 'released' => $balance['released']]);
     }
 
+    public function test_a_parcel_whose_only_line_is_returned_after_delivery_keeps_its_delivery_fee_and_reconciles(): void
+    {
+        $this->enablePaystack();
+        $seller = $this->makeSeller();
+        $this->withDelivery($seller, ['price' => 40]);
+        $buyer = $this->makeBuyer();
+        $order = $this->placeOrder($buyer, [[$this->makeListing($seller, ['price' => 100]), 1]]);
+        $this->payOrder($order);
+        $order = $this->deliver($order->fresh());
+        $this->refundsAccepted();
+
+        $returns = app(ReturnService::class);
+        $return = $returns->request($order->items->first(), $buyer, 'faulty');
+        $returns->approve($return, $seller);
+        $returns->markReceived($return->fresh(), $seller);
+
+        // D-17: the return refunds the line, not the delivery. The seller's ledger keeps the R40 they delivered for.
+        $this->assertSame(4000, (int) LedgerEntry::query()->where('order_id', $order->id)->sum('gross_cents'));
+        $this->assertSame([], app(Reconciler::class)->run()['mismatches']);
+    }
+
     public function test_balance_adds_held_and_released_and_nets_reversals(): void
     {
         [$seller, $buyer, $order] = $this->paid();

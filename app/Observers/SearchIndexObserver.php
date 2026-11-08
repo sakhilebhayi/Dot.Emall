@@ -32,6 +32,13 @@ class SearchIndexObserver
 
     public function saved(Model $model): void
     {
+        // The category tree is read once per request and remembered: a changed category must not be served stale,
+        // whether or not the search index is being kept up to date (it is switched off while the demo seeds).
+        if ($model instanceof StoreCategory) {
+            app(CategoryTree::class)->forget();
+            Vocabulary::forget();
+        }
+
         if (! $this->enabled()) {
             return;
         }
@@ -75,12 +82,6 @@ class SearchIndexObserver
             return;
         }
 
-        if ($model instanceof StoreCategory) {
-            // The tree is read once per request and remembered: a changed category must not be served stale.
-            app(CategoryTree::class)->forget();
-            Vocabulary::forget();
-        }
-
         if ($model instanceof StoreCategory && ($model->wasChanged(['name', 'parent_id']))) {
             $this->dispatch(DB::table('products')->where('category_id', $model->id)->whereNull('deleted_at')->pluck('id')->all());
         }
@@ -88,6 +89,11 @@ class SearchIndexObserver
 
     public function deleted(Model $model): void
     {
+        if ($model instanceof StoreCategory) {
+            app(CategoryTree::class)->forget();
+            Vocabulary::forget();
+        }
+
         if (! $this->enabled()) {
             return;
         }

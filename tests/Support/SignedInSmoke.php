@@ -2,12 +2,16 @@
 
 namespace Tests\Support;
 
+use App\Models\Brand;
 use App\Models\CartItem;
 use App\Models\Order;
 use App\Models\Product;
+use App\Models\ProductVariant;
 use App\Models\Store;
+use App\Models\StoreCategory;
 use App\Models\User;
 use App\Services\CheckoutService;
+use App\Services\Guests\GuestOrderAccess;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
 
@@ -52,7 +56,8 @@ final class SignedInSmoke
         $operator = $this->user('Smoke Operator', 'operator', operator: true);
 
         $store = Store::create(['owner_id' => $seller->id, 'name' => 'Smoke Store', 'slug' => 'smoke-store-'.uniqid(), 'description' => 'Smoke test store.', 'is_active' => true]);
-        $live = $this->product($store, 'Smoke Kettle', ['price' => '120.00', 'stock' => 20]);
+        $category = StoreCategory::create(['name' => 'Smoke Kitchen', 'slug' => 'smoke-kitchen']);
+        $live = $this->product($store, 'Smoke Kettle', ['price' => '120.00', 'stock' => 20, 'category_id' => $category->id, 'brand_id' => Brand::named('Smoke Brand')->id]);
         $pending = $this->product($store, 'Smoke Pending Lamp', ['status' => 'pending_approval']);
 
         $order = $this->placeOrder($buyer, $live);
@@ -60,7 +65,11 @@ final class SignedInSmoke
 
         CartItem::withoutGlobalScopes()->create(['user_id' => $buyer->id, 'product_id' => $live->id, 'quantity' => 2]);
 
-        $this->world = compact('store', 'live', 'pending', 'order', 'line', 'seller', 'buyer', 'newcomer', 'operator');
+        // A guest who never signed in: reached only by the link in their e-mail (D-9). The path is what the browser opens.
+        $guestOrder = app(CheckoutService::class)->placeAsGuest('smoke-guest@example.test', [['variant_id' => ProductVariant::query()->where('product_id', $live->id)->value('id'), 'quantity' => 1]], ['shipping_address' => '2 Smoke Street, Testville', 'shipping_name' => 'Smoke Guest'], (string) Str::uuid());
+        $guestLink = (string) parse_url((string) app(GuestOrderAccess::class)->url($guestOrder), PHP_URL_PATH);
+
+        $this->world = compact('store', 'live', 'pending', 'order', 'line', 'seller', 'buyer', 'newcomer', 'operator', 'category', 'guestLink');
 
         return compact('seller', 'buyer', 'newcomer', 'operator');
     }
@@ -80,7 +89,12 @@ final class SignedInSmoke
             ['who' => 'guest', 'uri' => '/'],
             ['who' => 'guest', 'uri' => '/products'],
             ['who' => 'guest', 'uri' => '/products?q=kettle'],
+            ['who' => 'guest', 'uri' => '/products?category='.$w['category']->id],
+            ['who' => 'guest', 'uri' => '/products?q=kettle&category='.$w['category']->id],
+            ['who' => 'guest', 'uri' => '/search?q=kettle'],
             ['who' => 'guest', 'uri' => '/search/suggest?q=ke'],
+            ['who' => 'guest', 'uri' => '/search/suggest?q=smoke%20kit'],
+            ['who' => 'guest', 'uri' => $w['guestLink']],
             ['who' => 'guest', 'uri' => "/products/{$live}"],
             ['who' => 'guest', 'uri' => "/products/{$pending}", 'expect' => 404],
             ['who' => 'guest', 'uri' => '/login'],
@@ -97,11 +111,14 @@ final class SignedInSmoke
             ['who' => 'buyer', 'uri' => '/user/profile'],
             ['who' => 'buyer', 'uri' => '/teams/create'],
             ['who' => 'buyer', 'uri' => '/teams/'.$w['buyer']->personalTeam()->id],
+            ['who' => 'buyer', 'uri' => '/account'],
             // someone who is not a seller yet
             ['who' => 'newcomer', 'uri' => '/sell'],
+            ['who' => 'newcomer', 'uri' => '/sell/start'],
             ['who' => 'newcomer', 'uri' => '/sell/products', 'expect' => 200],
             // seller
             ['who' => 'seller', 'uri' => '/dashboard'],
+            ['who' => 'seller', 'uri' => '/sell/dashboard'],
             ['who' => 'seller', 'uri' => "/products/{$pending}"],
             ['who' => 'seller', 'uri' => '/sell/store/edit'],
             ['who' => 'seller', 'uri' => '/sell/products'],

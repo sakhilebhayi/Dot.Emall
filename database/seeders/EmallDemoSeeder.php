@@ -5,28 +5,50 @@ namespace Database\Seeders;
 use App\Enums\OrderStatus;
 use App\Enums\PaymentAttemptStatus;
 use App\Enums\PaymentStatus;
-use App\Models\CartItem;
+use App\Enums\StoreStatus;
+use App\Models\Address;
+use App\Models\Brand;
+use App\Models\Collection;
 use App\Models\Order;
-use App\Models\OrderItem;
 use App\Models\Payment;
 use App\Models\Product;
 use App\Models\ProductImage;
+use App\Models\ProductVariant;
 use App\Models\PromoCode;
+use App\Models\ReturnRequest;
 use App\Models\Review;
+use App\Models\Shipment;
+use App\Models\ShippingMethod;
 use App\Models\Store;
 use App\Models\StoreCategory;
+use App\Models\Team;
 use App\Models\User;
 use App\Notifications\NewReviewNotification;
-use App\Notifications\OrderItemStatusUpdatedNotification;
-use App\Notifications\OrderLineCancelledNotification;
 use App\Notifications\UnpaidOrderCancelledNotification;
+use App\Services\Addresses\AddressBook;
+use App\Services\Addresses\AddressRules;
+use App\Services\Cart\CartManager;
+use App\Services\Catalogue\ProductAttributes;
+use App\Services\Catalogue\ProductVariants;
 use App\Services\CheckoutService;
+use App\Services\Community\ContentReports;
+use App\Services\Community\ReviewResponses;
+use App\Services\Community\ReviewVotes;
+use App\Services\Community\StoreRatings;
+use App\Services\Guests\GuestOrderAccess;
+use App\Services\Ledger\LedgerService;
 use App\Services\OrderLifecycle;
 use App\Services\PaymentService;
+use App\Services\Returns\ReturnService;
 use App\Services\ReviewService;
+use App\Services\Search\SearchIndexer;
+use App\Services\Search\Vocabulary;
+use App\Services\Shipping\ShipmentService;
+use App\Support\Actor;
 use GdImage;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
@@ -34,25 +56,26 @@ use Illuminate\Support\Str;
 use RuntimeException;
 
 /**
- * A believable, fictional South African marketplace for design and audit work.
+ * A believable, fictional South African marketplace for design, audit and demo work (docs/R43_DEMO.md).
  *
- * Everything is built through the real models and services (CheckoutService,
- * PaymentService, OrderLifecycle, ReviewService...), so totals, snapshots,
- * stock, refunds and ratings are exactly what the live code produces. The only
- * things written directly are timestamps (history is back-dated), the
- * Paystack facts that normally arrive from Paystack (payment attempts), and
- * the handful of unverified legacy reviews that the application itself would
- * refuse to create.
+ * Everything is built through the real models and services (CheckoutService, PaymentService, OrderLifecycle,
+ * ShipmentService, ReturnService, ReviewService, the discovery services...), so totals, snapshots, stock, shipping,
+ * tracking, returns, the ledger, ratings and the search index are exactly what the live code produces. History is
+ * made by moving the clock (Carbon::setTestNow) while a service runs, so every timestamp the services write is
+ * honestly in the past instead of being patched afterwards. The only rows written directly are the Paystack facts
+ * that normally arrive from Paystack (payment attempts), a handful of unverified legacy reviews the application
+ * itself would refuse to create, and the price history of the products that had a genuine earlier price.
  *
- * Never runs in production. Every demo account uses an @emall-demo.test
- * address, which is how purge() finds its own data again. Password for every
- * demo account: "password".
+ * Never runs in production. Every demo account uses an @emall-demo.test address, which is how purge() finds its own
+ * data again. Password for every demo account: "password".
  */
 class EmallDemoSeeder extends Seeder
 {
     public const DOMAIN = 'emall-demo.test';
 
     public const PASSWORD = 'password';
+
+    public const GUEST_EMAIL = 'guest.shopper@emall-demo.test';
 
     private const SIZE = 800;
 
@@ -67,6 +90,16 @@ class EmallDemoSeeder extends Seeder
 
     /** @var array<string, Product> */
     private array $products = [];
+
+    /** @var array<string, array<string, ShippingMethod>> store key => method name => method */
+    private array $methods = [];
+
+    /** @var array<string, Address> buyer key => default shipping address */
+    private array $addresses = [];
+
+    private Carbon $base;
+
+    private ?string $guestLink = null;
 
     public function run(): void
     {
@@ -90,23 +123,42 @@ class EmallDemoSeeder extends Seeder
             '*' => Http::response(['status' => false, 'message' => 'offline'], 503),
         ]);
 
-        $this->makeUsers();
-        $this->makeCategories();
-        $this->makeStores();
-        $this->makeProducts();
-        $this->makePromoCodes();
-        $this->makeOrders();
-        $this->makeReviews();
-        $this->makeExtraNotifications();
-        $this->backdateNotifications();
+        // While seeding: no e-mail leaves the machine, the search index is built once at the end instead of after every
+        // save, and the demo shows a ledger with a visible platform fee (an assumption of the demo, not a business term).
+        $previous = [config('mail.default'), config('discovery.search.observe'), config('emall.commission.percent')];
+        config(['mail.default' => 'array', 'discovery.search.observe' => false, 'emall.commission.percent' => 5.0]);
+        $this->base = Carbon::now();
+
+        try {
+            $this->makeUsers();
+            $this->makeCategories();
+            $this->makeStores();
+            $this->makeShipping();
+            $this->makeAddresses();
+            $this->makeProducts();
+            $this->makePromoCodes();
+            $this->makeOrders();
+            $this->makeReviews();
+            (new EmallDemoEngagement($this, $this->users, $this->products, fn (float $days, callable $fn, int $hour = 10) => $this->at($days, $fn, $hour)))->run();
+            $this->guestLink = $this->makeGuestOrders();
+        } finally {
+            Carbon::setTestNow();
+            config(['mail.default' => $previous[0], 'discovery.search.observe' => $previous[1], 'emall.commission.percent' => $previous[2]]);
+        }
+
+        $this->finish();
 
         $this->command?->info(sprintf(
             'Demo marketplace ready: %d users, %d stores, %d products, %d orders, %d reviews. Password for every account: %s',
             count($this->users), count($this->stores), count($this->products),
-            Order::query()->whereIn('user_id', $this->buyerIds())->count(),
+            Order::query()->whereIn('user_id', $this->buyerIds())->count() + Order::query()->where('guest_email', self::GUEST_EMAIL)->count(),
             Review::query()->whereIn('product_id', collect($this->products)->pluck('id'))->count(),
             self::PASSWORD,
         ));
+
+        if ($this->guestLink !== null) {
+            $this->command?->line('Guest order link (no sign-in needed): '.$this->guestLink);
+        }
     }
 
     public function alreadySeeded(): bool
@@ -115,7 +167,28 @@ class EmallDemoSeeder extends Seeder
     }
 
     /**
-     * Removes every row (and file) the seeder made, and nothing else.
+     * Runs $fn with the clock set to a moment $daysAgo days before the seeding started, so whatever the services stamp
+     * is in the past. The clock goes back to "now" afterwards.
+     */
+    private function at(float $daysAgo, callable $fn, int $hour = 10): mixed
+    {
+        $when = $this->base->copy()->subDays((int) floor($daysAgo))->setTime($hour, random_int(0, 50), random_int(0, 59));
+
+        if ($when->gt($this->base)) {
+            $when = $this->base->copy()->subMinutes(random_int(20, 90));
+        }
+
+        Carbon::setTestNow($when);
+
+        try {
+            return $fn();
+        } finally {
+            Carbon::setTestNow($this->base);
+        }
+    }
+
+    /**
+     * Removes every row (and file) the seeder made, and nothing else. The shared category tree is not the seeder's.
      */
     public function purge(): void
     {
@@ -123,12 +196,28 @@ class EmallDemoSeeder extends Seeder
             throw new RuntimeException('The Dot.Emall demo seeder never runs in production.');
         }
 
-        DB::transaction(function () {
+        $hashes = [];
+
+        DB::transaction(function () use (&$hashes) {
             $userIds = User::query()->where('email', 'like', '%@'.self::DOMAIN)->pluck('id');
+
+            // Behaviour is stored under keyed hashes, never user ids: recompute the demo people's and visitors'.
+            foreach ($userIds as $id) {
+                $hashes[] = Actor::forUser($id)->hash();
+            }
+
+            foreach (range(1, EmallDemoEngagement::VISITORS) as $n) {
+                $hashes[] = Actor::forToken(EmallDemoEngagement::token($n))->hash();
+            }
+
+            DB::table('search_queries')->whereIn('actor_hash', $hashes)->delete();
+            DB::table('product_views')->whereIn('actor_hash', $hashes)->delete();
+            DB::table('commerce_events')->whereIn('actor_hash', $hashes)->delete();
 
             if ($userIds->isNotEmpty()) {
                 $storeIds = Store::query()->whereIn('owner_id', $userIds)->pluck('id');
-                $orderIds = Order::query()->whereIn('user_id', $userIds)->pluck('id');
+                $orderIds = Order::query()->whereIn('user_id', $userIds)->orWhere('guest_email', 'like', '%@'.self::DOMAIN)->pluck('id');
+                DB::table('commerce_events')->whereIn('order_id', $orderIds)->delete(); // a guest's order is recorded under a token of its own
 
                 DB::table('payment_events')->whereIn('order_id', $orderIds)->delete();
                 DB::table('refunds')->whereIn('order_id', $orderIds)->delete();
@@ -138,6 +227,7 @@ class EmallDemoSeeder extends Seeder
                 DB::table('orders')->whereIn('id', $orderIds)->delete();
                 DB::table('cart_items')->whereIn('user_id', $userIds)->delete();
                 DB::table('reviews')->whereIn('user_id', $userIds)->delete();
+                DB::table('collections')->whereIn('curator_id', $userIds)->delete();
 
                 foreach (Product::withTrashed()->whereIn('store_id', $storeIds)->get() as $product) {
                     DB::table('reviews')->where('product_id', $product->id)->delete();
@@ -163,31 +253,35 @@ class EmallDemoSeeder extends Seeder
                 DB::table('users')->whereIn('id', $userIds)->delete();
             }
 
-            // Demo categories go once nothing else uses them.
-            $slugs = array_keys($this->categoryDefinitions());
-            StoreCategory::query()->whereIn('slug', $slugs)->whereDoesntHave('products')->get()->each->delete();
+            // Brands the demo introduced go once nothing else sells under them.
+            $names = collect(EmallDemoCatalogue::products())->flatten(1)->map(fn ($row) => $row[8]['brand'] ?? null)->filter()->unique()->all();
+            Brand::query()->whereIn('name', $names)->whereDoesntHave('products')->get()->each->delete();
         });
+
+        // The vocabulary (brands, categories, words) is rebuilt from what is left.
+        app(SearchIndexer::class)->rebuildVocabulary();
+        Vocabulary::forget();
     }
 
     // ------------------------------------------------------------------ people
 
     /**
-     * @return array<string, array{name: string, role: string, address: string, phone: string}>
+     * @return array<string, array{name: string, role: string, phone: string}>
      */
     private function userDefinitions(): array
     {
         return [
-            'thandi' => ['name' => 'Thandi Mokoena', 'role' => 'buyer', 'address' => '14 Jacaranda Avenue, Parkhurst, Johannesburg, 2193', 'phone' => '+27 82 555 0143'],
-            'pieter' => ['name' => 'Pieter van der Merwe', 'role' => 'buyer', 'address' => '22 Kloof Street, Gardens, Cape Town, 8001', 'phone' => '+27 83 555 0177'],
-            'naledi' => ['name' => 'Naledi Dlamini', 'role' => 'buyer', 'address' => '7 Florida Road, Morningside, Durban, 4001', 'phone' => '+27 71 555 0120'],
-            'sipho' => ['name' => 'Sipho Khumalo', 'role' => 'buyer', 'address' => '310 Church Street, Arcadia, Pretoria, 0083', 'phone' => '+27 60 555 0199'],
-            'ayesha' => ['name' => 'Ayesha Patel', 'role' => 'buyer', 'address' => '5 Stamford Hill Road, Greyville, Durban, 4023', 'phone' => '+27 72 555 0188'],
-            'lerato' => ['name' => 'Lerato Mahlangu', 'role' => 'seller', 'address' => '', 'phone' => ''],
-            'johan' => ['name' => 'Johan Botha', 'role' => 'seller', 'address' => '', 'phone' => ''],
-            'zanele' => ['name' => 'Zanele Nkosi', 'role' => 'seller', 'address' => '', 'phone' => ''],
-            'kabelo' => ['name' => 'Kabelo Sithole', 'role' => 'seller', 'address' => '', 'phone' => ''],
-            'operator' => ['name' => 'Marcus Williams', 'role' => 'operator', 'address' => '', 'phone' => ''],
-            'nomsa' => ['name' => 'Nomsa Zulu', 'role' => 'new', 'address' => '', 'phone' => ''],
+            'thandi' => ['name' => 'Thandi Mokoena', 'role' => 'buyer', 'phone' => '+27 82 555 0143'],
+            'pieter' => ['name' => 'Pieter van der Merwe', 'role' => 'buyer', 'phone' => '+27 83 555 0177'],
+            'naledi' => ['name' => 'Naledi Dlamini', 'role' => 'buyer', 'phone' => '+27 71 555 0120'],
+            'sipho' => ['name' => 'Sipho Khumalo', 'role' => 'buyer', 'phone' => '+27 60 555 0199'],
+            'ayesha' => ['name' => 'Ayesha Patel', 'role' => 'buyer', 'phone' => '+27 72 555 0188'],
+            'lerato' => ['name' => 'Lerato Mahlangu', 'role' => 'seller', 'phone' => ''],
+            'johan' => ['name' => 'Johan Botha', 'role' => 'seller', 'phone' => ''],
+            'zanele' => ['name' => 'Zanele Nkosi', 'role' => 'seller', 'phone' => ''],
+            'kabelo' => ['name' => 'Kabelo Sithole', 'role' => 'seller', 'phone' => ''],
+            'operator' => ['name' => 'Marcus Williams', 'role' => 'operator', 'phone' => ''],
+            'nomsa' => ['name' => 'Nomsa Zulu', 'role' => 'new', 'phone' => ''],
         ];
     }
 
@@ -223,159 +317,184 @@ class EmallDemoSeeder extends Seeder
 
     // -------------------------------------------------------------- catalogue
 
-    /**
-     * @return array<string, array{0: string, 1: ?string}> slug => [name, parent slug]
-     */
-    private function categoryDefinitions(): array
-    {
-        return [
-            'home-kitchen' => ['Home & Kitchen', null],
-            'cookware' => ['Cookware', 'home-kitchen'],
-            'home-decor' => ['Home Decor', 'home-kitchen'],
-            'outdoors' => ['Outdoors & Camping', null],
-            'bags-travel' => ['Bags & Travel', null],
-            'beauty' => ['Beauty & Wellness', null],
-            'food-pantry' => ['Food & Pantry', null],
-            'electronics' => ['Electronics', null],
-            'audio' => ['Audio', 'electronics'],
-            'accessories' => ['Phone & Laptop Accessories', 'electronics'],
-            'stationery' => ['Stationery & Office', null],
-        ];
-    }
-
+    /** The shared category tree (about 130 categories with their spec definitions). Idempotent. */
     private function makeCategories(): void
     {
-        foreach ($this->categoryDefinitions() as $slug => [$name, $parent]) {
-            $this->categories[$slug] = StoreCategory::query()->firstOrCreate(
-                ['slug' => $slug],
-                ['name' => $name, 'parent_id' => $parent ? $this->categories[$parent]->id : null],
-            );
-        }
+        Artisan::call('emall:seed-categories');
+
+        $this->categories = StoreCategory::query()->get()->keyBy('slug')->all();
     }
 
     private function makeStores(): void
     {
-        $defs = [
-            'lerato' => ['Karoo Home & Hearth', 'Honest homeware for the kitchen, the braai and the stoep. Cast iron, stoneware, linen and candles, chosen by a family who cooks for a living.', 'hearth', 22],
-            'johan' => ['Veld & Vine Outdoors', 'Camping and hiking gear tested on the Drakensberg and the Cederberg. Fair prices, straight advice, and we answer our own email.', 'mountain', 205],
-            'zanele' => ['Ubuntu Beauty Co.', 'Small-batch skincare and wellness made from marula, aloe ferox, rooibos and shea. Cruelty free and packed in Durban.', 'leaf', 340],
-            'kabelo' => ['Joburg Tech Hub', 'Everyday electronics and desk gear from Braamfontein: audio, chargers, keyboards and the cables nobody remembers to buy.', 'squares', 215],
-        ];
-
-        foreach ($defs as $owner => [$name, $description, $glyph, $hue]) {
+        foreach (EmallDemoCatalogue::stores() as $owner => [$name, $description, $glyph, $hue, $profile]) {
             $slug = Str::slug($name).'-'.Str::lower(Str::random(6));
             $logo = 'store-logos/'.$slug.'.png';
 
             Storage::disk('public')->put($logo, $this->renderLogo($glyph, $hue));
 
+            $user = $this->users[$owner];
+
             $this->stores[$owner] = Store::create([
-                'owner_id' => $this->users[$owner]->id,
+                'owner_id' => $user->id,
                 'name' => $name,
                 'slug' => $slug,
                 'description' => $description,
                 'logo_path' => $logo,
                 'is_active' => true,
+                'status' => StoreStatus::Active,
+                'region' => $profile['region'],
+                'city' => $profile['city'],
+                'legal_name' => $profile['legal_name'],
+                'registration_number' => $profile['registration_number'],
+                'vat_registered' => $profile['vat_registered'],
+                'vat_number' => $profile['vat_number'],
+                'contact_email' => $owner.'@'.self::DOMAIN,
+                'contact_phone' => $profile['contact_phone'],
+                'return_policy' => $profile['return_policy'],
+                'shipping_policy' => $profile['shipping_policy'],
+                'reviewed_by' => $this->users['operator']->id,
+                'reviewed_at' => now()->subDays(random_int(90, 150)),
             ]);
+
+            // The trust ladder shows only what was recorded: sign-in through InfoDot, and a linked InfoDot company.
+            // (The sign-in time is the demo's own record that it happened; nothing here claims InfoDot verified anyone.)
+            if ($profile['infodot'] !== false) {
+                $user->forceFill(['infodot_signed_in_at' => now()->subDays(random_int(1, 20))])->save();
+            }
+
+            if ($profile['infodot'] === true) {
+                $team = Team::query()->where('user_id', $user->id)->where('personal_team', true)->first();
+                $team?->forceFill(['infodot_team_uuid' => (string) Str::uuid()])->save();
+                $this->stores[$owner]->forceFill(['team_id' => $team?->id])->save();
+            }
         }
     }
 
     /**
-     * name, category, price, compare price, stock, shape, hue, description, flag
-     *
-     * @return array<string, array<int, array{0: string, 1: string, 2: float, 3: ?float, 4: int, 5: string, 6: int, 7: string, 8?: string}>>
+     * Every store sells a flat-rate delivery, a free-over-a-threshold delivery and collection; some deliver faster to
+     * the provinces next door, and a rule price differs by province.
      */
-    private function productDefinitions(): array
+    private function makeShipping(): void
     {
-        return [
+        $provinces = AddressRules::PROVINCES;
+
+        $defs = [
             'lerato' => [
-                ['Cast Iron Potjie Pot 3L', 'cookware', 749, 899, 14, 'pot', 12, 'Pre-seasoned three-legged potjie with a tight lid. Holds heat for hours over coals, so stews finish themselves while you sit.'],
-                ['Enamel Camping Mug, Set of 4', 'cookware', 289, null, 40, 'mug', 205, 'Four 350ml enamel mugs with a rolled steel rim. Light enough for the pack, tough enough for the kitchen drawer.'],
-                ['Olive Wood Serving Board', 'cookware', 349, null, 22, 'board', 30, 'Cut from a single piece of olive wood, so no two grains match. Oiled with food-safe finish.'],
-                ['Hand-Glazed Stoneware Bowl Set', 'cookware', 459, null, 3, 'bowl', 190, 'Four deep bowls glazed by hand in a Magaliesburg studio. Dishwasher and microwave safe.'],
-                ['Cotton Throw Blanket, Sand', 'home-decor', 599, 729, 18, 'cloth', 38, 'A heavy woven cotton throw, 130 x 180 cm, with a knotted fringe. Washes soft.'],
-                ['Woven Seagrass Basket', 'home-decor', 329, null, 25, 'basket', 42, 'Tightly woven storage basket with handles. Holds firewood, laundry or the dog toys.'],
-                ['Beeswax Taper Candles, 6 Pack', 'home-decor', 159, null, 60, 'candle', 45, 'Six 25cm tapers poured from South African beeswax. Slow, smokeless burn.'],
-                ['Terracotta Bud Vase', 'home-decor', 189, null, 0, 'vase', 18, 'A small unglazed terracotta vase for one stem. Currently sold out; the next firing is due in a few weeks.'],
-                ['Linen Table Runner', 'home-decor', 259, null, 30, 'cloth', 95, 'Stonewashed linen, 40 x 180 cm, with a hand-rolled hem.'],
-                ['Glass Storage Jars, Set of 3', 'home-kitchen', 319, null, 35, 'jar', 170, 'Three airtight jars with bamboo lids for rusks, rice and rooibos.'],
-                ['Cast Iron Skillet 26cm', 'cookware', 529, null, 12, 'pot', 8, 'A well-balanced skillet for steak, cornbread and breakfast on the fire alike.'],
-                ['Braai Tongs, Stainless Steel', 'cookware', 149, null, 80, 'box', 215, '40cm tongs with a locking hinge and a heat-safe loop.'],
-                ['Oak and Brass Wall Clock', 'home-decor', 649, null, 8, 'tub', 36, 'A silent-sweep wall clock with a solid oak face.', 'pending'],
-                ['Fynbos Soy Candle', 'home-decor', 219, null, 44, 'candle', 130, 'A hand-poured soy candle scented with buchu and honeybush. 45 hour burn.'],
-                ['Biltong Spice Rub 200g', 'food-pantry', 79, null, 120, 'jar', 20, 'Coriander, black pepper and a little brown sugar. Enough for 3kg of beef.'],
+                ['The Courier Guy', 'flat', 85, null, 1, 2, 4, null, 'Packed in Graaff-Reinet and sent with The Courier Guy.', ['Gauteng' => 95, 'Western Cape' => 110, 'Eastern Cape' => 70, 'KwaZulu-Natal' => 95, 'Free State' => 90, 'Northern Cape' => 90, 'Limpopo' => 110, 'Mpumalanga' => 105, 'North West' => 105]],
+                ['Free delivery over R1,500', 'free_over', 85, 1500, 1, 3, 5, null, 'Free on orders of R1,500 or more from this store, to the four big provinces.', ['Gauteng' => 95, 'Western Cape' => 110, 'Eastern Cape' => 70, 'KwaZulu-Natal' => 95]],
+                ['Collect in Graaff-Reinet', 'collection', 0, null, 1, 0, 0, '12 Church Street, Graaff-Reinet, 6280', 'Ready the next working day. Bring your order number.', null],
             ],
             'johan' => [
-                ['Alpine 2-Person Dome Tent', 'outdoors', 2499, 2999, 6, 'tent', 205, 'A freestanding two-pole dome with a full-coverage fly and a taped floor. 2.4kg packed.'],
-                ['Sleeping Bag, Comfort -5C', 'outdoors', 1199, null, 15, 'bag', 18, 'Synthetic mummy bag rated to -5C comfort, with a compression sack.'],
-                ['Inflatable Sleeping Mat', 'outdoors', 549, null, 20, 'tub', 160, 'R-value 3.2, packs to the size of a water bottle, inflates in twelve breaths.'],
-                ['Trekking Poles, Pair', 'outdoors', 699, null, 11, 'box', 100, 'Three-section aluminium poles with cork grips and carbide tips.'],
-                ['20L Daypack', 'bags-travel', 899, 1099, 28, 'bag', 25, 'A ventilated back panel, rain cover and a hydration sleeve. Fits a full day on Table Mountain.'],
-                ['Insulated Steel Bottle 750ml', 'outdoors', 299, null, 75, 'bottle', 195, 'Double-walled, cold for 24 hours and hot for 12. Fits most cup holders.'],
-                ['LED Headlamp 400 Lumen', 'outdoors', 349, null, 52, 'device', 55, 'USB-C rechargeable headlamp with a red night mode. IPX6 water resistant.'],
-                ['Folding Camp Chair', 'outdoors', 429, null, 24, 'box', 200, 'Steel frame, 120kg rating, packs into its own carry bag.'],
-                ['Gas Camping Stove', 'outdoors', 389, null, 16, 'device', 15, 'A compact single-burner stove with piezo ignition. Screws onto standard gas cartridges.'],
-                ['Dry Bag 10L', 'bags-travel', 199, null, 60, 'bag', 48, 'Roll-top dry bag in welded 210D nylon. Keeps the sleeping bag dry in a river crossing.'],
-                ['Microfibre Travel Towel', 'bags-travel', 179, null, 90, 'cloth', 180, 'Dries in minutes and packs down to a fist.'],
-                ['Enamel Plate Set, 4 Piece', 'outdoors', 219, null, 34, 'bowl', 210, 'Four 22cm enamel plates that survive the campsite.'],
-                ['Pocket Multi-Tool', 'outdoors', 329, null, 2, 'device', 0, 'Fourteen tools in a stainless steel body, with a nylon sheath.'],
-                ['Wide-Brim Sun Hat', 'bags-travel', 259, null, 40, 'bowl', 35, 'UPF 50+ with a chin cord and a vented crown.', 'pending'],
-                ['Camp Cookset, 8 Piece', 'outdoors', 649, null, 9, 'pot', 140, 'Two pots, a pan, lids and a handle, nesting into one compact bundle.'],
+                ['Aramex economy', 'flat', 65, null, 1, 3, 6, null, 'Road freight, three to six working days.', null],
+                ['Aramex overnight bag', 'flat', 99, null, 1, 1, 2, null, 'Overnight to Gauteng and KwaZulu-Natal.', ['Gauteng' => 99, 'KwaZulu-Natal' => 89]],
+                ['Free delivery over R2,000', 'free_over', 65, 2000, 1, 3, 6, null, 'Free economy delivery on orders of R2,000 or more from this store.', null],
+                ['Collect from the shop in Underberg', 'collection', 0, null, 0, 0, 0, '3 Main Road, Underberg, 3257', 'Open Tuesday to Saturday, 08:00 to 16:00.', null],
             ],
             'zanele' => [
-                ['Marula Facial Oil 30ml', 'beauty', 265, null, 55, 'bottle', 38, 'Cold-pressed marula oil. Light, quick to absorb, and rich in oleic acid.'],
-                ['Rooibos Calming Face Mask', 'beauty', 149, null, 70, 'tub', 8, 'A clay and red rooibos mask that settles redness. Rinse after ten minutes.'],
-                ['Shea Butter Body Cream 250ml', 'beauty', 189, 229, 80, 'tub', 48, 'Whipped shea butter cream for dry winters on the Highveld.'],
-                ['Baobab Hand Cream 75ml', 'beauty', 99, null, 100, 'tub', 130, 'A non-greasy hand cream with baobab oil, sized for a handbag.'],
-                ['Rooibos Tea, 80 Bags', 'food-pantry', 69, null, 150, 'box', 10, 'Organic Cederberg rooibos in unbleached bags.'],
-                ['Aloe Ferox Gel 200ml', 'beauty', 119, null, 64, 'bottle', 120, 'Soothing gel for sun-exposed skin, made from wild-harvested aloe ferox.'],
-                ['Natural Deodorant Stick', 'beauty', 89, null, 90, 'tub', 200, 'Aluminium free, with magnesium and a light cedar scent.'],
-                ['Charcoal Soap Bar', 'beauty', 59, null, 200, 'box', 220, 'Cold-process soap with activated charcoal and tea tree.'],
-                ['Exfoliating Body Scrub 300g', 'beauty', 175, null, 40, 'jar', 22, 'Sea salt and sweet almond oil in a glass jar.'],
-                ['Lip Balm, Set of 3', 'beauty', 99, null, 85, 'device', 350, 'Honey, vanilla and mint. Beeswax based.'],
-                ['Rose Geranium Face Mist 100ml', 'beauty', 139, null, 33, 'bottle', 335, 'A fine mist of distilled rose geranium water.'],
-                ['Bamboo Hair Brush', 'beauty', 129, null, 27, 'board', 35, 'Soft boar-free bristles in a bamboo handle.'],
-                ['Essential Oil Starter Kit', 'beauty', 399, null, 14, 'box', 150, 'Six 10ml oils: lavender, eucalyptus, peppermint, lemongrass, tea tree and rose geranium.'],
-                ['Argan Hair Mask 250ml', 'beauty', 195, null, 22, 'jar', 30, 'A deep conditioning hair mask.', 'rejected'],
-                ['Lavender Bath Salts 500g', 'beauty', 109, null, 48, 'jar', 270, 'Epsom and sea salt with lavender buds.', 'inactive'],
+                ['Pargo pick-up point', 'flat', 49, null, 2, 2, 5, null, 'Choose a Pargo point near you at the courier step.', null],
+                ['Free delivery over R600', 'free_over', 49, 600, 2, 2, 5, null, 'Free Pargo delivery on orders of R600 or more from this store.', null],
+                ['Collect in Durban', 'collection', 0, null, 1, 0, 0, '24 Florida Road, Morningside, Durban, 4001', 'Weekdays 09:00 to 17:00.', null],
             ],
             'kabelo' => [
-                ['Wireless Over-Ear Headphones', 'audio', 1299, 1599, 18, 'headphones', 215, 'Active noise cancelling, 40 hours of battery and a folding case.'],
-                ['True Wireless Earbuds', 'audio', 799, null, 35, 'device', 200, 'Bluetooth 5.3 earbuds with a wireless charging case.'],
-                ['Portable Bluetooth Speaker', 'audio', 649, null, 22, 'tub', 10, 'Waterproof (IP67) with a 12 hour battery and a carabiner loop.'],
-                ['65W USB-C Fast Charger', 'accessories', 449, null, 60, 'box', 220, 'Charges a laptop and a phone at once. Folding plug.'],
-                ['10 000mAh Power Bank', 'accessories', 399, null, 45, 'device', 205, 'Slim power bank with USB-C in and out. Fits a shirt pocket.'],
-                ['Braided USB-C Cable 2m', 'accessories', 119, null, 150, 'cloth', 25, 'Tested to 20 000 bends. Carries 100W.'],
-                ['Aluminium Laptop Stand', 'accessories', 499, null, 28, 'board', 210, 'Raises the screen to eye level. Folds flat to 8mm.'],
-                ['Mechanical Keyboard 75%', 'accessories', 1499, null, 9, 'board', 260, 'Hot-swappable switches, aluminium case, Bluetooth and USB-C.'],
-                ['Wireless Mouse', 'accessories', 299, null, 70, 'device', 190, 'Silent clicks, 2.4GHz receiver and Bluetooth, 12 month battery.'],
-                ['1080p Webcam', 'accessories', 699, null, 14, 'device', 240, 'A wide-angle webcam with a privacy shutter and a built-in microphone.'],
-                ['Clear Phone Case', 'accessories', 149, null, 0, 'device', 200, 'Shock-absorbing clear case. Sold out; restock expected soon.'],
-                ['Smart Plug, 2 Pack', 'accessories', 279, null, 40, 'box', 150, 'Wi-Fi plugs with a power monitor and scheduling.'],
-                ['Monitor Arm, Single', 'accessories', 899, null, 7, 'tub', 215, 'Gas-spring arm for screens up to 27 inches. Clamp or grommet mount.'],
-                ['A5 Dotted Notebook', 'stationery', 89, null, 100, 'book', 225, '192 pages of 100gsm paper that does not bleed through.'],
-                ['Gel Pen Set, 12 Colours', 'stationery', 129, null, 90, 'device', 330, 'Twelve smooth 0.5mm gel pens in a zip pouch.', 'pending'],
+                ['Courier (next working day)', 'flat', 79, null, 0, 1, 3, null, 'Dispatched the same day for orders paid before 14:00.', ['Gauteng' => 69, 'Western Cape' => 99, 'KwaZulu-Natal' => 89, 'Eastern Cape' => 99, 'Free State' => 89, 'Limpopo' => 99, 'Mpumalanga' => 89, 'North West' => 89, 'Northern Cape' => 119]],
+                ['Free delivery over R2,000', 'free_over', 79, 2000, 0, 1, 3, null, 'Free courier delivery on orders of R2,000 or more from this store.', null],
+                ['Collect in Braamfontein', 'collection', 0, null, 0, 0, 0, '66 De Korte Street, Braamfontein, Johannesburg, 2017', 'Ready within two hours of payment, weekdays.', null],
             ],
         ];
+
+        foreach ($defs as $owner => $rows) {
+            foreach ($rows as $position => [$name, $type, $price, $freeOver, $handling, $min, $max, $address, $instructions, $regions]) {
+                $method = ShippingMethod::create([
+                    'store_id' => $this->stores[$owner]->id,
+                    'name' => $name,
+                    'type' => $type,
+                    'price' => $price,
+                    'free_over' => $freeOver,
+                    'handling_days' => $handling,
+                    'window_min_days' => $min,
+                    'window_max_days' => $max,
+                    'collection_address' => $address,
+                    'instructions' => $instructions,
+                    'is_active' => true,
+                    'position' => $position,
+                ]);
+
+                foreach ($regions ?? [] as $province => $regionPrice) {
+                    if (in_array($province, $provinces, true)) {
+                        $method->regions()->create(['country' => 'ZA', 'province' => $province, 'price' => $regionPrice]);
+                    }
+                }
+
+                $this->methods[$owner][$name] = $method;
+            }
+        }
+    }
+
+    private function makeAddresses(): void
+    {
+        $book = app(AddressBook::class);
+
+        $defs = [
+            'thandi' => [
+                ['Home', '14 Jacaranda Avenue', 'Parkhurst', 'Johannesburg', 'Gauteng', '2193', null, true],
+                ['Work', 'Building 3, 11 Alice Lane', 'Sandton', 'Johannesburg', 'Gauteng', '2196', 'Reception on the ground floor, weekdays 08:00 to 17:00.', false],
+            ],
+            'pieter' => [
+                ['Home', '22 Kloof Street', 'Gardens', 'Cape Town', 'Western Cape', '8001', null, true],
+                ['Holiday house', '9 Marine Drive', 'Hermanus', 'Hermanus', 'Western Cape', '7200', 'Gate code 4417.', false],
+            ],
+            'naledi' => [['Home', '7 Florida Road', 'Morningside', 'Durban', 'KwaZulu-Natal', '4001', null, true]],
+            'sipho' => [['Home', '310 Church Street', 'Arcadia', 'Pretoria', 'Gauteng', '0083', null, true]],
+            'ayesha' => [['Home', '5 Stamford Hill Road', 'Greyville', 'Durban', 'KwaZulu-Natal', '4023', null, true]],
+        ];
+
+        foreach ($defs as $key => $rows) {
+            foreach ($rows as [$label, $line1, $suburb, $city, $province, $postal, $instructions, $default]) {
+                $address = $book->add($this->users[$key], [
+                    'label' => $label,
+                    'recipient_name' => $this->users[$key]->name,
+                    'phone' => $this->userDefinitions()[$key]['phone'],
+                    'line1' => $line1,
+                    'suburb' => $suburb,
+                    'city' => $city,
+                    'province' => $province,
+                    'postal_code' => $postal,
+                    'country' => 'ZA',
+                    'instructions' => $instructions,
+                    'is_default_shipping' => $default,
+                ]);
+
+                if ($default) {
+                    $this->addresses[$key] = $address;
+                }
+            }
+        }
     }
 
     private function makeProducts(): void
     {
         $i = 0;
+        $variants = app(ProductVariants::class);
+        $attributes = app(ProductAttributes::class);
 
-        foreach ($this->productDefinitions() as $owner => $rows) {
+        foreach (EmallDemoCatalogue::products() as $owner => $rows) {
             foreach ($rows as $row) {
                 [$name, $category, $price, $compare, $stock, $shape, $hue, $description] = $row;
-                $flag = $row[8] ?? null;
+                $options = $row[8] ?? [];
+                $flag = $options['flag'] ?? null;
+                $matrix = $options['matrix'] ?? null;
 
                 $product = Product::create([
                     'store_id' => $this->stores[$owner]->id,
                     'category_id' => $this->categories[$category]->id,
+                    'brand_id' => isset($options['brand']) ? Brand::named($options['brand'])->id : null,
                     'name' => $name,
                     'slug' => Str::slug($name).'-'.Str::lower(Str::random(6)),
                     'description' => $description,
                     'price' => $price,
                     'compare_price' => $compare,
-                    'stock' => $stock,
+                    'stock' => $matrix === null ? $stock : 0,
                     'sku' => strtoupper(substr($owner, 0, 2)).'-'.str_pad((string) (++$i), 4, '0', STR_PAD_LEFT),
                     'is_active' => $flag !== 'inactive',
                     'status' => match ($flag) {
@@ -388,8 +507,18 @@ class EmallDemoSeeder extends Seeder
                     'reviewed_at' => in_array($flag, [null, 'inactive', 'rejected'], true) ? now()->subDays(random_int(20, 70)) : null,
                 ]);
 
+                $product->setRelation('category', $this->categories[$category]);
+
+                if (! empty($options['attrs'])) {
+                    $attributes->sync($product, $options['attrs']);
+                }
+
+                if ($matrix !== null) {
+                    $this->makeVariants($product, $variants, $matrix, (float) $price, $options['delta'] ?? [], $options['oos'] ?? [], $name);
+                }
+
                 // Two or three photos on every third listing so the gallery has something to do.
-                $photos = $i % 3 === 0 ? 3 : ($i % 3 === 1 ? 1 : 2);
+                $photos = $options['photos'] ?? ($i % 3 === 0 ? 3 : ($i % 3 === 1 ? 1 : 2));
                 for ($n = 0; $n < $photos; $n++) {
                     $path = "product-images/{$product->id}/".Str::random(40).'.jpg';
                     Storage::disk('public')->put($path, $this->renderProduct($shape, $hue, $n, crc32($name)));
@@ -399,8 +528,83 @@ class EmallDemoSeeder extends Seeder
                 $created = now()->subDays(random_int(25, 85))->subMinutes(random_int(0, 1400));
                 $product->forceFill(['created_at' => $created, 'updated_at' => $created])->saveQuietly();
 
-                $this->products[$name] = $product;
+                // A listing that had an earlier price carries its history (a genuine drop, or a rise): the "was" price
+                // shows only when the rules of ReferencePrice are met, never because the seller typed a compare-at price.
+                if ($matrix === null) {
+                    $history = $options['history'] ?? ($compare !== null && $flag === null ? [[75, $compare], [random_int(5, 14), $price]] : null);
+
+                    if ($history !== null) {
+                        $this->writePriceHistory($product, $history);
+                    }
+                }
+
+                $this->products[$name] = $product->refresh();
             }
+        }
+    }
+
+    /**
+     * One variant per combination of the option values; stock is spread over 2 to 14 units by a fixed rule, a few
+     * combinations are sold out on purpose, and some values cost more.
+     *
+     * @param  array<string, array<int, string>>  $matrix
+     * @param  array<string, int|float>  $delta
+     * @param  list<array<string, string>>  $outOfStock
+     */
+    private function makeVariants(Product $product, ProductVariants $variants, array $matrix, float $base, array $delta, array $outOfStock, string $seed): void
+    {
+        $variants->defineOptions($product, $matrix);
+
+        $combos = [[]];
+
+        foreach ($matrix as $option => $values) {
+            $next = [];
+
+            foreach ($combos as $combo) {
+                foreach ($values as $value) {
+                    $next[] = $combo + [$option => $value];
+                }
+            }
+
+            $combos = $next;
+        }
+
+        foreach ($combos as $n => $choices) {
+            $price = $base + array_sum(array_map(fn ($v) => $delta[$v] ?? 0, $choices));
+            $stock = 2 + (crc32($seed.$n) % 13);
+
+            foreach ($outOfStock as $out) {
+                if (array_intersect_assoc($out, $choices) === $out) {
+                    $stock = 0;
+                }
+            }
+
+            $variants->saveVariant($product, $choices, ['price' => $price, 'stock' => $stock]);
+        }
+    }
+
+    /**
+     * @param  list<array{0: int, 1: int|float}>  $history  [days ago, price] oldest first; the last price is today's
+     */
+    private function writePriceHistory(Product $product, array $history): void
+    {
+        $variant = ProductVariant::query()->where('product_id', $product->id)->orderBy('id')->firstOrFail();
+
+        DB::table('product_price_history')->where('variant_id', $variant->id)->delete();
+
+        $old = null;
+
+        foreach ($history as [$daysAgo, $price]) {
+            DB::table('product_price_history')->insert([
+                'product_id' => $product->id,
+                'variant_id' => $variant->id,
+                'old_price' => $old,
+                'new_price' => $price,
+                'actor_id' => $product->store->owner_id,
+                'changed_at' => $this->base->copy()->subDays((int) $daysAgo)->setTime(9, 0),
+            ]);
+
+            $old = $price;
         }
     }
 
@@ -459,138 +663,276 @@ class EmallDemoSeeder extends Seeder
 
     private function orderScenarios(): void
     {
-        $p = fn (string $name) => $this->products[$name];
-
-        // 1. Paid and delivered, no promo.
-        $o = $this->placeOrder('thandi', [[$p('Cast Iron Potjie Pot 3L'), 1], [$p('Beeswax Taper Candles, 6 Pack'), 2]], null, 52);
+        // 1. Paid, shipped with tracking, delivered. Karoo Home & Hearth, no promo.
+        $o = $this->buy('thandi', [['Cast Iron Potjie Pot 3L', 1], ['Beeswax Taper Candles, 6 Pack', 2]], 52);
         $this->pay($o, 52);
-        $this->advanceAll($o, OrderStatus::Delivered, 48);
+        $this->shipWithTracking($o, 'lerato', 50, 'courier_guy', 'TCG48821907');
+        $this->advance($o, null, OrderStatus::Delivered, 48);
 
-        // 2. Paid and delivered, one store.
-        $o = $this->placeOrder('pieter', [[$p('Alpine 2-Person Dome Tent'), 1], [$p('LED Headlamp 400 Lumen'), 1], [$p('Insulated Steel Bottle 750ml'), 2]], 'VELD15', 47);
+        // 2. Paid and delivered, one store, percentage promo.
+        $o = $this->buy('pieter', [['Alpine 2-Person Dome Tent', 1], ['LED Headlamp 400 Lumen', 1], ['Insulated Steel Bottle 750ml', 2]], 47, 'VELD15');
         $this->pay($o, 47);
-        $this->advanceAll($o, OrderStatus::Delivered, 42);
+        $this->shipWithTracking($o, 'johan', 45, 'aramex', '20418833761');
+        $this->advance($o, null, OrderStatus::Delivered, 42);
 
         // 3. Paid and delivered with a percentage promo.
-        $o = $this->placeOrder('ayesha', [[$p('Marula Facial Oil 30ml'), 1], [$p('Rooibos Calming Face Mask'), 1], [$p('Rooibos Tea, 80 Bags'), 2]], 'WELCOME10', 40);
+        $o = $this->buy('ayesha', [['Marula Facial Oil 30ml', 1], ['Rooibos Calming Face Mask', 1], ['Rooibos Tea, 80 Bags', 2]], 40, 'WELCOME10');
         $this->pay($o, 40);
-        $this->advanceAll($o, OrderStatus::Delivered, 36);
+        $this->shipWithTracking($o, 'zanele', 39, 'pargo', 'PRG7731204');
+        $this->advance($o, null, OrderStatus::Delivered, 36);
 
         // 4. Paid and delivered, electronics.
-        $o = $this->placeOrder('naledi', [[$p('Wireless Over-Ear Headphones'), 1], [$p('65W USB-C Fast Charger'), 1], [$p('A5 Dotted Notebook'), 2]], null, 33);
+        $o = $this->buy('naledi', [['Wireless Over-Ear Headphones', 1], ['65W USB-C Fast Charger', 1], ['A5 Dotted Notebook', 2]], 33);
         $this->pay($o, 33);
-        $this->advanceAll($o, OrderStatus::Delivered, 29);
+        $this->shipWithTracking($o, 'kabelo', 32, 'courier_guy', 'TCG49120331');
+        $this->advance($o, null, OrderStatus::Delivered, 29);
 
         // 5. The multi-seller order: four stores, four different line statuses.
-        $o = $this->placeOrder('thandi', [
-            [$p('Enamel Camping Mug, Set of 4'), 1],
-            [$p('20L Daypack'), 1],
-            [$p('Shea Butter Body Cream 250ml'), 2],
-            [$p('Braided USB-C Cable 2m'), 1],
-        ], null, 28);
+        $o = $this->buy('thandi', [
+            ['Enamel Camping Mug, Set of 4', 1],
+            ['20L Daypack', 1],
+            ['Shea Butter Body Cream 250ml', 2],
+            ['Braided USB-C Cable 2m', 1],
+        ], 28);
         $this->pay($o, 28);
-        $this->advanceStore($o, 'Karoo Home & Hearth', OrderStatus::Delivered, 24);
-        $this->advanceStore($o, 'Veld & Vine Outdoors', OrderStatus::Shipped, 23);
-        $this->advanceStore($o, 'Ubuntu Beauty Co.', OrderStatus::Processing, 26);
+        $this->shipWithTracking($o, 'lerato', 27, 'courier_guy', 'TCG48990412');
+        $this->advance($o, 'lerato', OrderStatus::Delivered, 24);
+        $this->shipWithTracking($o, 'johan', 26, 'aramex', '20418899120', [[5, 'Collected from the seller', 'Underberg'], [30, 'Arrived at the Aramex hub', 'Pietermaritzburg']]);
+        $this->advance($o, 'zanele', OrderStatus::Processing, 26);
 
-        // 6. Shipped.
-        $o = $this->placeOrder('sipho', [[$p('Sleeping Bag, Comfort -5C'), 1], [$p('Inflatable Sleeping Mat'), 1]], null, 21);
+        // 6. Shipped, with the seller's own tracking events.
+        $o = $this->buy('sipho', [['Sleeping Bag, Comfort -5C', 1], ['Inflatable Sleeping Mat', 1]], 21);
         $this->pay($o, 21);
-        $this->advanceAll($o, OrderStatus::Shipped, 19);
+        $this->shipWithTracking($o, 'johan', 19, 'aramex', '20418744052', [[3, 'Collected from the seller', 'Underberg'], [20, 'Arrived at the Aramex hub', 'Pietermaritzburg'], [42, 'Departed for Pretoria', null], [70, 'Out for delivery', 'Pretoria']]);
 
         // 7. Paid, being packed, fixed-amount promo.
-        $o = $this->placeOrder('pieter', [[$p('Cast Iron Skillet 26cm'), 1], [$p('Olive Wood Serving Board'), 1]], 'BRAAI50', 17);
+        $o = $this->buy('pieter', [['Cast Iron Skillet 26cm', 1], ['Olive Wood Serving Board', 1]], 17, 'BRAAI50');
         $this->pay($o, 17);
-        $this->advanceAll($o, OrderStatus::Processing, 16);
+        $this->advance($o, null, OrderStatus::Processing, 16);
 
         // 8. Partially cancelled: one earbuds line cancelled after payment, partial refund.
-        $o = $this->placeOrder('naledi', [[$p('Portable Bluetooth Speaker'), 1], [$p('True Wireless Earbuds'), 1]], null, 14);
+        $o = $this->buy('naledi', [['Portable Bluetooth Speaker', 1], ['True Wireless Earbuds', 1]], 14);
         $this->pay($o, 14);
         $this->cancelLine($o, 'True Wireless Earbuds', 13);
 
         // 9. Fully cancelled and refunded.
-        $o = $this->placeOrder('ayesha', [[$p('Gas Camping Stove'), 1], [$p('Camp Cookset, 8 Piece'), 1]], null, 12);
+        $o = $this->buy('ayesha', [['Gas Camping Stove', 1], ['Camp Cookset, 8 Piece', 1]], 12);
         $this->pay($o, 12);
         foreach ($o->items()->get() as $line) {
             $this->cancelLine($o, $line->product_name, 11);
         }
 
         // 10. Awaiting payment (the buyer left Paystack without paying).
-        $o = $this->placeOrder('sipho', [[$p('Cotton Throw Blanket, Sand'), 1], [$p('Woven Seagrass Basket'), 1]], null, 1);
-        $this->openAttempt($o, PaymentAttemptStatus::Pending, PaymentStatus::Pending);
+        $o = $this->buy('sipho', [['Cotton Throw Blanket, Sand', 1], ['Woven Seagrass Basket', 1]], 1);
+        $this->openAttempt($o, PaymentAttemptStatus::Pending, PaymentStatus::Pending, 1);
 
         // 11. Payment failed (declined card).
-        $o = $this->placeOrder('thandi', [[$p('Mechanical Keyboard 75%'), 1], [$p('Monitor Arm, Single'), 1]], null, 1);
-        $this->openAttempt($o, PaymentAttemptStatus::Failed, PaymentStatus::Failed);
+        $o = $this->buy('thandi', [['Mechanical Keyboard 75%', 1], ['Monitor Arm, Single', 1]], 1);
+        $this->openAttempt($o, PaymentAttemptStatus::Failed, PaymentStatus::Failed, 1);
 
         // 12. Unpaid order the buyer gave up on (cancelled before payment).
-        $o = $this->placeOrder('naledi', [[$p('Baobab Hand Cream 75ml'), 2], [$p('Lip Balm, Set of 3'), 1]], null, 6);
-        $this->openAttempt($o, PaymentAttemptStatus::Pending, PaymentStatus::Pending);
-        app(OrderLifecycle::class)->cancelUnpaidOrder($o->fresh());
-        $o->refresh()->user->notify(new UnpaidOrderCancelledNotification($o));
+        $o = $this->buy('naledi', [['Baobab Hand Cream 75ml', 2], ['Lip Balm, Set of 3', 1]], 6);
+        $this->openAttempt($o, PaymentAttemptStatus::Pending, PaymentStatus::Pending, 6);
+        $this->at(6, function () use ($o) {
+            app(OrderLifecycle::class)->cancelUnpaidOrder($o->fresh());
+            $o->refresh()->user->notify(new UnpaidOrderCancelledNotification($o));
+        }, 12);
 
-        // 14. Just placed and paid, two stores, nothing packed yet.
-        $o = $this->placeOrder('ayesha', [[$p('Fynbos Soy Candle'), 1], [$p('Charcoal Soap Bar'), 3]], null, 0);
+        // 13. Just placed and paid, two stores, nothing packed yet.
+        $o = $this->buy('ayesha', [['Fynbos Soy Candle', 1], ['Charcoal Soap Bar', 3]], 0);
         $this->pay($o, 0);
 
-        // 13. Placed before card payments existed: pending and unpaid, never gated.
-        $this->payable(function () use ($p) {
-            $this->placeOrder('pieter', [[$p('Microfibre Travel Towel'), 1]], null, 3);
+        // 14. Placed before card payments existed: pending and unpaid, never gated.
+        $this->payable(function () {
+            $this->buy('pieter', [['Microfibre Travel Towel', 1]], 3);
         }, false);
+
+        // --- Bought together: a laptop and a mouse in three different orders (the recommender needs three).
+        $o = $this->buy('pieter', [['Lenovo IdeaPad Slim 3, 15.6 inch', 1], ['Wireless Mouse', 1]], 40, null, ['kabelo' => 'Courier (next working day)'], 'Home');
+        $this->pay($o, 40);
+        $this->shipWithTracking($o, 'kabelo', 39, 'courier_guy', 'TCG49011776');
+        $this->advance($o, null, OrderStatus::Delivered, 36);
+
+        $o = $this->buy('naledi', [['Lenovo IdeaPad Slim 3, 15.6 inch', 1], ['Wireless Mouse', 1], ['Aluminium Laptop Stand', 1]], 22);
+        $this->pay($o, 22);
+        $this->shipWithTracking($o, 'kabelo', 21, 'courier_guy', 'TCG49102988');
+        $this->advance($o, null, OrderStatus::Delivered, 18);
+
+        $o = $this->buy('sipho', [['Lenovo IdeaPad Slim 3, 15.6 inch', 1], ['Wireless Mouse', 1]], 15);
+        $this->pay($o, 15);
+        $this->shipWithTracking($o, 'kabelo', 14, 'courier_guy', 'TCG49150220');
+        $this->advance($o, null, OrderStatus::Delivered, 11);
+
+        // --- Bought together: a tent and a sleeping bag in three orders.
+        $o = $this->buy('thandi', [['Alpine 2-Person Dome Tent', 1], ['Sleeping Bag, Comfort -5C', 1]], 33);
+        $this->pay($o, 33);
+        $this->shipWithTracking($o, 'johan', 32, 'aramex', '20418611870');
+        $this->advance($o, null, OrderStatus::Delivered, 28);
+
+        $o = $this->buy('naledi', [['Alpine 2-Person Dome Tent', 1], ['Sleeping Bag, Comfort -5C', 1], ['Inflatable Sleeping Mat', 1]], 26);
+        $this->pay($o, 26);
+        $this->shipWithTracking($o, 'johan', 25, 'aramex', '20418655014');
+        $this->advance($o, null, OrderStatus::Delivered, 21);
+
+        // --- A television and a phone with variants, a clothing order with sizes and colours.
+        $o = $this->buy('thandi', [['Samsung 55 Inch Crystal UHD Smart TV', 1]], 20, 'TECH100');
+        $this->pay($o, 20);
+        $this->shipWithTracking($o, 'kabelo', 19, 'dsv', 'DSV-88120344', [[4, 'Collected from the seller', 'Braamfontein'], [26, 'At the Johannesburg depot', null], [52, 'Out for delivery', 'Parkhurst']]);
+        $this->advance($o, null, OrderStatus::Delivered, 17);
+
+        $o = $this->buy('sipho', [['Samsung Galaxy A15 Smartphone', 1, ['Storage' => '128GB', 'Colour' => 'Black']]], 13);
+        $this->pay($o, 13);
+        $this->shipWithTracking($o, 'kabelo', 12, 'courier_guy', 'TCG49188105');
+        $this->advance($o, null, OrderStatus::Delivered, 9);
+
+        $o = $this->buy('naledi', [['Samsung Galaxy S24 5G Smartphone', 1, ['Storage' => '256GB', 'Colour' => 'Onyx']]], 5, null, [], 'Home');
+        $this->pay($o, 5);
+        $this->shipWithTracking($o, 'kabelo', 4, 'courier_guy', 'TCG49201377', [[3, 'Collected from the seller', 'Braamfontein'], [28, 'Departed Johannesburg for Durban', null]]);
+
+        $o = $this->buy('ayesha', [['Trail Leggings, High Waist', 1, ['Size' => 'S', 'Colour' => 'Black']], ['Fleece Jacket, Full Zip', 1, ['Size' => 'M', 'Colour' => 'Pink']]], 16);
+        $this->pay($o, 16);
+        $this->shipWithTracking($o, 'johan', 15, 'aramex', '20418688402');
+        $this->advance($o, null, OrderStatus::Delivered, 12);
+
+        // --- Collection: one collected, one ready and waiting.
+        $o = $this->buy('sipho', [['Monitor Arm, Single', 1]], 8, null, ['kabelo' => 'Collect in Braamfontein']);
+        $this->pay($o, 8);
+        $this->advance($o, null, OrderStatus::Processing, 8, 14);
+        $this->advance($o, null, OrderStatus::ReadyForCollection, 7);
+        $this->advance($o, null, OrderStatus::Collected, 6);
+
+        $o = $this->buy('thandi', [['Dell 24 Inch Full HD Monitor', 1]], 2, null, ['kabelo' => 'Collect in Braamfontein']);
+        $this->pay($o, 2);
+        $this->advance($o, null, OrderStatus::ReadyForCollection, 1);
+
+        // --- Returns, one in every state. Each line was delivered inside the 7 day window.
+        // requested: the seller has 10 days to answer.
+        $o = $this->buy('thandi', [['Smart Plug, 2 Pack', 1], ['Wireless Mouse', 1]], 9);
+        $this->pay($o, 9);
+        $this->shipWithTracking($o, 'kabelo', 8, 'courier_guy', 'TCG49170544');
+        $this->advance($o, null, OrderStatus::Delivered, 3);
+        $this->returnRequest($o, 'Smart Plug, 2 Pack', 'thandi', 'faulty', 'One of the two plugs never connects to the app.', 2);
+
+        // approved: the seller agreed, the goods are on their way back.
+        $o = $this->buy('pieter', [['Trekking Poles, Pair', 1]], 8);
+        $this->pay($o, 8);
+        $this->shipWithTracking($o, 'johan', 7, 'aramex', '20418701148');
+        $this->advance($o, null, OrderStatus::Delivered, 4);
+        $return = $this->returnRequest($o, 'Trekking Poles, Pair', 'pieter', 'not_as_described', 'The listing says carbide tips; mine have rubber tips only.', 3);
+        $this->at(2, fn () => app(ReturnService::class)->approve($return->refresh(), $this->users['johan'], 'Sorry about that. Please send them back and we will refund you.'), 12);
+
+        // declined with a stated reason.
+        $o = $this->buy('naledi', [['Exfoliating Body Scrub 300g', 1], ['Lip Balm, Set of 3', 1]], 8);
+        $this->pay($o, 8);
+        $this->shipWithTracking($o, 'zanele', 7, 'pargo', 'PRG7740018');
+        $this->advance($o, null, OrderStatus::Delivered, 4);
+        $return = $this->returnRequest($o, 'Exfoliating Body Scrub 300g', 'naledi', 'changed_mind', 'I prefer a finer scrub.', 3);
+        $this->at(2, fn () => app(ReturnService::class)->decline($return->refresh(), $this->users['zanele'], 'For hygiene reasons we cannot take back an opened skincare jar unless it is faulty. The jar was opened according to your photo.'), 12);
+
+        // received and refunded: the money went back, the line is Refunded, the ledger reversed.
+        $o = $this->buy('ayesha', [['Hand-Glazed Stoneware Bowl Set', 1]], 9);
+        $this->pay($o, 9);
+        $this->shipWithTracking($o, 'lerato', 8, 'courier_guy', 'TCG48870031');
+        $this->advance($o, null, OrderStatus::Delivered, 5);
+        $return = $this->returnRequest($o, 'Hand-Glazed Stoneware Bowl Set', 'ayesha', 'faulty', 'One bowl arrived cracked along the rim.', 4);
+        $this->at(3, fn () => app(ReturnService::class)->approve($return->refresh(), $this->users['lerato'], 'We are sorry. Please post it back.'), 12);
+        $this->at(1, fn () => app(ReturnService::class)->markReceived($return->refresh(), $this->users['lerato'], false), 12);
+
+        // declined, then escalated by the buyer: waiting in the operator's queue.
+        $o = $this->buy('sipho', [['1080p Webcam', 1]], 9);
+        $this->pay($o, 9);
+        $this->shipWithTracking($o, 'kabelo', 8, 'courier_guy', 'TCG49170921');
+        $this->advance($o, null, OrderStatus::Delivered, 5);
+        $return = $this->returnRequest($o, '1080p Webcam', 'sipho', 'not_as_described', 'The picture is much darker than the listing photos suggest.', 4);
+        $this->at(3, fn () => app(ReturnService::class)->decline($return->refresh(), $this->users['kabelo'], 'The webcam passed our test; low light performance is as described. Please try the brightness setting in your meeting app.'), 12);
+        $this->at(2, fn () => app(ReturnService::class)->escalate($return->refresh(), $this->users['sipho'], 'I tried that and it is still too dark to use.'), 12);
+
+        // declined, escalated, and the operator upheld the decline: closed.
+        $o = $this->buy('naledi', [['Rose Geranium Face Mist 100ml', 1]], 9);
+        $this->pay($o, 9);
+        $this->shipWithTracking($o, 'zanele', 8, 'pargo', 'PRG7740102');
+        $this->advance($o, null, OrderStatus::Delivered, 6);
+        $return = $this->returnRequest($o, 'Rose Geranium Face Mist 100ml', 'naledi', 'other', 'The scent is not what I expected from the description.', 5);
+        $this->at(4, fn () => app(ReturnService::class)->decline($return->refresh(), $this->users['zanele'], 'Scent is a matter of taste and the description names rose geranium. Opened skincare cannot be returned.'), 12);
+        $this->at(3, fn () => app(ReturnService::class)->escalate($return->refresh(), $this->users['naledi'], 'The description did not say it is strongly perfumed.'), 12);
+        $this->at(1, fn () => app(ReturnService::class)->operatorResolve($return->refresh(), $this->users['operator'], 'uphold_decline', 'The listing names the scent; opened skincare is not returnable for change of mind. Decline stands.'), 14);
     }
 
     /**
-     * @param  array<int, array{0: Product, 1: int}>  $lines
+     * Places an order for $buyer from the lines (product name, quantity, optional variant choices) at $daysAgo,
+     * the way the checkout page does: a cart through the cart service, then CheckoutService::place with a saved address
+     * and the chosen delivery methods (the cheapest when none is named).
+     *
+     * @param  array<int, array{0: string, 1: int, 2?: array<string, string>}>  $lines
+     * @param  array<string, string>  $methods  store key => delivery method name
      */
-    private function placeOrder(string $buyerKey, array $lines, ?string $promo, int $daysAgo): Order
+    private function buy(string $buyer, array $lines, int $daysAgo, ?string $promo = null, array $methods = [], ?string $addressLabel = null): Order
     {
-        $buyer = $this->users[$buyerKey];
-        $def = $this->userDefinitions()[$buyerKey];
+        return $this->at($daysAgo, function () use ($buyer, $lines, $promo, $methods, $addressLabel) {
+            $user = $this->users[$buyer];
 
-        foreach ($lines as [$product, $quantity]) {
-            CartItem::query()->create(['user_id' => $buyer->id, 'product_id' => $product->id, 'quantity' => $quantity]);
+            foreach ($lines as $line) {
+                app(CartManager::class)->add($user, $this->variant($line[0], $line[2] ?? null), $line[1]);
+            }
+
+            $address = $addressLabel !== null
+                ? Address::query()->where('user_id', $user->id)->where('label', $addressLabel)->firstOrFail()
+                : $this->addresses[$buyer];
+
+            // Left alone, checkout picks the cheapest method, which is "collect it yourself" at every store here. A shopper
+            // who wants delivery picks the store's first delivery method, so that is the default; collection is named.
+            foreach ($lines as $line) {
+                $storeKey = array_search($this->products[$line[0]]->store_id, array_map(fn (Store $store) => $store->id, $this->stores), true);
+                $methods[$storeKey] ??= collect($this->methods[$storeKey])->first(fn (ShippingMethod $m) => $m->type->value !== 'collection')->name;
+            }
+
+            $chosen = [];
+
+            foreach ($methods as $storeKey => $methodName) {
+                $chosen[$this->stores[$storeKey]->id] = $this->methods[$storeKey][$methodName]->id;
+            }
+
+            return app(CheckoutService::class)->place($user, array_filter([
+                'address_id' => $address->id,
+                'promo_code' => $promo,
+                'shipping_methods' => $chosen,
+            ]), (string) Str::uuid(), '127.0.0.1')->refresh();
+        }, 9);
+    }
+
+    /**
+     * @param  array<string, string>|null  $choices
+     */
+    private function variant(string $productName, ?array $choices = null): ProductVariant
+    {
+        $variants = ProductVariant::query()->where('product_id', $this->products[$productName]->id)->where('is_active', true)->orderBy('id')->get();
+
+        if ($choices === null) {
+            return $variants->firstOrFail();
         }
 
-        $order = app(CheckoutService::class)->place($buyer, [
-            'shipping_name' => $buyer->name,
-            'shipping_address' => $def['address'],
-            'shipping_phone' => $def['phone'],
-            'promo_code' => $promo,
-        ], (string) Str::uuid(), '127.0.0.1');
-
-        $when = now()->subDays($daysAgo)->subHours($daysAgo === 0 ? 2 : random_int(0, 8));
-        $this->backdate($order, $when);
-
-        return $order->refresh();
-    }
-
-    private function backdate(Order $order, Carbon $when): void
-    {
-        $order->forceFill(['created_at' => $when, 'updated_at' => $when])->saveQuietly();
-        DB::table('order_items')->where('order_id', $order->id)->update(['created_at' => $when, 'updated_at' => $when]);
+        return $variants->first(fn (ProductVariant $v) => ($v->options ?? []) == $choices) ?? throw new RuntimeException("No variant of {$productName} for ".json_encode($choices));
     }
 
     /**
-     * An order paid through the real PaymentService: a pending attempt, then the
-     * same confirmation call the Paystack webhook makes.
+     * An order paid through the real PaymentService: a pending attempt, then the same confirmation call the Paystack
+     * webhook makes.
      */
     private function pay(Order $order, int $daysAgo): void
     {
-        $payment = $this->attempt($order, PaymentAttemptStatus::Pending);
-        $order->forceFill(['payment_status' => PaymentStatus::Pending])->saveQuietly();
+        $this->at($daysAgo, function () use ($order) {
+            $payment = $this->attempt($order, PaymentAttemptStatus::Pending);
+            $order->forceFill(['payment_status' => PaymentStatus::Pending])->saveQuietly();
 
-        app(PaymentService::class)->recordSuccessfulCharge(
-            $payment->reference,
-            $payment->amount_cents,
-            $payment->currency,
-            (string) random_int(3_000_000_000, 3_999_999_999),
-            ['status' => 'success', 'channel' => 'card', 'currency' => $payment->currency],
-            'webhook',
-        );
-
-        $paidAt = Carbon::parse($order->created_at)->addMinutes(random_int(2, 9));
-        $order->refresh()->forceFill(['paid_at' => $paidAt])->saveQuietly();
-        $payment->refresh()->forceFill(['paid_at' => $paidAt, 'created_at' => $order->created_at])->saveQuietly();
+            app(PaymentService::class)->recordSuccessfulCharge(
+                $payment->reference,
+                $payment->amount_cents,
+                $payment->currency,
+                (string) random_int(3_000_000_000, 3_999_999_999),
+                ['status' => 'success', 'channel' => 'card', 'currency' => $payment->currency],
+                'webhook',
+            );
+        }, 10);
     }
 
     private function attempt(Order $order, PaymentAttemptStatus $status): Payment
@@ -608,53 +950,80 @@ class EmallDemoSeeder extends Seeder
         ]);
     }
 
-    private function openAttempt(Order $order, PaymentAttemptStatus $attempt, PaymentStatus $orderStatus): void
+    private function openAttempt(Order $order, PaymentAttemptStatus $attempt, PaymentStatus $orderStatus, int $daysAgo): void
     {
-        $this->attempt($order, $attempt);
-        $order->forceFill(['payment_status' => $orderStatus])->saveQuietly();
+        $this->at($daysAgo, function () use ($order, $attempt, $orderStatus) {
+            $this->attempt($order, $attempt);
+            $order->forceFill(['payment_status' => $orderStatus])->saveQuietly();
+        }, 10);
     }
 
-    private function advanceAll(Order $order, OrderStatus $to, int $daysAgo): void
+    /**
+     * The seller marks the parcel shipped through ShipmentService, with a carrier and tracking number from the allowlist
+     * and the text events the seller typed ([minutes after shipping, text, location]).
+     *
+     * @param  list<array{0: int, 1: string, 2: ?string}>  $events
+     */
+    private function shipWithTracking(Order $order, string $storeKey, int $daysAgo, string $carrier, string $number, array $events = []): Shipment
     {
-        foreach ($order->items()->get() as $line) {
-            $this->advance($line, $to, $daysAgo);
-        }
+        return $this->at($daysAgo, function () use ($order, $storeKey, $carrier, $number, $events) {
+            $group = $order->groups()->where('store_id', $this->stores[$storeKey]->id)->firstOrFail();
+            $seller = $this->users[$storeKey];
+            $service = app(ShipmentService::class);
+
+            $shipment = $service->ship($group, $seller, [
+                'carrier_key' => $carrier,
+                'tracking_number' => $number,
+                'estimated_from' => now()->addWeekdays(2)->toDateString(),
+                'estimated_to' => now()->addWeekdays(4)->toDateString(),
+            ]);
+
+            foreach ($events as [$minutes, $text, $location]) {
+                $service->addEvent($shipment, $seller, $text, $location, now()->addMinutes($minutes * 10));
+            }
+
+            return $shipment;
+        }, 11);
     }
 
-    private function advanceStore(Order $order, string $storeName, OrderStatus $to, int $daysAgo): void
+    /**
+     * Moves the lines (every line of the order, or one store's) to $to as the seller, one legal step at a time.
+     */
+    private function advance(Order $order, ?string $storeKey, OrderStatus $to, int $daysAgo, int $hour = 14): void
     {
-        foreach ($order->items()->where('store_name', $storeName)->get() as $line) {
-            $this->advance($line, $to, $daysAgo);
-        }
-    }
+        $this->at($daysAgo, function () use ($order, $storeKey, $to) {
+            $lifecycle = app(OrderLifecycle::class);
 
-    private function advance(OrderItem $line, OrderStatus $to, int $daysAgo): void
-    {
-        $lifecycle = app(OrderLifecycle::class);
+            $lines = $order->items()->when($storeKey !== null, fn ($q) => $q->where('store_id', $this->stores[$storeKey]->id))->get();
 
-        if ($to === OrderStatus::Delivered) {
-            // Shipped on the way, so the history reads like real fulfilment.
-            $lifecycle->advanceItem($line, OrderStatus::Shipped);
-        }
+            foreach ($lines as $line) {
+                $seller = User::query()->find($line->seller_id);
 
-        $line = $lifecycle->advanceItem($line->refresh(), $to);
-        $line->order->refresh();
-        $line->order->user->notify(new OrderItemStatusUpdatedNotification($line));
+                // A pending line is shipped on the way to delivered if nobody did it (a shipment normally has).
+                if ($to === OrderStatus::Delivered && $line->refresh()->status === OrderStatus::Pending) {
+                    $lifecycle->advanceItem($line, OrderStatus::Shipped, $seller);
+                }
 
-        $when = now()->subDays($daysAgo);
-        DB::table('order_items')->where('id', $line->id)->update(['updated_at' => $when]);
-        DB::table('orders')->where('id', $line->order_id)->update(['updated_at' => $when]);
+                $lifecycle->advanceItem($line->refresh(), $to, $seller);
+            }
+        }, $hour);
     }
 
     private function cancelLine(Order $order, string $productName, int $daysAgo): void
     {
-        $line = $order->items()->where('product_name', $productName)->firstOrFail();
-        $line = app(OrderLifecycle::class)->cancelItem($line);
-        $line->order->user->notify(new OrderLineCancelledNotification($line));
+        $this->at($daysAgo, function () use ($order, $productName) {
+            $line = $order->items()->where('product_name', $productName)->firstOrFail();
+            app(OrderLifecycle::class)->cancelItem($line, null, 'Out of stock at the warehouse', 'seller');
+        }, 12);
+    }
 
-        $when = now()->subDays($daysAgo);
-        DB::table('order_items')->where('id', $line->id)->update(['updated_at' => $when]);
-        DB::table('orders')->where('id', $line->order_id)->update(['updated_at' => $when]);
+    private function returnRequest(Order $order, string $productName, string $buyerKey, string $reason, string $note, int $daysAgo): ReturnRequest
+    {
+        return $this->at($daysAgo, function () use ($order, $productName, $buyerKey, $reason, $note) {
+            $line = $order->items()->where('product_name', $productName)->firstOrFail();
+
+            return app(ReturnService::class)->request($line->refresh(), $this->users[$buyerKey], $reason, $note);
+        }, 9);
     }
 
     // ---------------------------------------------------------------- reviews
@@ -663,7 +1032,7 @@ class EmallDemoSeeder extends Seeder
     {
         $service = app(ReviewService::class);
 
-        // Verified: each of these buyers has a delivered line for the product.
+        // Verified: each of these buyers has a delivered line for the product, so ReviewService marks them verified.
         $verified = [
             ['thandi', 'Cast Iron Potjie Pot 3L', 5, 'Seasoned beautifully after the first use. Heavy, properly made, and the lid fits like it was cast for it. We made oxtail and it was gone in an hour.', 44],
             ['thandi', 'Beeswax Taper Candles, 6 Pack', 4, 'Burn slowly and smell faintly of honey. A couple were slightly bent in the box but they straightened in warm hands.', 44],
@@ -677,27 +1046,35 @@ class EmallDemoSeeder extends Seeder
             ['naledi', 'Wireless Over-Ear Headphones', 4, 'Noise cancelling is good on the taxi rank, less so on a plane. Battery is as promised.', 25],
             ['naledi', '65W USB-C Fast Charger', 5, 'Charges my laptop and phone at the same time without getting hot.', 25],
             ['naledi', 'A5 Dotted Notebook', 3, 'Paper is lovely but the cover marks easily.', 24],
+            ['pieter', 'Lenovo IdeaPad Slim 3, 15.6 inch', 4, 'Quick to start and the screen is good enough for a day of spreadsheets. The speakers are thin.', 31],
+            ['naledi', 'Lenovo IdeaPad Slim 3, 15.6 inch', 4, 'Does everything my studies need. Battery lasts a full lecture day if I keep brightness down.', 14],
+            ['sipho', 'Lenovo IdeaPad Slim 3, 15.6 inch', 5, 'Bought it with the mouse and set up took ten minutes. Very happy for the price.', 7],
+            ['pieter', 'Wireless Mouse', 5, 'Silent clicks, which my open-plan office appreciates. Connected to two laptops without fuss.', 30],
+            ['thandi', 'Samsung 55 Inch Crystal UHD Smart TV', 5, 'The picture is sharp and the apps are all there. Setup took a few minutes. Delivery was on the day the seller said.', 14],
+            ['sipho', 'Samsung Galaxy A15 Smartphone', 4, 'Good screen and the battery lasts two days. The camera struggles in low light.', 6],
+            ['ayesha', 'Trail Leggings, High Waist', 4, 'Fit is true to size and the phone pocket actually holds a phone. Slightly sheer in the lightest colour.', 9],
+            ['thandi', 'Alpine 2-Person Dome Tent', 4, 'Easy to pitch. Two adults fit but there is no room for bags inside, so bring a footprint.', 24],
+            ['naledi', 'Alpine 2-Person Dome Tent', 5, 'Used it in the Drakensberg. Dry through a night of rain.', 17],
         ];
 
-        foreach ($verified as [$buyer, $product, $rating, $body, $daysAgo]) {
-            $product = $this->products[$product];
-            $review = $service->submit($this->users[$buyer], $product, $rating, $body);
-            $review->forceFill(['created_at' => now()->subDays($daysAgo), 'updated_at' => now()->subDays($daysAgo)])->saveQuietly();
-            $this->products[$product->name]->store->owner->notify(new NewReviewNotification($review));
+        foreach ($verified as [$buyer, $name, $rating, $body, $daysAgo]) {
+            $product = $this->products[$name];
+            $review = $this->at($daysAgo, fn () => $service->submit($this->users[$buyer], $product, $rating, $body), 15);
+            $product->store->owner->notify(new NewReviewNotification($review));
         }
 
-        // Unverified: written by people with no delivered order for the product. The
-        // application refuses these today, so they are inserted directly, the way a
-        // legacy row or a data import would arrive. They show how the storefront treats them.
+        // Unverified: written by people with no delivered order for the product. The application refuses these today,
+        // so they are inserted directly, the way a legacy row or a data import would arrive. They show how the
+        // storefront treats them.
         $unverified = [
             ['sipho', 'Alpine 2-Person Dome Tent', 4, 'Borrowed a friend\'s and liked it enough to put one on my list.', 16],
             ['ayesha', 'Wireless Over-Ear Headphones', 5, 'Great sound. My brother has these and I am jealous.', 12],
             ['sipho', 'Cast Iron Potjie Pot 3L', 2, 'Seems overpriced for what it is.', 8],
         ];
 
-        foreach ($unverified as [$buyer, $product, $rating, $body, $daysAgo]) {
+        foreach ($unverified as [$buyer, $name, $rating, $body, $daysAgo]) {
             Review::create([
-                'product_id' => $this->products[$product]->id,
+                'product_id' => $this->products[$name]->id,
                 'user_id' => $this->users[$buyer]->id,
                 'rating' => $rating,
                 'body' => $body,
@@ -707,47 +1084,84 @@ class EmallDemoSeeder extends Seeder
         }
 
         foreach (array_unique(array_column($unverified, 1)) as $name) {
-            $stats = Review::query()->where('product_id', $this->products[$name]->id)
-                ->selectRaw('COUNT(*) as c, AVG(rating) as a')->first();
-            Product::query()->where('id', $this->products[$name]->id)
-                ->update(['rating_count' => (int) $stats->c, 'rating_average' => round((float) $stats->a, 2)]);
+            $service->refreshAggregate($this->products[$name]);
         }
+
+        // A reply from the store, helpful votes, and a report that lands in the operator's queue.
+        $ids = fn (string $buyer, string $name) => Review::query()->where('user_id', $this->users[$buyer]->id)->where('product_id', $this->products[$name]->id)->firstOrFail();
+
+        $this->at(12, fn () => app(ReviewResponses::class)->respond($this->users['kabelo'], $ids('pieter', 'Lenovo IdeaPad Slim 3, 15.6 inch'), 'Thanks Pieter. The speakers are the usual trade-off at this price; a small Bluetooth speaker pairs in seconds.'), 13);
+        $this->at(26, fn () => app(ReviewResponses::class)->respond($this->users['johan'], $ids('pieter', 'Alpine 2-Person Dome Tent'), 'Glad it held in the south-easter. Thank you for the review.'), 13);
+
+        $votes = app(ReviewVotes::class);
+
+        foreach (['sipho', 'naledi', 'ayesha', 'thandi'] as $voter) {
+            $votes->toggle($this->users[$voter], $ids('pieter', 'Alpine 2-Person Dome Tent'));
+        }
+
+        foreach (['thandi', 'ayesha'] as $voter) {
+            $votes->toggle($this->users[$voter], $ids('naledi', 'Lenovo IdeaPad Slim 3, 15.6 inch'));
+        }
+
+        app(ContentReports::class)->report($this->users['pieter'], 'review', $ids('sipho', 'Cast Iron Potjie Pot 3L')->id, 'off_topic', 'This reviewer has not bought this product and the review is about price only.');
     }
 
-    private function makeExtraNotifications(): void
+    // ------------------------------------------------------------------ guests
+
+    /**
+     * A shopper who never signed in: a paid order that the seller has shipped, reached only through its magic link.
+     * Returns the link.
+     */
+    private function makeGuestOrders(): ?string
     {
-        // Marks a few as read so the bell shows a believable mix of read and unread.
-        $buyerIds = $this->buyerIds();
-        $sellerIds = collect(['lerato', 'johan', 'zanele', 'kabelo'])->map(fn ($k) => $this->users[$k]->id);
+        $link = null;
 
-        $ids = DB::table('notifications')
-            ->where('notifiable_type', User::class)
-            ->whereIn('notifiable_id', array_merge($buyerIds, $sellerIds->all()))
-            ->orderBy('created_at')
-            ->pluck('id');
+        $this->payable(function () use (&$link) {
+            $order = $this->at(4, function () {
+                $lines = [
+                    ['variant_id' => $this->variant('Braided USB-C Cable 2m')->id, 'quantity' => 2],
+                    ['variant_id' => $this->variant('Rooibos Tea, 80 Bags')->id, 'quantity' => 1],
+                ];
 
-        $ids->take((int) floor($ids->count() * 0.6))->each(fn ($id) => DB::table('notifications')->where('id', $id)->update(['read_at' => now()->subDays(random_int(1, 5))]));
+                return app(CheckoutService::class)->placeAsGuest(self::GUEST_EMAIL, $lines, [
+                    'shipping_methods' => [
+                        $this->stores['kabelo']->id => $this->methods['kabelo']['Courier (next working day)']->id,
+                        $this->stores['zanele']->id => $this->methods['zanele']['Pargo pick-up point']->id,
+                    ],
+                    'address' => [
+                        'recipient_name' => 'Guest Shopper', 'phone' => '+27 82 555 0100', 'line1' => '88 Visagie Street', 'suburb' => 'Pretoria Central',
+                        'city' => 'Pretoria', 'province' => 'Gauteng', 'postal_code' => '0002', 'country' => 'ZA',
+                    ],
+                ], (string) Str::uuid(), '127.0.0.1');
+            }, 9);
+
+            $this->pay($order->refresh(), 4);
+            $this->shipWithTracking($order->refresh(), 'kabelo', 3, 'courier_guy', 'TCG49211530', [[4, 'Collected from the seller', 'Braamfontein'], [30, 'At the Pretoria depot', null]]);
+            $this->advance($order->refresh(), 'zanele', OrderStatus::Processing, 3);
+
+            $link = app(GuestOrderAccess::class)->url($order->refresh());
+        });
+
+        return $link;
     }
 
-    private function backdateNotifications(): void
+    // ------------------------------------------------------------------ finish
+
+    /**
+     * What the scheduler would have done by now: release the ledger entries whose waiting period has passed, rebuild the
+     * ratings, the search index and the recommendation links.
+     */
+    private function finish(): void
     {
-        $rows = DB::table('notifications')->get(['id', 'data', 'created_at']);
+        app(LedgerService::class)->releaseDue(Carbon::now());
+        app(StoreRatings::class)->refreshAll();
 
-        foreach ($rows as $row) {
-            $data = json_decode($row->data, true) ?: [];
-            $orderId = $data['order_id'] ?? null;
+        Artisan::call('emall:search-reindex');
+        Artisan::call('emall:recommendations-rebuild');
 
-            if ($orderId === null) {
-                continue;
-            }
-
-            $order = DB::table('orders')->where('id', $orderId)->first(['created_at', 'updated_at']);
-
-            if ($order) {
-                $when = Carbon::parse($order->updated_at)->addMinutes(random_int(1, 40));
-                DB::table('notifications')->where('id', $row->id)->update(['created_at' => $when, 'updated_at' => $when]);
-            }
-        }
+        // Nothing is queued while seeding, but the reservation rule must not hold stock for orders that are already
+        // days old and unpaid: the scheduler would have expired them.
+        Vocabulary::forget();
     }
 
     // ------------------------------------------------------------------ images

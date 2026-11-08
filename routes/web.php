@@ -1,12 +1,12 @@
 <?php
 
-use App\Http\Controllers\Auth\EcosystemAuthController;
 use App\Http\Controllers\AssistantController;
+use App\Http\Controllers\Auth\EcosystemAuthController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\CspReportController;
 use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\HealthController;
 use App\Http\Controllers\GuestOrderAccessController;
+use App\Http\Controllers\HealthController;
 use App\Http\Controllers\OperatorPaymentController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\OrderItemCancellationController;
@@ -156,6 +156,23 @@ Route::get('/guest/orders/{order}/{token}/payment', [GuestOrderAccessController:
     ->where('token', '[A-Za-z0-9_\\-]{20,128}')
     ->name('guest.orders.payment.callback');
 // --- end data-a ---
+
+// --- integration ---
+// Pure aliases of pages that already exist, so the shell's navigation resolves (DESIGN.md, "Route names feature work must
+// register"). A feature agent that builds the real page for one of these names deletes its line here and registers the real
+// route. Nothing is registered here that is not an existing controller action: no aliases, limiters or bindings (those live in providers).
+Route::get('/search', [ProductController::class, 'index'])->name('search');
+
+Route::middleware([
+    'auth:sanctum',
+    config('jetstream.auth_session'),
+    'verified',
+])->group(function () {
+    Route::get('/account', DashboardController::class)->name('account.home');
+    Route::get('/sell/dashboard', DashboardController::class)->name('seller.dashboard');
+    Route::get('/sell/start', [StoreController::class, 'create'])->name('sell.start');
+});
+// --- end integration ---
 
 // --- dev ---
 // Local-only sign-in for design and audit sessions (docs/R43_DEMO.md). Registered only in the
