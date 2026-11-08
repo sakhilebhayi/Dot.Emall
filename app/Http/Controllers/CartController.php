@@ -4,6 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\CartItem;
 use App\Models\Product;
+use App\Models\ProductVariant;
+use App\Services\Cart\CartManager;
+use App\Services\Cart\CartProblem;
 use App\Services\CheckoutException;
 use App\Services\CheckoutService;
 use App\Services\PaymentService;
@@ -11,7 +14,6 @@ use App\Services\Paystack\PaymentGatewayException;
 use App\Services\Paystack\PaystackConfig;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
@@ -27,9 +29,9 @@ class CartController extends Controller
 {
     public function index(PaystackConfig $paystack): View
     {
-        $items = CartItem::with(['product.store', 'product.images'])->get();
+        $items = CartItem::with(['product.store', 'product.images', 'variant'])->get();
 
-        $subtotal = $items->sum(fn (CartItem $item) => $item->quantity * $item->product->price);
+        $subtotal = $items->sum(fn (CartItem $item) => $item->quantity * ($item->variant ?? $item->product)->price);
 
         // Lines that cannot be bought as they stand: the listing was
         // switched off / its store closed, or stock dropped below the
@@ -38,13 +40,14 @@ class CartController extends Controller
         $problems = [];
         foreach ($items as $item) {
             $product = $item->product;
+            $stock = $item->variant?->stock ?? $product->stock;
 
-            if (! $product->is_active || $product->status !== 'approved' || ! $product->store->is_active) {
+            if (! $product->is_active || $product->status !== 'approved' || ! $product->store->is_active || ($item->variant && ! $item->variant->is_active)) {
                 $problems[$item->id] = 'No longer available. Remove it to continue.';
-            } elseif ($item->quantity > $product->stock) {
-                $problems[$item->id] = $product->stock === 0
+            } elseif ($item->quantity > $stock) {
+                $problems[$item->id] = $stock === 0
                     ? 'Out of stock now. Remove it to continue.'
-                    : "Only {$product->stock} left. Lower the quantity to continue.";
+                    : "Only {$stock} left. Lower the quantity to continue.";
             }
         }
 
@@ -65,103 +68,52 @@ class CartController extends Controller
         ]);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request, CartManager $cart): RedirectResponse
     {
         $validated = $request->validate([
             'product_id' => ['required', 'integer', 'exists:products,id'],
+            'variant_id' => ['nullable', 'integer', 'exists:product_variants,id'],
             'quantity' => ['nullable', 'integer', 'min:1', 'max:99'],
         ]);
 
         $product = Product::browsable()->findOrFail($validated['product_id']);
-        $quantity = $validated['quantity'] ?? 1;
 
-        if ($product->store->owner_id === $request->user()->id) {
-            return back()->withErrors(['product_id' => 'This is your own listing, so you cannot buy it.']);
-        }
+        $variant = isset($validated['variant_id'])
+            ? ProductVariant::query()->where('product_id', $product->id)->findOrFail($validated['variant_id'])
+            : null;
 
-        $item = CartItem::firstOrNew([
-            'user_id' => auth()->id(),
-            'product_id' => $product->id,
-        ]);
-        $already = $item->exists ? $item->quantity : 0;
+        if ($variant === null) {
+            $active = ProductVariant::query()->where('product_id', $product->id)->where('is_active', true)->orderByDesc('is_default')->orderBy('id')->get();
 
-        if ($error = $this->quantityProblem($product, $already + $quantity, $already)) {
-            return back()->withErrors(['quantity' => $error]);
-        }
-
-        if ($item->exists) {
-            $item->update(['quantity' => $already + $quantity]);
-        } else {
-            // "insert unless it is there" instead of insert-and-catch: one cart line per buyer and product is a unique
-            // index, and a double click sends two requests that both found no line. PostgreSQL also poisons the whole
-            // transaction on a unique violation, so catching it is not an option there.
-            $inserted = DB::table('cart_items')->insertOrIgnore([
-                'user_id' => $request->user()->id,
-                'product_id' => $product->id,
-                'quantity' => $quantity,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-
-            if ($inserted === 0) {
-                // The other request won: add on top of its line.
-                $item = CartItem::query()->where('product_id', $product->id)->firstOrFail();
-                $already = (int) $item->quantity;
-
-                if ($error = $this->quantityProblem($product, $already + $quantity, $already)) {
-                    return back()->withErrors(['quantity' => $error]);
-                }
-
-                $item->update(['quantity' => $already + $quantity]);
+            if ($active->count() > 1) {
+                return back()->withErrors(['variant_id' => 'Choose '.$product->options()->pluck('name')->implode(' and ').' first.']);
             }
+
+            $variant = $active->first() ?? abort(404);
+        }
+
+        try {
+            $cart->add($request->user(), $variant, (int) ($validated['quantity'] ?? 1));
+        } catch (CartProblem $e) {
+            return back()->withErrors([$e->field => $e->getMessage()]);
         }
 
         return redirect()->route('cart.index')->with('status', "Added \"{$product->name}\" to cart.");
     }
 
-    public function update(Request $request, CartItem $cartItem): RedirectResponse
+    public function update(Request $request, CartItem $cartItem, CartManager $cart): RedirectResponse
     {
         $validated = $request->validate([
             'quantity' => ['required', 'integer', 'min:1', 'max:99'],
         ]);
 
-        $product = $cartItem->product;
-
-        if (! $product->is_active || $product->status !== 'approved' || ! $product->store->is_active) {
-            return back()->withErrors(['quantity' => "\"{$product->name}\" is no longer available. Remove it from your cart."]);
+        try {
+            $cart->setQuantity($request->user(), (int) $cartItem->variant_id, (int) $validated['quantity']);
+        } catch (CartProblem $e) {
+            return back()->withErrors(['quantity' => $e->getMessage()]);
         }
-
-        if ($error = $this->quantityProblem($product, (int) $validated['quantity'], 0)) {
-            return back()->withErrors(['quantity' => $error]);
-        }
-
-        $cartItem->update(['quantity' => $validated['quantity']]);
 
         return redirect()->route('cart.index')->with('status', 'Quantity updated.');
-    }
-
-    /**
-     * Null when $wanted of the product can be held in a cart; otherwise a
-     * plain-words reason. $already is how many the buyer holds now, only to
-     * word the message when they are topping up.
-     */
-    private function quantityProblem(Product $product, int $wanted, int $already): ?string
-    {
-        if ($product->stock < 1) {
-            return "\"{$product->name}\" is out of stock.";
-        }
-
-        if ($wanted > $product->stock) {
-            return $already > 0
-                ? "Only {$product->stock} of \"{$product->name}\" in stock, and you already have {$already} in your cart."
-                : "Only {$product->stock} of \"{$product->name}\" in stock.";
-        }
-
-        if ($wanted > 99) {
-            return 'You can order at most 99 of one item at a time.';
-        }
-
-        return null;
     }
 
     public function destroy(CartItem $cartItem): RedirectResponse
@@ -184,7 +136,13 @@ class CartController extends Controller
         $validated = $request->validate([
             'checkout_token' => ['required', 'uuid'],
             'shipping_name' => ['nullable', 'string', 'max:120'],
-            'shipping_address' => ['required', 'string', 'max:255'],
+            'shipping_address' => ['required_without_all:address_id,address', 'nullable', 'string', 'max:255'],
+            'address_id' => ['nullable', 'integer'],
+            'address' => ['nullable', 'array'],
+            'shipping_methods' => ['nullable', 'array'],
+            'shipping_methods.*' => ['nullable', 'integer'],
+            // The total the buyer was shown; a different server-side total stops the order (PriceChangedException).
+            'expected_total_cents' => ['nullable', 'integer', 'min:0'],
             'shipping_phone' => ['nullable', 'string', 'max:40', 'regex:/^[0-9+()\-.\s]{5,40}$/'],
             'promo_code' => ['nullable', 'string', 'max:40'],
         ]);
@@ -201,6 +159,7 @@ class CartController extends Controller
         try {
             $order = $checkout->place($request->user(), $validated, $validated['checkout_token'], $request->ip());
         } catch (CheckoutException $e) {
+            // A PriceChangedException lands here too: the message carries the new total and the cart page redraws with it.
             return redirect()->route('cart.index')->with('error', $e->getMessage());
         }
 

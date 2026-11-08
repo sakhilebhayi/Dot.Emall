@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\ReturnRequest;
 use App\Models\User;
 use Illuminate\Support\Collection;
 
@@ -19,8 +20,9 @@ use Illuminate\Support\Collection;
  *              Never the other sellers' lines, the order total, the promo
  *              code, or the buyer's account.
  *
- * A user who is both buyer and seller of the same order (buying from their
- * own store) is treated as the buyer.
+ * A guest holding the order's magic link is the buyer of that one order
+ * (presentGuest); a user who is both buyer and seller of the same order
+ * (buying from their own store) is treated as the buyer.
  */
 class OrderAccess
 {
@@ -47,10 +49,12 @@ class OrderAccess
         return null;
     }
 
+    public const GUEST = 'guest';
+
     /**
      * Everything the order page may render for this viewer.
      *
-     * @return array{role: string, lines: Collection<int, OrderItem>, fullOrder: bool, shipping: ?array{name: string, address: ?string, phone: ?string}, sellerNetCents: int, awaitingPayment: bool, paymentDetail: bool, refunds: Collection}
+     * @return array{role: string, lines: Collection<int, OrderItem>, fullOrder: bool, shipping: ?array{name: string, address: ?string, phone: ?string}, sellerNetCents: int, awaitingPayment: bool, paymentDetail: bool, refunds: Collection, groups: Collection, history: Collection, returns: Collection}
      */
     public function present(Order $order, User $user): array
     {
@@ -58,6 +62,26 @@ class OrderAccess
 
         abort_if($role === null, 403);
 
+        return $this->build($order, $role, $user);
+    }
+
+    /**
+     * A guest who followed their order's magic link (GuestOrderAccess) is the order's buyer, for this order only.
+     *
+     * @return array<string, mixed>
+     */
+    public function presentGuest(Order $order): array
+    {
+        abort_unless($order->user_id === null && $order->guest_email !== null, 403);
+
+        return $this->build($order, self::GUEST, null);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function build(Order $order, string $role, ?User $user): array
+    {
         $order->loadMissing('items.product', 'user');
 
         $fullOrder = $role !== self::SELLER;
@@ -74,7 +98,17 @@ class OrderAccess
             'name' => $order->shipping_name ?: ($order->user?->name ?? 'Buyer'),
             'address' => $order->shipping_address,
             'phone' => $order->shipping_phone,
+            'details' => $order->shipping_snapshot,
         ] : null;
+
+        // A seller sees their own parcel(s) and shipments only; the buyer and operators see every parcel.
+        $groups = $order->groups()->with('shipments.events', 'shipments.items:id')->get();
+        $groups = $fullOrder ? $groups : $groups->where('seller_id', $user->id)->values();
+
+        $history = $order->statusHistory()->with('actor:id,name')->get();
+        $history = $fullOrder ? $history : $history->filter(fn ($h) => $h->order_item_id === null || $lines->contains('id', $h->order_item_id))->values();
+
+        $returns = ReturnRequest::query()->whereIn('order_item_id', $lines->pluck('id'))->orderBy('id')->get();
 
         return [
             'role' => $role,
@@ -87,6 +121,9 @@ class OrderAccess
             'paymentDetail' => $fullOrder,
             'refunds' => $fullOrder ? $order->refunds()->orderBy('id')->get() : collect(),
             'sellerNetCents' => $lines->reject(fn (OrderItem $l) => $l->isCancelled())->sum(fn (OrderItem $l) => $l->netCents()),
+            'groups' => $groups,
+            'history' => $history,
+            'returns' => $returns,
         ];
     }
 }

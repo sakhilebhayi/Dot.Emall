@@ -3,7 +3,6 @@
 namespace App\Notifications;
 
 use App\Models\OrderItem;
-use Illuminate\Notifications\Notification;
 
 /**
  * In-app (database channel) notification sent to the buyer when a seller
@@ -12,17 +11,9 @@ use Illuminate\Notifications\Notification;
  * notification per status change, matching NewOrderNotification's
  * database-channel-only convention.
  */
-class OrderItemStatusUpdatedNotification extends Notification
+class OrderItemStatusUpdatedNotification extends EmallNotification
 {
     public function __construct(public OrderItem $orderItem) {}
-
-    /**
-     * @return array<int, string>
-     */
-    public function via(object $notifiable): array
-    {
-        return ['database'];
-    }
 
     /**
      * @return array<string, mixed>

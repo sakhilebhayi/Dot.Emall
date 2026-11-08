@@ -58,6 +58,7 @@ class PromoCodeController extends Controller
             'discount_value' => ['required', 'numeric', 'decimal:0,2', 'min:0.01', 'max:'.SellerProductController::MAX_PRICE],
             'max_uses' => ['nullable', 'integer', 'min:1', 'max:'.SellerProductController::MAX_STOCK],
             'expires_at' => ['nullable', 'date', 'after:now'],
+            'free_shipping' => ['nullable', 'boolean'],
         ]);
 
         if ($validated['discount_type'] === 'percent' && $validated['discount_value'] > 100) {
@@ -70,6 +71,7 @@ class PromoCodeController extends Controller
             'discount_value' => $validated['discount_value'],
             'max_uses' => $validated['max_uses'] ?? null,
             'expires_at' => $validated['expires_at'] ?? null,
+            'free_shipping' => (bool) ($validated['free_shipping'] ?? false),
         ]);
 
         return redirect()->route('seller.promo-codes.index')->with('status', 'Promo code created.');

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\OrderItem;
 use App\Notifications\OrderItemStatusUpdatedNotification;
 use App\Notifications\OrderLineCancelledNotification;
+use App\Services\Notifications\OrderNotifier;
 use App\Services\OrderLifecycle;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Gate;
@@ -25,7 +26,7 @@ class OrderItemCancellationController extends Controller
         $actor = auth()->user();
 
         try {
-            $lifecycle->cancelItem($orderItem);
+            $lifecycle->cancelItem($orderItem, $actor);
         } catch (InvalidArgumentException $e) {
             return back()->withErrors(['status' => $e->getMessage()]);
         }
@@ -37,7 +38,7 @@ class OrderItemCancellationController extends Controller
             if ($actor->id === $orderItem->order->user_id) {
                 $orderItem->seller?->notify(new OrderLineCancelledNotification($orderItem));
             } else {
-                $orderItem->order->user?->notify(new OrderItemStatusUpdatedNotification($orderItem));
+                app(OrderNotifier::class)->buyer($orderItem->order)?->notify(new OrderItemStatusUpdatedNotification($orderItem));
             }
         }
 

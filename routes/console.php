@@ -20,3 +20,8 @@ Schedule::command('orders:expire-unpaid')->everyTenMinutes()->withoutOverlapping
 // Does nothing until ANALYTICS_INGEST_URL and ANALYTICS_INGEST_SECRET are set. Needs the host's
 // one-minute scheduler cron (* * * * * php artisan schedule:run) and a queue worker.
 Schedule::command(PublishMetrics::class)->dailyAt('00:15')->timezone('UTC')->withoutOverlapping(30);
+
+// Seller earnings: release what has waited out the post-delivery period, and send unanswered return requests to the operator
+// queue. Both are idempotent and take a short overlap lock so a killed run cannot block the next for a day.
+Schedule::command('emall:release-ledger')->hourly()->withoutOverlapping(30);
+Schedule::command('emall:escalate-returns')->hourly()->withoutOverlapping(30);

@@ -45,9 +45,16 @@ class OrderStatusTest extends TestCase
         $this->assertSame(OrderStatus::Pending, OrderStatus::derive([OrderStatus::Pending, OrderStatus::Cancelled]));
     }
 
-    public function test_values_are_exactly_the_five_legacy_strings(): void
+    public function test_the_five_legacy_strings_are_unchanged_and_the_new_states_are_additions(): void
     {
-        $this->assertSame(['pending', 'processing', 'shipped', 'delivered', 'cancelled'], OrderStatus::values());
+        $values = OrderStatus::values();
+
+        foreach (['pending', 'processing', 'shipped', 'delivered', 'cancelled'] as $legacy) {
+            $this->assertContains($legacy, $values);
+        }
+
+        $this->assertEqualsCanonicalizing(['pending', 'processing', 'shipped', 'ready_for_collection', 'delivered', 'collected', 'cancelled', 'refunded'], $values);
+        $this->assertSame('Packing', OrderStatus::Processing->label(), 'processing is shown to people as packing (D-5)');
     }
 
     public function test_allocate_splits_to_the_exact_cent(): void

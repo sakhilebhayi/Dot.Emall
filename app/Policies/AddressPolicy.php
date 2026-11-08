@@ -1,0 +1,25 @@
+<?php
+
+namespace App\Policies;
+
+use App\Models\Address;
+use App\Models\User;
+
+/** An address book is private: only its owner reads or changes an address. */
+class AddressPolicy
+{
+    public function view(User $user, Address $address): bool
+    {
+        return $user->id === $address->user_id;
+    }
+
+    public function update(User $user, Address $address): bool
+    {
+        return $user->id === $address->user_id;
+    }
+
+    public function delete(User $user, Address $address): bool
+    {
+        return $user->id === $address->user_id;
+    }
+}

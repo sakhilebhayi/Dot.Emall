@@ -4,7 +4,6 @@ namespace App\Notifications;
 
 use App\Models\Order;
 use App\Models\Store;
-use Illuminate\Notifications\Notification;
 
 /**
  * In-app (database channel) notification sent to a store owner when a buyer
@@ -16,17 +15,9 @@ use Illuminate\Notifications\Notification;
  * count and their net value) -- never the order total, which would leak
  * what the buyer bought from other sellers.
  */
-class NewOrderNotification extends Notification
+class NewOrderNotification extends EmallNotification
 {
     public function __construct(public Order $order, public Store $store) {}
-
-    /**
-     * @return array<int, string>
-     */
-    public function via(object $notifiable): array
-    {
-        return ['database'];
-    }
 
     /**
      * @return array<string, mixed>

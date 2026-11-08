@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Store;
+use App\Enums\StoreStatus;
+use App\Services\Stores\StoreOnboarding;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
 use Illuminate\View\View;
 
 class StoreController extends Controller
@@ -26,7 +26,7 @@ class StoreController extends Controller
         return view('stores.create');
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request, StoreOnboarding $onboarding): RedirectResponse
     {
         $existing = auth()->user()->store;
 
@@ -34,20 +34,12 @@ class StoreController extends Controller
             return redirect()->route('seller.products.create');
         }
 
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'description' => 'nullable|string|max:2000',
-        ]);
-
-        Store::create([
-            'owner_id' => auth()->id(),
-            'name' => $validated['name'],
-            'slug' => Str::slug($validated['name']).'-'.Str::random(6),
-            'description' => $validated['description'] ?? null,
-        ]);
+        $store = $onboarding->create($request->user(), $request->all());
 
         return redirect()->route('seller.products.create')
-            ->with('status', 'Your store is live. List your first product below.');
+            ->with('status', $store->is_active
+                ? 'Your store is live. List your first product below.'
+                : 'Your store is saved as a draft. Finish it and submit it for review when you are ready.');
     }
 
     /**
@@ -72,7 +64,7 @@ class StoreController extends Controller
      * Order history is unaffected either way (lines carry their own
      * snapshot of the store name).
      */
-    public function update(Request $request): RedirectResponse
+    public function update(Request $request, StoreOnboarding $onboarding): RedirectResponse
     {
         $store = $request->user()->store;
 
@@ -80,17 +72,15 @@ class StoreController extends Controller
             return redirect()->route('seller.store.create');
         }
 
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'description' => 'nullable|string|max:2000',
-            'is_active' => 'nullable|boolean',
-        ]);
+        $request->validate(['is_active' => 'nullable|boolean']);
 
-        $store->update([
-            'name' => $validated['name'],
-            'description' => $validated['description'] ?? null,
-            'is_active' => $request->boolean('is_active'),
-        ]);
+        // Only a store that is live (active) can be opened or closed by its owner; a draft, pending or suspended store stays
+        // closed until the Emall team has decided.
+        $onboarding->update($store, $request->only(array_keys($onboarding->rules($store))) + ['name' => $store->name]);
+
+        if ($store->status === StoreStatus::Active) {
+            $store->update(['is_active' => $request->boolean('is_active')]);
+        }
 
         return redirect()->route('seller.store.edit')->with('status', $store->is_active ? 'Store updated.' : 'Store updated and closed: your listings are hidden from the marketplace until you reopen it.');
     }

@@ -68,7 +68,7 @@ class SellerDashboard
         OrderItem::query()
             ->join('orders', 'orders.id', '=', 'order_items.order_id')
             ->where('order_items.seller_id', $seller->id)
-            ->where('order_items.status', OrderStatus::Delivered->value)
+            ->whereIn('order_items.status', OrderStatus::completedValues())
             ->whereIn('orders.id', Order::query()->fulfillable()->select('orders.id'))
             ->groupBy('orders.currency')
             ->selectRaw('orders.currency as currency, SUM(CASE WHEN ROUND(order_items.total * 100) > ROUND(order_items.discount_amount * 100) THEN ROUND(order_items.total * 100) - ROUND(order_items.discount_amount * 100) ELSE 0 END) as net_cents')

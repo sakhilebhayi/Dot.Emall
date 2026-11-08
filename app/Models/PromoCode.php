@@ -15,13 +15,14 @@ class PromoCode extends Model
 
     protected $fillable = [
         'store_id', 'code', 'discount_type', 'discount_value',
-        'max_uses', 'used_count', 'expires_at', 'is_active',
+        'max_uses', 'used_count', 'expires_at', 'is_active', 'free_shipping',
     ];
 
     protected $casts = [
         'discount_value' => 'decimal:2',
         'expires_at' => 'datetime',
         'is_active' => 'boolean',
+        'free_shipping' => 'boolean',
     ];
 
     public function store(): BelongsTo

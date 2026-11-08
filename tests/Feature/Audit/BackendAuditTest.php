@@ -335,7 +335,7 @@ class BackendAuditTest extends TestCase
         DB::beforeExecuting(function (string $query) use (&$raced, $buyer, $product) {
             if (! $raced && str_starts_with(strtolower($query), 'insert') && str_contains($query, 'cart_items')) {
                 $raced = true;
-                DB::table('cart_items')->insert(['user_id' => $buyer->id, 'product_id' => $product->id, 'quantity' => 1, 'created_at' => now(), 'updated_at' => now()]);
+                DB::table('cart_items')->insert(['user_id' => $buyer->id, 'product_id' => $product->id, 'variant_id' => $product->defaultVariant->id, 'quantity' => 1, 'created_at' => now(), 'updated_at' => now()]);
             }
         });
 

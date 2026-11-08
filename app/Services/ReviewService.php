@@ -24,7 +24,7 @@ class ReviewService
     {
         return OrderItem::query()
             ->where('product_id', $product->id)
-            ->where('status', OrderStatus::Delivered->value)
+            ->whereIn('status', OrderStatus::completedValues())
             ->whereHas('order', fn ($q) => $q->where('user_id', $user->id))
             ->exists();
     }
