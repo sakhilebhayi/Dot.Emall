@@ -358,7 +358,9 @@ abstract class AbstractSearch implements SearchEngine
                 "Best selling counts units in paid orders. Only products with at least {$units} sold are ranked by it; the rest follow, newest first.",
             ],
             default => $slots !== []
-                ? ['score DESC, p.id DESC', [], $relaxed ? 'Ranked by how many of your words each product matches.' : null]
+                ? ['score DESC, p.id DESC', [], $wordsBecameFilters
+                    ? 'Your words became the filters shown above; products that also say them in the title come first.'
+                    : ($relaxed ? 'Ranked by how many of your words each product matches.' : null)]
                 : ['CASE WHEN p.stock > 0 THEN 1 ELSE 0 END DESC, p.created_at DESC, p.id DESC', [], $wordsBecameFilters
                     ? 'Your words became the filters shown above, so there is nothing left to rank by: in-stock products first, then newest.'
                     : 'No search words: in-stock products first, then newest.'],
@@ -381,7 +383,7 @@ abstract class AbstractSearch implements SearchEngine
         // (D-190). The rank slots score; they never exclude.
         $rank = $slots !== [] ? $slots : ($parsed !== null && $parsed->hasInferredFilters() ? $parsed->fullSlots : []);
         $normalised = $rank === [] ? '' : implode(' ', array_map(fn ($s) => $s[0], $rank));
-        [$orderSql, $orderBindings, $sortNote] = $this->ordering($f, $rank, $mode, $normalised, $relaxed, ($chosen['inferred'] ?? []) !== []);
+        [$orderSql, $orderBindings, $sortNote] = $this->ordering($f, $rank, $mode, $normalised, $relaxed, $slots === [] && $rank !== [] && ($chosen['inferred'] ?? []) !== []);
 
         $page = min($f->page, max(1, (int) ceil($total / $f->perPage)));
         $select = $this->query($f, $slots, $mode)
