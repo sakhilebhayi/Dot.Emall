@@ -7,8 +7,10 @@ use App\Enums\RefundStatus;
 use App\Models\OperatorAuditEntry;
 use App\Models\Order;
 use App\Models\Payment;
+use App\Models\ProductVariant;
 use App\Models\Refund;
 use App\Models\User;
+use App\Services\Catalogue\ProductVariants;
 use App\Services\Guests\GuestOrders;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -203,5 +205,21 @@ class SellerQaRegressionTest extends TestCase
         $this->assertTrue($load(['APP_URL' => 'https://emall.infodot.co.za']));
         $this->assertFalse($load(['APP_URL' => 'http://127.0.0.1:8000']), 'a local http site must still get a cookie');
         $this->assertFalse($load(['APP_URL' => 'https://emall.infodot.co.za', 'SESSION_SECURE_COOKIE' => 'false']), 'an explicit host setting wins');
+    }
+
+    /** D-157 */
+    public function test_the_low_stock_line_on_the_dashboard_tells_two_options_of_one_product_apart(): void
+    {
+        [$seller, $product] = $this->shippingSeller([], ['name' => 'Dash Tee Variant', 'stock' => 20, 'low_stock_threshold' => 5]);
+        $variants = app(ProductVariants::class);
+        $variants->defineOptions($product, ['Size' => ['S', 'M']]);
+        $variants->saveVariant($product, ['Size' => 'S'], ['price' => 100, 'is_active' => true]);
+        $variants->saveVariant($product, ['Size' => 'M'], ['price' => 100, 'is_active' => true]);
+        foreach (['S' => 2, 'M' => 3] as $size => $stock) {
+            ProductVariant::query()->where('product_id', $product->id)->where('options->Size', $size)->update(['stock' => $stock]);
+        }
+
+        $this->actingAs($seller)->get(route('seller.dashboard'))->assertOk()
+            ->assertSee('Dash Tee Variant, Size: S (2 left)', false)->assertSee('Dash Tee Variant, Size: M (3 left)', false);
     }
 }
