@@ -100,25 +100,44 @@ class AlertsTest extends TestCase
         app(ProductAlerts::class)->subscribe($this->makeBuyer(), $this->makeListing($this->makeSeller(), ['price' => 100.0]), ProductAlert::PRICE_DROP, 100.0);
     }
 
-    public function test_the_notice_quotes_the_lowest_recorded_price_only_when_a_history_exists(): void
+    public function test_the_notice_quotes_the_lowest_price_from_the_one_price_history(): void
     {
         $user = $this->makeBuyer();
-        $product = $this->makeListing($this->makeSeller(), ['price' => 1000.00]);
-        app(ProductAlerts::class)->subscribe($user, $product, ProductAlert::PRICE_DROP);
-        $this->catalogue->history[$product->id] = [
-            ['price' => 700.0, 'at' => now()->subDays(10)],
-            ['price' => 1000.0, 'at' => now()->subDays(2)],
-        ];
+        $this->travelTo(now()->subDays(12));
+        $product = $this->makeListing($this->makeSeller(), ['price' => 700.00]);
+        $this->travelTo(now()->addDays(10));
+        $product->update(['price' => 1000.00]);
+        $this->travelBack();
+        app(ProductAlerts::class)->subscribe($user, $product->refresh(), ProductAlert::PRICE_DROP);
         $product->update(['price' => 900.00]);
 
         app(AlertEvaluator::class)->priceDrops();
 
         Notification::assertSentTo($user, PriceDropNotification::class, function (PriceDropNotification $n) use ($user) {
-            return $n->lowest30 === 700.0 && str_contains($n->toDatabase($user)['message'], 'lowest price in the last 30 days');
+            return $n->lowest30 === 700.0 && str_contains($n->toDatabase($user)['message'], 'lowest price in the last 30 days was R700.00');
         });
     }
 
-    public function test_without_a_history_nothing_is_invented(): void
+    public function test_a_price_from_before_the_window_that_still_held_at_its_start_counts(): void
+    {
+        $this->travelTo(now()->subDays(90));
+        $product = $this->makeListing($this->makeSeller(), ['price' => 500.00]);
+        $this->travelTo(now()->addDays(40));
+        $product->update(['price' => 800.00]);
+        $this->travelBack();
+
+        $this->assertSame(800.0, app(ProductAlerts::class)->lowestRecentPrice($product->refresh()), 'R500 ended 50 days ago, outside the 30 day window');
+
+        $this->travelTo(now()->subDays(60));
+        $other = $this->makeListing($this->makeSeller(), ['price' => 500.00]);
+        $this->travelTo(now()->addDays(45));
+        $other->update(['price' => 800.00]);
+        $this->travelBack();
+
+        $this->assertSame(500.0, app(ProductAlerts::class)->lowestRecentPrice($other->refresh()), 'R500 held until 15 days ago, so it was in effect inside the window');
+    }
+
+    public function test_with_no_lower_recorded_price_nothing_is_invented(): void
     {
         $user = $this->makeBuyer();
         $product = $this->makeListing($this->makeSeller(), ['price' => 1000.00]);
@@ -127,7 +146,7 @@ class AlertsTest extends TestCase
 
         app(AlertEvaluator::class)->priceDrops();
 
-        Notification::assertSentTo($user, PriceDropNotification::class, fn ($n) => $n->lowest30 === null && ! str_contains($n->toDatabase($user)['message'], 'lowest'));
+        Notification::assertSentTo($user, PriceDropNotification::class, fn ($n) => $n->lowest30 === 900.0 && ! str_contains($n->toDatabase($user)['message'], 'lowest'), 'today\'s price is the lowest on record, so the notice makes no claim about an earlier low');
     }
 
     public function test_notifications_use_database_and_mail_and_respect_preferences(): void

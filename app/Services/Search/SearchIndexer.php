@@ -6,6 +6,7 @@ use App\Contracts\CatalogueSource;
 use App\Contracts\CategoryTree;
 use App\Services\Discovery\CountedOrders;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 /**
  * Maintains search_documents, search_document_attributes and the vocabulary. Documents exist for every listing that
@@ -152,12 +153,8 @@ class SearchIndexer
             }
         }
 
-        foreach ($withAncestors as $category) {
-            $term = Text::index($category['name']);
-
-            if ($term !== '') {
-                $rows[] = ['term' => $term, 'kind' => 'category', 'doc_freq' => 1, 'ref_id' => $category['id'], 'display' => $category['name']];
-            }
+        foreach ($this->categoryTerms(array_values($withAncestors)) as $term => $category) {
+            $rows[] = ['term' => $term, 'kind' => 'category', 'doc_freq' => 1, 'ref_id' => $category['id'], 'display' => $category['name']];
         }
 
         DB::transaction(function () use ($rows) {
@@ -196,7 +193,7 @@ class SearchIndexer
         }
 
         $brands = $this->catalogue->brands($present);
-        $attributes = $this->catalogue->attributes($present);
+        $attributes = $this->mergeVariantOptions($this->catalogue->attributes($present), $this->catalogue->variantOptions($present));
         $regions = $this->catalogue->storeRegions($products->pluck('store_id')->unique()->map(fn ($id) => (int) $id)->all());
         $categories = $this->categories->many($products->pluck('category_id')->filter()->unique()->map(fn ($id) => (int) $id)->all());
         $now = now();
@@ -282,6 +279,105 @@ class SearchIndexer
     }
 
     /**
+     * The phrases a shopper can type to mean one category: its name ("Laptops"), and each part of a compound name
+     * ("TV, audio and video" is also found by "tv" and "audio"). A name used by several categories (three "Clothing"
+     * categories sit under Fashion for women, men and kids) is never a phrase by itself, because it would silently pick
+     * one of them: it is qualified by the last word of its parent ("men clothing") instead.
+     *
+     * Ambiguity is judged against EVERY category, but only phrases of the given ones (those with listings, and their
+     * ancestors) are returned.
+     *
+     * @param  list<array{id: int, name: string, slug: string, parent_id: int|null}>  $wanted
+     * @return array<string, array{id: int, name: string}> phrase in searched form => category
+     */
+    private function categoryTerms(array $wanted): array
+    {
+        $exact = [];
+        $parts = [];
+
+        foreach ($this->categories->all() as $category) {
+            $name = $category['name'];
+            $exact[Text::index($name)][$category['id']] = $category;
+
+            foreach (preg_split('/\s*(?:,|\band\b)\s*/i', $name) ?: [] as $part) {
+                $term = Text::index($part);
+
+                if ($term !== '' && strlen($term) >= 2 && $term !== Text::index($name)) {
+                    $parts[$term][$category['id']] = $category;
+                }
+            }
+        }
+
+        $terms = [];
+
+        foreach ($exact as $term => $owners) {
+            if ($term === '') {
+                continue;
+            }
+
+            if (count($owners) === 1) {
+                $terms[$term] = ['id' => reset($owners)['id'], 'name' => reset($owners)['name']];
+
+                continue;
+            }
+
+            foreach ($owners as $owner) {
+                $parent = $owner['parent_id'] !== null ? $this->categories->find($owner['parent_id']) : null;
+                $last = $parent !== null ? (Text::tokens(Text::index($parent['name']))[count(Text::tokens(Text::index($parent['name']))) - 1] ?? '') : '';
+
+                if ($last !== '') {
+                    $terms[Text::index($last.' '.$owner['name'])] ??= ['id' => $owner['id'], 'name' => $owner['name']];
+                }
+            }
+        }
+
+        foreach ($parts as $term => $owners) {
+            if (! isset($exact[$term]) && count($owners) === 1 && ! isset($terms[$term])) {
+                $terms[$term] = ['id' => reset($owners)['id'], 'name' => reset($owners)['name']];
+            }
+        }
+
+        $ids = array_flip(array_map(fn ($c) => $c['id'], $wanted));
+
+        return array_filter($terms, fn ($category) => isset($ids[$category['id']]));
+    }
+
+    /**
+     * The option values of a product's active variants (Size: S M L, Colour: Red) are searchable and filterable like
+     * any spec: a product that comes in red is found by "red" and listed under the Colour facet. A value a seller typed
+     * both as a spec and as a variant option is indexed once.
+     *
+     * @param  array<int, list<array{key: string, label: string, value: string, number: float|null, unit: string|null}>>  $attributes
+     * @param  array<int, array<string, list<string>>>  $options
+     * @return array<int, list<array{key: string, label: string, value: string, number: float|null, unit: string|null}>>
+     */
+    private function mergeVariantOptions(array $attributes, array $options): array
+    {
+        foreach ($options as $productId => $byName) {
+            $seen = [];
+
+            foreach ($attributes[$productId] ?? [] as $attribute) {
+                $seen[$attribute['key'].'|'.Text::index($attribute['value'])] = true;
+            }
+
+            foreach ($byName as $name => $values) {
+                $key = Str::slug($name, '_');
+
+                foreach ($values as $value) {
+                    if (isset($seen[$key.'|'.Text::index($value)])) {
+                        continue;
+                    }
+
+                    $seen[$key.'|'.Text::index($value)] = true;
+                    $attributes[$productId][] = ['key' => $key, 'label' => $name, 'value' => $value, 'number' => is_numeric($value) ? (float) $value : null, 'unit' => null];
+                }
+            }
+        }
+
+        return $attributes;
+    }
+
+    /**
      * New brands and categories are known at once; their counts are corrected by the next full rebuild.
      *
      * @param  list<array<string, mixed>>  $documents
@@ -295,10 +391,12 @@ class SearchIndexer
                 $rows[$doc['brand_n']] = ['term' => $doc['brand_n'], 'kind' => 'brand', 'doc_freq' => 1, 'ref_id' => null, 'display' => $doc['brand']];
             }
 
-            if ($doc['category_id'] !== null && $doc['category_name'] !== null) {
-                $term = Text::index($doc['category_name']);
-                $rows['c:'.$term] = ['term' => $term, 'kind' => 'category', 'doc_freq' => 1, 'ref_id' => $doc['category_id'], 'display' => $doc['category_name']];
-            }
+        }
+
+        $categoryIds = array_values(array_unique(array_filter(array_map(fn ($doc) => $doc['category_id'], $documents))));
+
+        foreach ($this->categoryTerms(array_values($this->categories->many($categoryIds))) as $term => $category) {
+            $rows['c:'.$term] = ['term' => $term, 'kind' => 'category', 'doc_freq' => 1, 'ref_id' => $category['id'], 'display' => $category['name']];
         }
 
         if ($rows !== []) {

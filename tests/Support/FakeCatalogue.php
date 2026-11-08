@@ -5,8 +5,8 @@ namespace Tests\Support;
 use App\Contracts\CatalogueSource;
 
 /**
- * A stand-in for the commerce data workstream's tables: tests say which product has which brand, attributes, region
- * and price history, and bind this in the container. Nothing else about the catalogue is faked.
+ * A stand-in for the catalogue source: tests say which product has which brand, attributes, variant options, region
+ * and delivery window in one line, and bind this in the container. (Tests of the real tables use DatabaseCatalogueSource.) Nothing else about the catalogue is faked.
  */
 class FakeCatalogue implements CatalogueSource
 {
@@ -19,8 +19,8 @@ class FakeCatalogue implements CatalogueSource
     /** @var array<int, string> */
     public array $storeRegions = [];
 
-    /** @var array<int, list<array{price: float, at: \DateTimeInterface}>> */
-    public array $history = [];
+    /** @var array<int, array<string, list<string>>> */
+    public array $options = [];
 
     /** @var array<int, array{min: int, max: int}> */
     public array $delivery = [];
@@ -40,9 +40,9 @@ class FakeCatalogue implements CatalogueSource
         return array_intersect_key($this->storeRegions, array_flip($storeIds));
     }
 
-    public function priceHistory(int $productId): array
+    public function variantOptions(array $productIds): array
     {
-        return $this->history[$productId] ?? [];
+        return array_intersect_key($this->options, array_flip($productIds));
     }
 
     public function deliveryEstimate(int $productId): ?array

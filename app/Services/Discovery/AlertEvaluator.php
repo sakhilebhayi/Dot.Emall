@@ -86,7 +86,7 @@ class AlertEvaluator
                         ->update(['last_notified_price' => $price, 'triggered_at' => now()]);
 
                     if ($claimed === 1 && $alert->user && $this->allowed($alert, 'price_drop')) {
-                        $alert->user->notify(new PriceDropNotification($alert->product, $baseline, $price, $this->alerts->lowestRecentPrice($alert->product)));
+                        $alert->user->notify(new PriceDropNotification($alert->product, $baseline, $price, $this->alerts->lowestRecentPrice($alert->product, $alert->variant_id)));
                         $sent++;
                     }
                 }

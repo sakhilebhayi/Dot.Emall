@@ -101,7 +101,8 @@ class ProductAttributes
         }
 
         DB::transaction(function () use ($product, $rows) {
-            ProductAttribute::query()->where('product_id', $product->id)->whereNotIn('key', array_keys($rows))->delete();
+            // One by one, so the search index hears about each removed spec.
+            ProductAttribute::query()->where('product_id', $product->id)->whereNotIn('key', array_keys($rows))->get()->each->delete();
 
             foreach ($rows as $row) {
                 ProductAttribute::updateOrCreate(['product_id' => $product->id, 'key' => $row['key']], $row);

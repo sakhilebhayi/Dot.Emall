@@ -4,7 +4,10 @@ namespace App\Observers;
 
 use App\Contracts\CategoryTree;
 use App\Jobs\IndexProducts;
+use App\Models\Brand;
 use App\Models\Product;
+use App\Models\ProductAttribute;
+use App\Models\ProductVariant;
 use App\Models\Store;
 use App\Models\StoreCategory;
 use App\Services\Search\SearchIndexer;
@@ -16,9 +19,10 @@ use Illuminate\Support\Facades\Schema;
 use Throwable;
 
 /**
- * Keeps search documents current when the TEXT of a listing changes: its name, description, category or SKU, its
- * store's name, a category's name. Price, stock, visibility and rating are read live by the search and need nothing.
- * Registered for Product, Store and StoreCategory by DiscoveryServiceProvider.
+ * Keeps search documents current when the TEXT of a listing changes: its name, description, category, brand or SKU,
+ * its structured attributes, the option values of its variants, its store's name and region, a category's or brand's
+ * name. Price, stock, visibility and rating are read live by the search and need nothing.
+ * Registered for Product, ProductAttribute, ProductVariant, Brand, Store and StoreCategory by DiscoveryServiceProvider.
  */
 class SearchIndexObserver
 {
@@ -33,8 +37,33 @@ class SearchIndexObserver
         }
 
         if ($model instanceof Product) {
-            if ($model->wasRecentlyCreated || $model->wasChanged(['name', 'description', 'category_id', 'store_id', 'sku'])) {
+            if ($model->wasRecentlyCreated || $model->wasChanged(['name', 'description', 'category_id', 'brand_id', 'store_id', 'sku'])) {
                 $this->dispatch([$model->id]);
+            }
+
+            return;
+        }
+
+        if ($model instanceof ProductAttribute) {
+            if ($model->wasRecentlyCreated || $model->wasChanged(['value', 'value_number', 'unit', 'label'])) {
+                $this->dispatch([(int) $model->product_id]);
+            }
+
+            return;
+        }
+
+        // Only a variant's option values are searchable text; its price and stock are read live.
+        if ($model instanceof ProductVariant) {
+            if ($model->options !== null && ($model->wasRecentlyCreated || $model->wasChanged(['options', 'is_active']))) {
+                $this->dispatch([(int) $model->product_id]);
+            }
+
+            return;
+        }
+
+        if ($model instanceof Brand) {
+            if ($model->wasChanged(['name', 'is_active'])) {
+                $this->dispatch(DB::table('products')->where('brand_id', $model->id)->whereNull('deleted_at')->pluck('id')->all());
             }
 
             return;
@@ -59,11 +88,23 @@ class SearchIndexObserver
 
     public function deleted(Model $model): void
     {
-        if ($model instanceof Product && $this->enabled()) {
+        if (! $this->enabled()) {
+            return;
+        }
+
+        if ($model instanceof Product) {
             try {
                 app(SearchIndexer::class)->remove($model->id);
             } catch (Throwable) {
             }
+
+            return;
+        }
+
+        if ($model instanceof ProductAttribute) {
+            $this->dispatch([(int) $model->product_id]);
+        } elseif ($model instanceof ProductVariant && $model->options !== null) {
+            $this->dispatch([(int) $model->product_id]);
         }
     }
 

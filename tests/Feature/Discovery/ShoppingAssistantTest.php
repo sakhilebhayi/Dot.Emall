@@ -63,7 +63,7 @@ class ShoppingAssistantTest extends TestCase
         $this->assertSame('R12,499.00', $facts['Price']);
         $this->assertSame('7 in stock', $facts['Stock']);
         $this->assertSame('4.6 stars from 12 reviews', $facts['Rating']);
-        $this->assertSame('2 to 4 days', $facts['Delivery estimate']);
+        $this->assertSame('2 to 4 working days (the seller\'s estimate)', $facts['Delivery estimate']);
         $this->assertSame('16 gb', $facts['Memory']);
         $this->assertSame('Lenovo', $facts['Brand']);
         $this->assertSame('Vaal Traders', $facts['Sold by']);

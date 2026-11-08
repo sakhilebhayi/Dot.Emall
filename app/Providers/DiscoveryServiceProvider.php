@@ -5,7 +5,10 @@ namespace App\Providers;
 use App\Contracts\CatalogueSource;
 use App\Contracts\CategoryTree;
 use App\Contracts\NotificationPreferences;
+use App\Models\Brand;
 use App\Models\Product;
+use App\Models\ProductAttribute;
+use App\Models\ProductVariant;
 use App\Models\Store;
 use App\Models\StoreCategory;
 use App\Observers\SearchIndexObserver;
@@ -56,6 +59,9 @@ class DiscoveryServiceProvider extends ServiceProvider
     {
         $observer = SearchIndexObserver::class;
         Product::observe($observer);
+        ProductAttribute::observe($observer);
+        ProductVariant::observe($observer);
+        Brand::observe($observer);
         Store::observe($observer);
         StoreCategory::observe($observer);
 

@@ -3,165 +3,123 @@
 namespace App\Services\Discovery;
 
 use App\Contracts\CatalogueSource;
-use Carbon\Carbon;
+use App\Enums\ShippingMethodType;
+use App\Services\Shipping\ShippingQuote;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
-use Throwable;
 
 /**
- * Reads brands, structured attributes, store regions, price history and delivery estimates from whichever of the
- * commerce data tables exist, and answers "nothing known" for the rest. It is the ONLY place discovery learns the
- * shape of another workstream's tables, so reconciling the two branches means editing this class and nothing else.
+ * The catalogue as the commerce tables hold it (D-50): brands (products.brand_id), the structured attributes a
+ * seller typed (product_attributes, with their label and numeric twin), the options of active variants, the region of
+ * the store (stores.region) and the delivery window of the store's cheapest delivery method.
  *
- * Shapes it understands (each checked with Schema::hasTable / hasColumn before use):
- *   brands            products.brand_id -> brands(id, name)            or a plain products.brand string column
- *   attributes        product_attributes(product_id, key|attribute_key|name, value|value_text, [value_number], [unit])
- *                     with labels from attribute_definitions(key|slug, label|name) when present
- *   store region      stores.region or stores.province
- *   price history     product_price_history(product_id, price, recorded_at|created_at)
- *   delivery          nothing is guessed; the shipping workstream binds its own source when ready
+ * It is the ONLY place discovery learns the shape of those tables.
  */
 class DatabaseCatalogueSource implements CatalogueSource
 {
+    /** @var array<int, array{min: int, max: int}|null> store id => window, remembered for the request */
+    private array $deliveryByStore = [];
+
     public function brands(array $productIds): array
     {
-        if ($productIds === [] || ! Schema::hasTable('products')) {
+        if ($productIds === []) {
             return [];
         }
 
-        try {
-            if (Schema::hasColumn('products', 'brand_id') && Schema::hasTable('brands')) {
-                return DB::table('products')->join('brands', 'brands.id', '=', 'products.brand_id')
-                    ->whereIn('products.id', $productIds)->pluck('brands.name', 'products.id')
-                    ->map(fn ($name) => (string) $name)->all();
-            }
-
-            if (Schema::hasColumn('products', 'brand')) {
-                return DB::table('products')->whereIn('id', $productIds)->whereNotNull('brand')->where('brand', '!=', '')
-                    ->pluck('brand', 'id')->map(fn ($name) => (string) $name)->all();
-            }
-        } catch (Throwable) {
-        }
-
-        return [];
+        return DB::table('products')->join('brands', 'brands.id', '=', 'products.brand_id')
+            ->whereIn('products.id', $productIds)->where('brands.is_active', true)
+            ->pluck('brands.name', 'products.id')->map(fn ($name) => (string) $name)->all();
     }
 
     public function attributes(array $productIds): array
     {
-        if ($productIds === [] || ! Schema::hasTable('product_attributes') || ! Schema::hasColumn('product_attributes', 'product_id')) {
+        if ($productIds === []) {
             return [];
         }
 
-        try {
-            $keyColumn = $this->firstColumn('product_attributes', ['attribute_key', 'key', 'name', 'slug']);
-            $valueColumn = $this->firstColumn('product_attributes', ['value_text', 'value']);
+        $out = [];
 
-            if ($keyColumn === null || $valueColumn === null) {
-                return [];
+        foreach (DB::table('product_attributes')->whereIn('product_id', $productIds)->orderBy('position')->orderBy('id')
+            ->get(['product_id', 'key', 'label', 'value', 'value_number', 'unit']) as $row) {
+            if ($row->value === null || $row->value === '') {
+                continue;
             }
 
-            $numberColumn = $this->firstColumn('product_attributes', ['value_number', 'value_num', 'number']);
-            $unitColumn = $this->firstColumn('product_attributes', ['unit']);
+            $out[(int) $row->product_id][] = [
+                'key' => Str::slug((string) $row->key, '_'),
+                'label' => (string) $row->label,
+                'value' => (string) $row->value,
+                'number' => $row->value_number !== null ? (float) $row->value_number : null,
+                'unit' => $row->unit !== null && $row->unit !== '' ? (string) $row->unit : null,
+            ];
+        }
 
-            $labels = [];
+        return $out;
+    }
 
-            if (Schema::hasTable('attribute_definitions')) {
-                $defKey = $this->firstColumn('attribute_definitions', ['key', 'slug', 'attribute_key']);
-                $defLabel = $this->firstColumn('attribute_definitions', ['label', 'name']);
-
-                if ($defKey !== null && $defLabel !== null) {
-                    $labels = DB::table('attribute_definitions')->pluck($defLabel, $defKey)->all();
-                }
-            }
-
-            $columns = ['product_id', $keyColumn.' as k', $valueColumn.' as v'];
-
-            if ($numberColumn !== null) {
-                $columns[] = $numberColumn.' as n';
-            }
-
-            if ($unitColumn !== null) {
-                $columns[] = $unitColumn.' as u';
-            }
-
-            $out = [];
-
-            foreach (DB::table('product_attributes')->whereIn('product_id', $productIds)->get($columns) as $row) {
-                if ($row->v === null || $row->v === '') {
-                    continue;
-                }
-
-                $key = Str::slug((string) $row->k, '_');
-                $number = isset($row->n) && is_numeric($row->n) ? (float) $row->n : (is_numeric($row->v) ? (float) $row->v : null);
-
-                $out[(int) $row->product_id][] = [
-                    'key' => $key,
-                    'label' => (string) ($labels[$row->k] ?? ucfirst(str_replace('_', ' ', $key))),
-                    'value' => (string) $row->v,
-                    'number' => $number,
-                    'unit' => isset($row->u) && $row->u !== null && $row->u !== '' ? (string) $row->u : null,
-                ];
-            }
-
-            return $out;
-        } catch (Throwable) {
+    public function variantOptions(array $productIds): array
+    {
+        if ($productIds === []) {
             return [];
         }
+
+        $out = [];
+
+        foreach (DB::table('product_variants')->whereIn('product_id', $productIds)->where('is_active', true)->whereNotNull('options')->orderBy('position')->orderBy('id')
+            ->get(['product_id', 'options']) as $row) {
+            $options = json_decode((string) $row->options, true);
+
+            if (! is_array($options)) {
+                continue;
+            }
+
+            foreach ($options as $name => $value) {
+                $value = trim((string) $value);
+
+                if ($value !== '' && ! in_array($value, $out[(int) $row->product_id][(string) $name] ?? [], true)) {
+                    $out[(int) $row->product_id][(string) $name][] = $value;
+                }
+            }
+        }
+
+        return $out;
     }
 
     public function storeRegions(array $storeIds): array
     {
-        if ($storeIds === [] || ! Schema::hasTable('stores')) {
+        if ($storeIds === []) {
             return [];
         }
 
-        $column = $this->firstColumn('stores', ['region', 'province']);
-
-        if ($column === null) {
-            return [];
-        }
-
-        try {
-            return DB::table('stores')->whereIn('id', $storeIds)->whereNotNull($column)->where($column, '!=', '')
-                ->pluck($column, 'id')->map(fn ($v) => (string) $v)->all();
-        } catch (Throwable) {
-            return [];
-        }
-    }
-
-    public function priceHistory(int $productId): array
-    {
-        if (! Schema::hasTable('product_price_history') || ! Schema::hasColumn('product_price_history', 'price')) {
-            return [];
-        }
-
-        $time = $this->firstColumn('product_price_history', ['recorded_at', 'created_at']);
-
-        if ($time === null) {
-            return [];
-        }
-
-        try {
-            return DB::table('product_price_history')->where('product_id', $productId)->orderBy($time)->orderBy('id')
-                ->get(['price', $time.' as at'])
-                ->map(fn ($r) => ['price' => (float) $r->price, 'at' => Carbon::parse($r->at)])->all();
-        } catch (Throwable) {
-            return [];
-        }
+        return DB::table('stores')->whereIn('id', $storeIds)->whereNotNull('region')->where('region', '!=', '')
+            ->pluck('region', 'id')->map(fn ($v) => (string) $v)->all();
     }
 
     public function deliveryEstimate(int $productId): ?array
     {
-        return null;
+        $storeId = DB::table('products')->where('id', $productId)->value('store_id');
+
+        if ($storeId === null) {
+            return null;
+        }
+
+        $storeId = (int) $storeId;
+
+        if (! array_key_exists($storeId, $this->deliveryByStore)) {
+            $this->deliveryByStore[$storeId] = $this->windowFor($storeId);
+        }
+
+        return $this->deliveryByStore[$storeId];
     }
 
-    /** @param  list<string>  $candidates */
-    private function firstColumn(string $table, array $candidates): ?string
+    /** The shopper-facing quote for "no destination known yet": only rule-free methods, cheapest first, delivery only. */
+    private function windowFor(int $storeId): ?array
     {
-        foreach ($candidates as $column) {
-            if (Schema::hasColumn($table, $column)) {
-                return $column;
+        $quote = app(ShippingQuote::class)->forStores([$storeId => 0], null)[$storeId] ?? null;
+
+        foreach ($quote?->options ?? [] as $option) {
+            if ($option->methodId !== null && $option->type !== ShippingMethodType::Collection->value) {
+                return ['min' => $option->handlingDays + $option->windowMinDays, 'max' => $option->handlingDays + max($option->windowMinDays, $option->windowMaxDays)];
             }
         }
 

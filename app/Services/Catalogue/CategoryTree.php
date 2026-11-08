@@ -214,7 +214,7 @@ class CategoryTree implements CategoryLookup
     }
 
     /** @return array<int, array{id: int, name: string, slug: string, parent_id: int|null, path: string|null, depth: int, is_active: bool}> */
-    private function all(): array
+    public function all(): array
     {
         if ($this->all !== null) {
             return $this->all;

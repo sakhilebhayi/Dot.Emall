@@ -3,13 +3,20 @@
 namespace App\Contracts;
 
 /**
- * The category hierarchy as discovery needs it. The default reads store_categories (the table that exists today);
- * the commerce data workstream owns the tree and may change its storage, in which case only the implementation moves.
+ * The category hierarchy as discovery needs it. App\Services\Catalogue\CategoryTree implements it over store_categories
+ * and its materialised path (D-50); tests may bind another.
  */
 interface CategoryTree
 {
     /** The category and every descendant of it. @return list<int> */
     public function withDescendants(int $categoryId): array;
+
+    /**
+     * Every category, by id.
+     *
+     * @return array<int, array{id: int, name: string, slug: string, parent_id: int|null}>
+     */
+    public function all(): array;
 
     /** @return array<string, mixed>|null {id, name, slug, parent_id} */
     public function find(int $categoryId): ?array;

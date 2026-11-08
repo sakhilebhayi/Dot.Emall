@@ -210,7 +210,7 @@ class ShoppingAssistant
             $delivery = $this->catalogue->deliveryEstimate($product->id);
 
             if ($delivery !== null) {
-                $list[] = ['label' => 'Delivery estimate', 'value' => $delivery['min'] === $delivery['max'] ? $delivery['min'].' days' : $delivery['min'].' to '.$delivery['max'].' days'];
+                $list[] = ['label' => 'Delivery estimate', 'value' => ($delivery['min'] === $delivery['max'] ? $delivery['min'] : $delivery['min'].' to '.$delivery['max']).' working days (the seller\'s estimate)'];
             }
 
             foreach (array_slice($attributes[$product->id] ?? [], 0, 4) as $attribute) {

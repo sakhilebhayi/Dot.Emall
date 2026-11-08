@@ -2,10 +2,11 @@
 
 namespace App\Services\Discovery;
 
-use App\Contracts\CatalogueSource;
 use App\Models\Product;
 use App\Models\ProductAlert;
+use App\Models\ProductVariant;
 use App\Models\User;
+use App\Services\Catalogue\PriceHistory;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -18,7 +19,7 @@ use Illuminate\Validation\ValidationException;
  */
 class ProductAlerts
 {
-    public function __construct(private readonly CatalogueSource $catalogue) {}
+    public function __construct(private readonly PriceHistory $history) {}
 
     /**
      * @throws ValidationException
@@ -76,18 +77,13 @@ class ProductAlerts
         $alert->update(['active' => false]);
     }
 
-    /** The lowest price recorded in the last 30 days, when a history exists. */
-    public function lowestRecentPrice(Product $product): ?float
+    /** The lowest price recorded in the last 30 days (the alert's variant when it has one), in rand. */
+    public function lowestRecentPrice(Product $product, ?int $variantId = null): ?float
     {
-        $since = now()->subDays(30);
-        $prices = [];
+        $subject = $variantId !== null ? ProductVariant::query()->where('product_id', $product->id)->find($variantId) : $product;
 
-        foreach ($this->catalogue->priceHistory($product->id) as $entry) {
-            if ($entry['at'] >= $since) {
-                $prices[] = $entry['price'];
-            }
-        }
+        $cents = $this->history->lowestSince($subject ?? $product, now()->subDays((int) config('emall.reference_price.window_days', 30)));
 
-        return $prices === [] ? null : min($prices);
+        return $cents === null ? null : $cents / 100;
     }
 }
