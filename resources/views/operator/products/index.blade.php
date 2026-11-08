@@ -1,51 +1,57 @@
 <x-operator-layout>
-    <x-slot:title>Listing review</x-slot:title>
-<div style="padding:2rem 2.5rem 3rem;max-width:900px;">
-    <h1 style="font-family:var(--font-text);font-size:1.5rem;font-weight:800;color:var(--ink);margin:0 0 1.5rem;">
-        Listing Review
-    </h1>
+    <x-slot:title>Listings</x-slot:title>
+    <x-slot:heading>Listings</x-slot:heading>
+    <x-slot:lead>New listings wait here until you approve them. A rejection needs a reason, and the seller reads it.</x-slot:lead>
+    <x-slot:actions><x-ds.button variant="quiet" :href="route('operator.flags.index')" icon="flag">Flagged by the rules</x-ds.button></x-slot:actions>
 
-    @if (session('status'))
-        <div style="background:var(--pos-bg);border:1px solid var(--pos);color:var(--pos);padding:0.75rem 1rem;border-radius:8px;font-size:0.8rem;margin-bottom:1.5rem;">
-            {{ session('status') }}
-        </div>
+    @php
+        $chip = fn (string $s, string $label) => ['label' => $label, 'href' => route('operator.products.index', array_filter(['status' => $s, 'q' => $filters['q'], 'category' => $filters['category']])), 'current' => $status === $s, 'count' => $s === 'all' ? $counts->sum() : ($counts[$s] ?? 0)];
+    @endphp
+    <x-op.chips label="Listing status" :items="[$chip('pending_approval', 'Awaiting approval'), $chip('approved', 'Approved'), $chip('rejected', 'Rejected'), $chip('all', 'All')]" />
+
+    <form method="GET" action="{{ route('operator.products.index') }}" class="op-filters" role="search" aria-label="Filter listings">
+        <input type="hidden" name="status" value="{{ $status }}">
+        <x-ds.input label="Listing name" name="q" type="search" :value="$filters['q']" />
+        <x-ds.select label="Category" name="category" :options="$categories->pluck('name', 'id')->all()" :selected="$filters['category']" placeholder="Every category" />
+        <x-ds.button type="submit" variant="quiet">Filter</x-ds.button>
+        @if ($filters['q'] || $filters['category'] || $filters['store'])<x-ds.button variant="link" :href="route('operator.products.index', ['status' => $status])">Clear filters</x-ds.button>@endif
+    </form>
+
+    @if ($products->isEmpty())
+        <x-ds.empty-state title="{{ $status === 'pending_approval' ? 'No listing is waiting' : 'No listing matches' }}" icon="box">
+            {{ $status === 'pending_approval' ? 'New listings from sellers appear here for approval.' : 'Change the status or the filters above.' }}
+        </x-ds.empty-state>
+    @else
+        <ul class="op-items" aria-label="Listings">
+            @foreach ($products as $product)
+                @php($cover = $product->images->first())
+                <li class="op-item">
+                    <div class="op-listing">
+                        @if ($cover)<img class="op-thumb" src="{{ $cover->url() }}" alt="" width="72" height="72" loading="lazy">@else<span class="op-thumb" aria-hidden="true"></span>@endif
+                        <div>
+                            <div class="op-item__head">
+                                <a class="op-row-link" href="{{ route('operator.products.show', $product) }}">{{ $product->name }}</a>
+                                <span class="op-num">{{ \App\Support\Shop::amount($product->price) }}</span>
+                            </div>
+                            <div class="op-item__meta">
+                                <span>{{ $product->store->name }}</span>
+                                <span>{{ $product->category?->name ?? 'No category' }}</span>
+                                <span>Submitted <x-op.age :at="$product->created_at" /> ago</span>
+                                <span>@if ($product->store->created_at->gt(now()->subDays(14)))New store, opened <x-op.age :at="$product->store->created_at" /> ago @endif</span>
+                            </div>
+                            @if ($product->status === 'rejected' && $product->rejected_reason)<p class="op-quote">{{ $product->rejected_reason }}<small>Shown to the seller</small></p>@endif
+                        </div>
+                        <div class="op-inline">
+                            <x-ds.status kind="product" :state="$product->status" />
+                            @if ($product->status === 'pending_approval')
+                                <form method="POST" action="{{ route('operator.products.approve', $product) }}">@csrf<x-ds.button type="submit" size="sm">Approve</x-ds.button></form>
+                                <x-ds.button variant="quiet" size="sm" :href="route('operator.products.show', $product)">Review in full</x-ds.button>
+                            @endif
+                        </div>
+                    </div>
+                </li>
+            @endforeach
+        </ul>
+        <x-ds.pagination :paginator="$products" />
     @endif
-
-    <h2 style="font-size:1rem;font-weight:700;color:var(--ink);margin:0 0 1rem;">Pending ({{ $pending->count() }})</h2>
-    @forelse ($pending as $product)
-        <div style="background:var(--surface);border:1px solid var(--line);border-radius:1rem;padding:1.25rem;margin-bottom:1rem;">
-            <p style="font-size:0.95rem;font-weight:600;color:var(--ink);margin:0 0 0.25rem;">{{ $product->name }}</p>
-            <p style="font-size:0.78rem;color:var(--ink-3);margin:0 0 0.75rem;">{{ \App\Support\Shop::amount($product->price) }} · {{ $product->store->name }} (owner: {{ $product->store->owner?->name }})</p>
-
-            <div style="display:flex;gap:0.5rem;align-items:flex-start;">
-                <form method="POST" action="{{ route('operator.products.approve', $product) }}">
-                    @csrf
-                    <button type="submit" style="padding:0.4rem 1rem;border-radius:6px;background:var(--pos);color:var(--pos-bg);font-weight:700;border:none;font-size:0.78rem;cursor:pointer;">Approve</button>
-                </form>
-                <form method="POST" action="{{ route('operator.products.reject', $product) }}" style="display:flex;gap:0.4rem;align-items:center;">
-                    @csrf
-                    <input aria-label="Reason for rejecting" type="text" name="reason" placeholder="Reason for rejecting" required style="padding:0.4rem;border-radius:6px;font-size:0.78rem;">
-                    <button type="submit" style="padding:0.4rem 1rem;border-radius:6px;background:var(--crit);color:var(--crit-bg);font-weight:700;border:none;font-size:0.78rem;cursor:pointer;">Reject</button>
-                </form>
-            </div>
-        </div>
-    @empty
-        <p style="font-size:0.8rem;color:var(--ink-3);">No pending listings.</p>
-    @endforelse
-
-    <h2 style="font-size:1rem;font-weight:700;color:var(--ink);margin:2rem 0 1rem;">Recently Reviewed</h2>
-    @forelse ($reviewed as $product)
-        <div style="background:var(--surface);border:1px solid var(--line);border-radius:1rem;padding:1rem 1.25rem;margin-bottom:0.75rem;display:flex;justify-content:space-between;align-items:center;">
-            <div>
-                <p style="font-size:0.9rem;color:var(--ink);margin:0;">{{ $product->name }}</p>
-                <p style="font-size:0.75rem;color:var(--ink-3);margin:0;">{{ $product->store->name }}</p>
-            </div>
-            <span style="font-size:11px;font-weight:600;padding:4px 12px;border-radius:100px;{{ $product->status === 'approved' ? 'background:var(--pos-bg);color:var(--pos);' : 'background:var(--crit-bg);color:var(--crit);' }}">
-                {{ ucfirst($product->status) }}
-            </span>
-        </div>
-    @empty
-        <p style="font-size:0.8rem;color:var(--ink-3);">No reviewed listings yet.</p>
-    @endforelse
-</div>
 </x-operator-layout>

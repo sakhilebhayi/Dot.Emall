@@ -31,7 +31,7 @@ class PlatformHealth
 
         foreach (app(Schedule::class)->events() as $event) {
             $name = TaskRunRecorder::name((string) ($event->command ?? $event->description ?? ''));
-            $last = $runs[$name]->first() ?? null;
+            $last = $runs->get($name)?->first();
             $due = null;
 
             try {

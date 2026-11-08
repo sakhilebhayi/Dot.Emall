@@ -247,3 +247,6 @@ document.addEventListener('submit', (e) => {
     wide.addEventListener?.('change', sync);
     document.addEventListener('livewire:navigated', sync);
 })();
+
+/* The operator desk (R-43 W7). */
+import "./operator.js";

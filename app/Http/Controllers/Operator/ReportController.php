@@ -55,6 +55,6 @@ class ReportController extends Controller
     {
         $data = $request->validate(['action' => ['required', 'in:remove,dismiss'], 'note' => ['nullable', 'string', 'max:1000']]);
 
-        return $this->attempt('report-'.$type.'-'.$id, fn () => $decisions->resolveReport($request->user(), $type, $id, $data['action'], $data['note'] ?? null), $data['action'] === 'remove' ? 'Taken down. The reports are closed with your note.' : 'Reports dismissed. The item stays up.', route('operator.reports'));
+        return $this->attempt(($data['action'] === 'dismiss' ? 'report-dismiss-' : 'report-').$type.'-'.$id, fn () => $decisions->resolveReport($request->user(), $type, $id, $data['action'], $data['note'] ?? null), $data['action'] === 'remove' ? 'Taken down. The reports are closed with your note.' : 'Reports dismissed. The item stays up.', route('operator.reports'));
     }
 }

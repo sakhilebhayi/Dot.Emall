@@ -69,7 +69,7 @@ class StoreReviewController extends Controller
     {
         $request->validate(['reason' => ['nullable', 'string', 'max:1000']]);
 
-        return $this->attempt('store-'.$store->id, fn () => $decisions->suspendStore($store, $request->user(), $request->input('reason')), 'Store suspended. The seller has been told why.');
+        return $this->attempt('store-suspend-'.$store->id, fn () => $decisions->suspendStore($store, $request->user(), $request->input('reason')), 'Store suspended. The seller has been told why.');
     }
 
     public function reinstate(Request $request, Store $store, OperatorDecisions $decisions): RedirectResponse

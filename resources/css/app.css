@@ -17,6 +17,7 @@
 @import "./jetstream.css";
 @import "./legacy.css";
 @import "./kit.css";
+@import "./operator.css";
 @import "tailwindcss/components";
 @import "tailwindcss/utilities";
 
