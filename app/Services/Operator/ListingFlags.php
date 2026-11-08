@@ -7,6 +7,7 @@ use App\Models\Product;
 use App\Support\Money;
 use App\Support\Shop;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -21,6 +22,8 @@ use Illuminate\Support\Facades\DB;
  */
 class ListingFlags
 {
+    private const COUNT_KEY = 'operator.flags.count';
+
     public const RULES = [
         'price_anomaly' => 'Price far from the category median',
         'prohibited_term' => 'Contains a word from the prohibited-items list',
@@ -56,9 +59,25 @@ class ListingFlags
         return $flags->reject(fn (array $f) => $dismissed->has($f['product']->id.':'.$f['rule']))->values();
     }
 
+    /**
+     * How many listings are flagged, for the operator home. Computing it reads up to 2,000 listings and their categories' prices, so in
+     * production the number is kept for a minute (config emall.flags.count_cache_seconds; 0 anywhere else, so tests and local demos
+     * always see their own changes). The flags page itself is never cached, and a dismissal forgets the number at once.
+     */
     public function count(): int
     {
-        return $this->all()->count();
+        $ttl = (int) config('emall.flags.count_cache_seconds', 0);
+
+        if ($ttl <= 0) {
+            return $this->all()->count();
+        }
+
+        return (int) Cache::remember(self::COUNT_KEY, $ttl, fn () => $this->all()->count());
+    }
+
+    public function forgetCount(): void
+    {
+        Cache::forget(self::COUNT_KEY);
     }
 
     /** @return array<string, string> rule => the rule in words, with the numbers in force */

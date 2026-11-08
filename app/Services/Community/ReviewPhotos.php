@@ -4,6 +4,7 @@ namespace App\Services\Community;
 
 use App\Models\Review;
 use App\Models\ReviewPhoto;
+use App\Services\ProductImages;
 use GdImage;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -53,8 +54,15 @@ class ReviewPhotos
 
             $mime = (new \finfo(FILEINFO_MIME_TYPE))->file($file->getRealPath());
 
-            if (! in_array($mime, self::MIMES, true) || ($this->gd() && @getimagesize($file->getRealPath()) === false)) {
+            $size = $this->gd() ? @getimagesize($file->getRealPath()) : null;
+
+            if (! in_array($mime, self::MIMES, true) || ($this->gd() && $size === false)) {
                 throw ValidationException::withMessages(['photos' => 'Photos must be JPEG, PNG or WebP images.']);
+            }
+
+            // Read from the header, before anything is decoded: a small file can describe a picture of hundreds of millions of pixels.
+            if (is_array($size) && ($size[0] > ProductImages::MAX_SIDE || $size[1] > ProductImages::MAX_SIDE || $size[0] * $size[1] > ProductImages::MAX_PIXELS)) {
+                throw ValidationException::withMessages(['photos' => 'One of the photos is too large. Photos can be at most '.ProductImages::MAX_SIDE.' pixels on a side.']);
             }
         }
     }

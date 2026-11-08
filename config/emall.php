@@ -116,6 +116,8 @@ return [
         'high_value_count' => 5,
         // Only listings that are pending or were listed/edited within this many days are scanned.
         'scan_days' => 60,
+        // The operator home's count of flagged listings is kept this long in production (0 = never kept); a dismissal forgets it at once.
+        'count_cache_seconds' => (int) env('EMALL_FLAGS_COUNT_CACHE_SECONDS', env('APP_ENV') === 'production' ? 60 : 0),
     ],
     // W5: the one contact channel the platform may state. Empty by default: nothing is invented, and the contact page then says
     // that contact happens through the order page and the operator queue.

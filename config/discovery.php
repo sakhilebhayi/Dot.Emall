@@ -26,6 +26,9 @@ return [
         // "Best selling" ranks only products with at least this many units sold in counted orders.
         'best_seller_min_units' => 3,
         'max_facet_values' => 20,
+        // /search is public and each filter adds a join or a chip: a request is read with at most this many attribute filters, and this many values per filter.
+        'max_attribute_filters' => 6,
+        'max_filter_values' => 12,
         'max_query_length' => 100,
     ],
 

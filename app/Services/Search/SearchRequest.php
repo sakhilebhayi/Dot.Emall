@@ -50,7 +50,9 @@ final class SearchRequest
      */
     public static function fromArray(array $input): self
     {
-        $list = fn ($value) => array_values(array_filter(array_map('strval', (array) $value), fn ($v) => $v !== ''));
+        // A public URL decides how much work a search is, so every list is cut to a sane length where it is read.
+        $values = max(1, (int) config('discovery.search.max_filter_values', 12));
+        $list = fn ($value) => array_slice(array_values(array_filter(array_map('strval', array_filter((array) $value, 'is_scalar')), fn ($v) => $v !== '')), 0, $values);
         $category = $input['category'] ?? null;
 
         if (is_string($category) && ! ctype_digit($category) && $category !== '') {
@@ -59,11 +61,15 @@ final class SearchRequest
 
         $attributes = [];
 
-        foreach ((array) ($input['attr'] ?? []) as $key => $values) {
-            $values = $list($values);
+        foreach ((array) ($input['attr'] ?? []) as $key => $attributeValues) {
+            $attributeValues = $list($attributeValues);
 
-            if ($values !== [] && is_string($key) && preg_match('/^[a-z0-9_]{1,64}$/', $key) === 1) {
-                $attributes[$key] = $values;
+            if ($attributeValues !== [] && is_string($key) && preg_match('/^[a-z0-9_]{1,64}$/', $key) === 1) {
+                $attributes[$key] = $attributeValues;
+            }
+
+            if (count($attributes) >= max(1, (int) config('discovery.search.max_attribute_filters', 6))) {
+                break;
             }
         }
 
