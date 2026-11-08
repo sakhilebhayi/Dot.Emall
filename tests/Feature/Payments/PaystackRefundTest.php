@@ -85,7 +85,7 @@ class PaystackRefundTest extends TestCase
         }
 
         $this->assertSame([4000, 6000], Refund::orderBy('id')->pluck('amount_cents')->all());
-        $this->assertSame(10000, Refund::sum('amount_cents'), 'never more than was paid');
+        $this->assertSame(10000, (int) Refund::sum('amount_cents'), 'never more than was paid'); // PostgreSQL returns SUM() as a string
         $http->assertSentCount(2);
     }
 

@@ -115,7 +115,8 @@ class LegacyOrderCurrencyBackfillTest extends TestCase
         $id = $this->legacyOrder($this->insertUser());
         $this->migrateRest();
 
-        Artisan::call('migrate:rollback', ['--step' => 1, '--force' => true]);
+        // The newest migration is the foreign-key index one (2026_11_08), then the currency column.
+        Artisan::call('migrate:rollback', ['--step' => 2, '--force' => true]);
 
         $this->assertFalse(Schema::hasColumn('orders', 'currency'));
         $this->assertSame(1, DB::table('orders')->where('id', $id)->count());

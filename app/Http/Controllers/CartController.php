@@ -11,6 +11,7 @@ use App\Services\Paystack\PaymentGatewayException;
 use App\Services\Paystack\PaystackConfig;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
@@ -88,8 +89,32 @@ class CartController extends Controller
             return back()->withErrors(['quantity' => $error]);
         }
 
-        $item->quantity = $already + $quantity;
-        $item->save();
+        if ($item->exists) {
+            $item->update(['quantity' => $already + $quantity]);
+        } else {
+            // "insert unless it is there" instead of insert-and-catch: one cart line per buyer and product is a unique
+            // index, and a double click sends two requests that both found no line. PostgreSQL also poisons the whole
+            // transaction on a unique violation, so catching it is not an option there.
+            $inserted = DB::table('cart_items')->insertOrIgnore([
+                'user_id' => $request->user()->id,
+                'product_id' => $product->id,
+                'quantity' => $quantity,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            if ($inserted === 0) {
+                // The other request won: add on top of its line.
+                $item = CartItem::query()->where('product_id', $product->id)->firstOrFail();
+                $already = (int) $item->quantity;
+
+                if ($error = $this->quantityProblem($product, $already + $quantity, $already)) {
+                    return back()->withErrors(['quantity' => $error]);
+                }
+
+                $item->update(['quantity' => $already + $quantity]);
+            }
+        }
 
         return redirect()->route('cart.index')->with('status', "Added \"{$product->name}\" to cart.");
     }

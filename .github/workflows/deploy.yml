@@ -32,11 +32,12 @@ name: Deploy to Production
 #      caches, back up.
 #   4. Cron lines, through the account's shared crontab block (see the step).
 #      This release's lines (decided from the deployed code on every run, see the
-#      step): NONE. routes/console.php schedules nothing and nothing in app/ is
-#      queued (order and review notifications use the database channel,
-#      synchronously), so the crontab is not even written. A later release that adds
-#      a scheduled command or a queued job gets its line(s) without anyone editing
-#      this file. Lines would carry the marker "# dot-emall"; every other line of the
+#      step): the scheduler line (routes/console.php schedules orders:expire-unpaid,
+#      which releases the stock held by unpaid orders, and the daily Dot.Analytics
+#      snapshot) and the queue-worker line (SendAnalyticsSnapshot is queued; order
+#      and review notifications use the database channel, synchronously). A later
+#      release that adds or removes a scheduled command or a queued job changes
+#      its line(s) without anyone editing this file. Lines would carry the marker "# dot-emall"; every other line of the
 #      account's crontab is preserved.
 #   5. Smoke check from the runner, like a browser: / and /login answer 200,
 #      the built CSS answers 200, /up answers 200, and a harmless POST /up (a

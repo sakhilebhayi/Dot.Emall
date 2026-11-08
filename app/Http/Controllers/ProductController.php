@@ -6,6 +6,7 @@ use App\Models\Product;
 use App\Models\Review;
 use App\Models\StoreCategory;
 use App\Services\ReviewService;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
@@ -42,13 +43,14 @@ class ProductController extends Controller
         $products = Product::query()
             ->browsable()
             ->with(['store', 'category', 'images'])
-            ->when($search !== '', fn ($q) => $q->where('name', 'like', "%{$search}%"))
+            ->when($search !== '', fn ($q) => $this->whereNameContains($q, $search))
             ->when($category, fn ($q) => $q->where('category_id', $category))
             ->latest()
             ->paginate(12)
             ->withQueryString();
 
-        $categories = StoreCategory::withCount('products')->orderBy('name')->get();
+        // Counted like the list below: listings a buyer cannot see (pending, rejected, switched off, closed store) do not count.
+        $categories = StoreCategory::withCount(['products' => fn ($q) => $q->browsable()])->orderBy('name')->get();
 
         return view('products.index', [
             'products' => $products,
@@ -56,6 +58,19 @@ class ProductController extends Controller
             'search' => $search,
             'category' => $category,
         ]);
+    }
+
+    /**
+     * A name search that behaves the same on every database: case-insensitive (PostgreSQL's LIKE is case sensitive, so
+     * "samsung" found nothing in production while SQLite found "Samsung"), and a literal % or _ typed by the buyer is
+     * matched as itself instead of acting as a wildcard.
+     */
+    private function whereNameContains(Builder $query, string $search): Builder
+    {
+        $operator = $query->getConnection()->getDriverName() === 'pgsql' ? 'ilike' : 'like';
+        $escaped = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $search);
+
+        return $query->whereRaw("name {$operator} ? escape '\\'", ['%'.$escaped.'%']);
     }
 
     /**
