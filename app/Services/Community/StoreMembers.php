@@ -26,6 +26,21 @@ class StoreMembers
             ->exists();
     }
 
+    /**
+     * Everyone who speaks for a store: its owner and the members of a team the owner leads. Used to tell them about a shopper's message.
+     *
+     * @return \Illuminate\Support\Collection<int, User>
+     */
+    public function people(Store $store): \Illuminate\Support\Collection
+    {
+        $teamUserIds = DB::table('team_user')
+            ->join('teams', 'teams.id', '=', 'team_user.team_id')
+            ->where('teams.user_id', $store->owner_id)
+            ->pluck('team_user.user_id');
+
+        return User::query()->whereIn('id', $teamUserIds->push($store->owner_id)->unique()->all())->get();
+    }
+
     public function isOperator(User $user): bool
     {
         return (bool) $user->is_platform_operator;

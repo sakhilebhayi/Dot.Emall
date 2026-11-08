@@ -3,9 +3,11 @@
 namespace App\Services\Community;
 
 use App\Models\ContentReport;
+use App\Models\Product;
 use App\Models\ProductAnswer;
 use App\Models\ProductQuestion;
 use App\Models\Review;
+use App\Models\Store;
 use App\Models\User;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
@@ -58,6 +60,9 @@ class ContentReports
             'review' => Review::query()->published()->whereKey($id)->value('user_id'),
             'question' => ProductQuestion::query()->published()->whereKey($id)->value('user_id'),
             'answer' => ProductAnswer::query()->published()->whereKey($id)->value('user_id'),
+            // A listing or a store: the author is the store's owner (nobody reports their own). Only live ones can be reported.
+            'product' => Product::query()->browsable()->whereKey($id)->with('store:id,owner_id')->first()?->store->owner_id,
+            'store' => Store::query()->where('is_active', true)->whereKey($id)->value('owner_id'),
             default => null,
         };
     }
