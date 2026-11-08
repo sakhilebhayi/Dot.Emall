@@ -8,6 +8,32 @@ import './seller.js';
 const root = document.documentElement;
 const $$ = (sel, ctx = document) => Array.from(ctx.querySelectorAll(sel));
 
+/* Password reveal (ds.input with reveal): the button beside the field swaps type="password" and type="text". It keeps the caret, announces its state, and puts the field back on form submit. */
+document.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-reveal]');
+    if (!b) return;
+    const input = document.getElementById(b.getAttribute('data-reveal'));
+    if (!input) return;
+    const show = input.type === 'password';
+    input.type = show ? 'text' : 'password';
+    b.setAttribute('aria-pressed', show ? 'true' : 'false');
+    b.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+});
+
+/* Phone header (R-43 polish #6): once the page has scrolled the search row is gone, so a search icon appears in the first row; it goes back to the top and focuses the field. */
+{
+    let ticking = false;
+    const mark = () => { ticking = false; root.classList.toggle('is-scrolled', window.scrollY > 72); };
+    window.addEventListener('scroll', () => { if (!ticking) { ticking = true; requestAnimationFrame(mark); } }, { passive: true });
+    mark();
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('[data-search-reveal]')) return;
+        root.classList.remove('is-scrolled');
+        window.scrollTo(0, 0);
+        document.querySelector('.ds-header__search input[type="search"]')?.focus();
+    });
+}
+
 /* Theme: class "light" or "dark" on <html>, remembered in localStorage ("emall-theme"). With nothing stored the system decides. */
 const THEME_KEY = 'emall-theme';
 function effectiveTheme() {

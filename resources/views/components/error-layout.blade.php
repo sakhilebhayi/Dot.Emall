@@ -1,14 +1,26 @@
 {{--
-  <x-error-layout>: the frame of every error page (403, 404, 419, 429, 500, 503). It is STANDALONE and safe when the database or the session is down: it reads no session, no user, no
+  <x-error-layout>: the frame of every error page (403, 404, 419, 429, 500, 503).
+  Two postures (R-43 polish #17, D-187). With rich=true (403, 404, 419, 429: the person is still in the web group, so the session is readable) it draws the page inside the real
+  storefront layout (errors/rich.blade.php): the header with the signed-in account, search and category links. If anything in that render throws (database down, a missing table), it
+  falls back, silently, to the standalone page below. Without rich (500, 503) it is STANDALONE and safe when the database or the session is down: it reads no session, no user, no
   database and no Livewire. Styles come from the built stylesheet when it exists; without it the page is still plain, readable HTML.
-  Props: code (required, the HTTP status), heading (required), message (required), hint=null (one more sentence). Slot: actions (links; the default offers the shop and sign-in).
+  Props: code (required, the HTTP status), heading (required), message (required), hint=null (one more sentence), rich=false. Slot: actions (links; the default offers the shop and sign-in).
 --}}
-@props(['code', 'heading', 'message', 'hint' => null])
+@props(['code', 'heading', 'message', 'hint' => null, 'rich' => false])
 @php
+    $richHtml = null;
+    if ($rich) {
+        try {
+            $richHtml = view('errors.rich', ['code' => $code, 'heading' => $heading, 'message' => $message, 'hint' => $hint, 'actions' => $actions ?? null])->render();
+        } catch (\Throwable $e) {
+            $richHtml = null;
+        }
+    }
     $manifest = public_path('build/manifest.json');
     $hasBuild = is_file($manifest);
     $nonce = csp_nonce();
 @endphp
+@if ($richHtml !== null){!! $richHtml !!}@else
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 <head>
@@ -55,3 +67,4 @@
     </div>
 </body>
 </html>
+@endif

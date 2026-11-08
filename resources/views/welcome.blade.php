@@ -1,6 +1,8 @@
 {{--
   The home page, for everyone (Discovery\HomeController). Every block states where it comes from and is left out when it has nothing real to show. Layout families change from block to
-  block on purpose: an editorial lead, a shelf of category tiles with real counts, a scrolling strip, a ranked list, collection panels, a store spotlight.
+  block on purpose: an editorial lead, a slim ask row, a shelf of category tiles with real counts, a scrolling strip, a side-headed ranked list, collection panels, a store spotlight.
+  R-43 polish #23 (D-186): the header already holds the province chip, the sell link and the Ask Emall entry, so the "sellers near you" block, the sell band and the second Ask Emall
+  button are gone; the ask band is one slim row; only the ranked list keeps a heading with its provenance beside it, the other blocks print theirs under the content.
   Variables: $sections (HomeSection by key), $region, $shelf, $feature, $storeModels, $signedIn.
 --}}
 @php
@@ -27,7 +29,6 @@
                 <p>Search South African sellers, or tell Emall what you need. Every product shows its price, delivery and total.</p>
                 <div class="ds-page-header__actions">
                     <x-ds.button :href="route('categories.index')" size="lg" iconRight="arrow-right">Browse categories</x-ds.button>
-                    <x-ds.button :href="route('assistant')" variant="quiet" size="lg" icon="sparkle">Ask Emall</x-ds.button>
                 </div>
             </div>
             @if ($feature)
@@ -52,27 +53,25 @@
         </div>
     </section>
 
-    {{-- Intent: say what you need, or start from what other people searched for. --}}
-    <section class="disc-ask-band" aria-labelledby="ask-h">
-        <div class="ds-container disc-ask-band__grid">
-            <div>
-                <h2 id="ask-h">Not sure what to buy?</h2>
-                <p class="disc-muted">Describe it in your own words. Emall reads the request, searches the real catalogue and shows the facts, kept apart from its own suggestion.</p>
-            </div>
-            <div>
-                <form class="disc-ask" method="get" action="{{ route('assistant') }}">
-                    <label class="ds-visually-hidden" for="home-ask">What do you need</label>
+    {{-- Intent: say what you need, in one row. Popular searches follow it when there are real ones. --}}
+    <section class="home-ask" aria-label="Ask Emall">
+        <div class="ds-container home-ask__row">
+            <form class="home-ask__form" method="get" action="{{ route('assistant') }}">
+                <label class="home-ask__label" for="home-ask">Not sure what to buy? Say what you need and Emall searches the real catalogue.</label>
+                <div class="home-ask__field">
                     <input class="ds-input" id="home-ask" name="text" type="text" maxlength="400" placeholder="A reliable laptop for university under R15,000">
                     <x-ds.button type="submit" icon="sparkle">Ask Emall</x-ds.button>
-                </form>
-                @if ($popular)
-                    <p class="disc-muted disc-ask-band__label" id="popular-label">Popular searches</p>
+                </div>
+            </form>
+            @if ($popular)
+                <div class="home-ask__popular">
+                    <p class="disc-muted" id="popular-label">Popular searches</p>
                     <ul class="disc-chips" aria-labelledby="popular-label">
                         @foreach (array_slice($popular->items, 0, 6) as $row)<li><a class="disc-chip" href="{{ route('search', ['q' => $row['query']]) }}">{{ $row['query'] }}</a></li>@endforeach
                     </ul>
                     <p class="disc-basis">{{ $popular->basis }}</p>
-                @endif
-            </div>
+                </div>
+            @endif
         </div>
     </section>
 
@@ -85,7 +84,7 @@
 
         {{-- Category shelf: tiles sized by how many products can be bought, each with a photograph of something in it. --}}
         @if ($shelf)
-            <x-ds.section title="Shop by category" id="categories" lead="Largest first, by the number of products you can buy today.">
+            <x-ds.section title="Shop by category" id="categories">
                 <x-slot:actions><a href="{{ route('categories.index') }}">All categories</a></x-slot:actions>
                 <ul class="disc-tiles">
                     @foreach ($shelf as $tile)
@@ -97,6 +96,7 @@
                         </li>
                     @endforeach
                 </ul>
+                <p class="home-basis">Largest first, by the number of products you can buy today.</p>
             </x-ds.section>
         @endif
 
@@ -105,10 +105,14 @@
             <x-disc-rail id="new-arrivals" :title="$s['new_arrivals']->title" :basis="$s['new_arrivals']->basis" :items="$s['new_arrivals']->items" :eager="! $yours->count() ? 4 : 0" :link="route('search', ['sort' => 'newest'])" link-label="See all new listings" />
         @endif
 
-        {{-- Trending: a ranked list with the numbers it is ranked by. --}}
+        {{-- Trending: a ranked list with the numbers it is ranked by, the one block with its heading set beside the list instead of over it. --}}
         @if ($s->has('trending'))
             @php($trend = $s['trending'])
-            <x-ds.section title="{{ $trend->title }}" id="trending" :lead="$trend->basis">
+            <section class="home-side" id="trending" aria-labelledby="trending-h">
+                <div class="home-side__head">
+                    <h2 id="trending-h">{{ $trend->title }}</h2>
+                    <p class="disc-muted">{{ $trend->basis }}</p>
+                </div>
                 <ol class="disc-ranked">
                     @foreach (array_slice($trend->items, 0, 6) as $item)
                         @php($p = $item->product)
@@ -123,26 +127,27 @@
                         </li>
                     @endforeach
                 </ol>
-            </x-ds.section>
+            </section>
         @endif
 
         {{-- Collections: editorial panels. --}}
         @if ($s->has('collections'))
             @php($cols = $s['collections'])
-            <x-ds.section :title="$cols->title" id="collections" :lead="$cols->basis">
+            <x-ds.section :title="$cols->title" id="collections">
                 <x-slot:actions><a href="{{ route('collections.index') }}">All collections</a></x-slot:actions>
                 <div class="disc-collections">
                     @foreach ($cols->items as $row)
                         <x-disc-collection-panel :collection="$row['collection']" :preview="$row['preview']" :basis="$row['basis']" :large="$loop->first" />
                     @endforeach
                 </div>
+                <p class="home-basis">{{ $cols->basis }}</p>
             </x-ds.section>
         @endif
 
         {{-- Stores: a spotlight on the first, the rest in a list. --}}
         @if ($s->has('stores'))
             @php($st = $s['stores'])
-            <x-ds.section :title="$st->title" id="stores" :lead="$st->basis">
+            <x-ds.section :title="$st->title" id="stores">
                 <x-slot:actions><a href="{{ emall_route('stores.index') !== '#' ? emall_route('stores.index') : route('search') }}">All stores</a></x-slot:actions>
                 <div class="disc-spot">
                     @php($lead = $st->items[0])
@@ -158,36 +163,21 @@
                         @endforeach
                     </ul>
                 </div>
+                <p class="home-basis">{{ $st->basis }}</p>
             </x-ds.section>
         @endif
 
         {{-- Local: only when a province is known. --}}
         @if ($s->has('local'))
             @php($local = $s['local'])
-            <x-ds.section :title="$local->title" id="local" :lead="$local->basis">
+            <x-ds.section :title="$local->title" id="local">
                 <ul class="disc-spot__list disc-spot__list--wide">
                     @foreach ($local->items as $row)
                         <li><x-ds.avatar :name="$row['name']" /><div><a href="{{ $storeUrl($row) }}">{{ $row['name'] }}</a><span class="disc-muted">{{ $row['basis'] }}</span></div></li>
                     @endforeach
                 </ul>
+                <p class="home-basis">{{ $local->basis }}</p>
             </x-ds.section>
-        @elseif (! $region)
-            <section class="disc-nearby" aria-labelledby="nearby-h">
-                <h2 id="nearby-h">See sellers near you</h2>
-                <p class="disc-muted">Choose your province and Emall shows the sellers in it first. We keep only the province, in this browser.</p>
-                <x-ds.button variant="quiet" icon="pin" data-dialog-open="region-dialog">Choose your province</x-ds.button>
-            </section>
         @endif
-
-        {{-- Selling. --}}
-        <section class="ds-sell" aria-labelledby="sell-h">
-            <div>
-                <h2 id="sell-h">Sell on Emall</h2>
-                <p>Sign in with InfoDot, open your store and list your products. Each listing is reviewed before it appears in the shop, and you manage orders and returns from one desk.</p>
-            </div>
-            <div class="ds-page-header__actions">
-                <x-ds.button :href="emall_route('sell.start') !== '#' ? emall_route('sell.start') : emall_route('seller.store.create')" icon="store">{{ $signedIn ? 'Open your store' : 'Start selling' }}</x-ds.button>
-            </div>
-        </section>
     </div>
 </x-store-layout>

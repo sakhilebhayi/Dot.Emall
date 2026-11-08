@@ -1,4 +1,6 @@
-{{-- One store (R-43 W4). Data: App\Http\Controllers\StorefrontController::show(). Public fields only: no owner, e-mail, phone, legal name or private figure. --}}
+{{-- One store (R-43 W4). Data: App\Http\Controllers\StorefrontController::show(). Public fields only: no owner, e-mail, phone, legal name or private figure.
+     R-43 polish #11 (D-184): the products and their category chips come straight under the store's name; the trust ladder is summarised in one line with a "How this is measured"
+     disclosure; delivery, returns, reviews and the contact form follow the products. --}}
 @php
     $logo = $directory->logoUrl($store);
     $banner = $directory->bannerUrl($store);
@@ -6,6 +8,9 @@
     $chips = $result->facets['categories'] ?? [];
     $enquiry = $errors->getBag('enquiry');
     $query = request()->except('page', 'category');
+    $rungs = $directory->rungs($trust);
+    $tally = collect($rungs)->countBy('state');
+    $measured = collect($rungs)->where('state', 'metric')->filter(fn ($r) => ! str_starts_with((string) ($r['value'] ?? ''), 'Not enough') && ! str_starts_with((string) ($r['value'] ?? ''), 'No reviews'))->count();
     $description = \Illuminate\Support\Str::limit(trim(strip_tags((string) ($store->description ?: 'Products from '.$store->name.' on Dot.Emall.'))), 155);
 @endphp
 <x-store-layout :robots="$closed ? 'noindex' : null">
@@ -40,27 +45,17 @@
 
     @if ($store->description)<p class="ds-prose pdp-desc">{{ $store->description }}</p>@endif
 
-    <div class="sh-two" style="margin-block-start: var(--s-6);">
-        <section aria-labelledby="trust-h">
+    <details class="sh-how">
+        <summary>
+            <span class="sh-how__line">{{ $tally->get('checked', 0) }} {{ $tally->get('checked', 0) === 1 ? 'detail' : 'details' }} checked by InfoDot, {{ $tally->get('claimed', 0) }} claimed by the seller, {{ $measured }} {{ $measured === 1 ? 'measure' : 'measures' }} from orders on Emall.</span>
+            <span class="sh-how__cue">How this is measured<x-ds.icon name="chevron-down" :size="16" /></span>
+        </summary>
+        <div class="sh-how__body">
             <h2 id="trust-h" class="pdp-sub">About this seller</h2>
-            <x-ds.seller-trust :rungs="$directory->rungs($trust)" title="About this seller" />
+            <x-ds.seller-trust :rungs="$rungs" title="About this seller" />
             <p class="ds-muted pdp-note">Checked means Emall's own sign-in with InfoDot recorded it. Claimed means the seller typed it and nobody has checked it. Measures come from orders on Emall.</p>
-        </section>
-        <section aria-labelledby="policy-h">
-            <h2 id="policy-h" class="pdp-sub">Delivery and returns</h2>
-            @if ($methods)
-                <ul class="pdp-methods">
-                    @foreach ($methods as $m)<li><span class="pdp-methods__name">{{ $m['name'] }}</span><span class="pdp-methods__price">{{ $m['price'] }}</span><span class="pdp-methods__when ds-muted">{{ $m['window'] }}</span></li>@endforeach
-                </ul>
-            @else
-                <p class="ds-muted">{{ $store->name }} has not set delivery methods. Delivery is arranged with the seller after you order, and Emall adds no delivery charge.</p>
-            @endif
-            @if ($store->shipping_policy)<h3 class="pdp-sub" style="margin-block-start: var(--s-4);">Shipping policy</h3><p class="sh-policy">{{ $store->shipping_policy }}</p>@endif
-            <h3 class="pdp-sub" style="margin-block-start: var(--s-4);">Returns</h3>
-            <p class="sh-policy">You can ask to return an item within {{ $returnDays }} days of it being delivered or collected. If it is faulty or not as described, {{ $store->name }} pays for the return; if you changed your mind, you do.</p>
-            @if ($store->return_policy)<p class="sh-policy" style="margin-block-start: var(--s-3);">{{ $store->return_policy }}</p>@endif
-        </section>
-    </div>
+        </div>
+    </details>
 
     <section class="pdp-section" id="products" aria-labelledby="products-h">
         <div class="pdp-section__head"><h2 id="products-h">Products</h2></div>
@@ -101,6 +96,21 @@
                 <x-ds.pagination :paginator="new \Illuminate\Pagination\LengthAwarePaginator(array_fill(0, max(0, min($result->perPage, $result->total - ($result->page - 1) * $result->perPage)), null), $result->total, $result->perPage, $result->page, ['path' => route('stores.show', $store), 'query' => request()->except('page')])" />
             @endif
         @endif
+    </section>
+
+    <section class="pdp-section" id="delivery-returns" aria-labelledby="policy-h">
+            <h2 id="policy-h" class="pdp-sub">Delivery and returns</h2>
+            @if ($methods)
+                <ul class="pdp-methods">
+                    @foreach ($methods as $m)<li><span class="pdp-methods__name">{{ $m['name'] }}</span><span class="pdp-methods__price">{{ $m['price'] }}</span><span class="pdp-methods__when ds-muted">{{ $m['window'] }}</span></li>@endforeach
+                </ul>
+            @else
+                <p class="ds-muted">{{ $store->name }} has not set delivery methods. Delivery is arranged with the seller after you order, and Emall adds no delivery charge.</p>
+            @endif
+            @if ($store->shipping_policy)<h3 class="pdp-sub" style="margin-block-start: var(--s-4);">Shipping policy</h3><p class="sh-policy">{{ $store->shipping_policy }}</p>@endif
+            <h3 class="pdp-sub" style="margin-block-start: var(--s-4);">Returns</h3>
+            <p class="sh-policy">You can ask to return an item within {{ $returnDays }} days of it being delivered or collected. If it is faulty or not as described, {{ $store->name }} pays for the return; if you changed your mind, you do.</p>
+            @if ($store->return_policy)<p class="sh-policy" style="margin-block-start: var(--s-3);">{{ $store->return_policy }}</p>@endif
     </section>
 
     <section class="pdp-section" id="store-reviews" aria-labelledby="store-reviews-h">

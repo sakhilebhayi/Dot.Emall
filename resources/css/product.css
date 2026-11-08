@@ -177,10 +177,24 @@
 .sh-banner { aspect-ratio: 5 / 1; max-height: 14rem; min-height: 6rem; background: var(--photo-ground); border-radius: var(--r-photo); overflow: hidden; margin-block-start: var(--s-4); }
 .sh-banner img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .sh-head { display: flex; gap: var(--s-4); align-items: center; margin-block: var(--s-4); }
-.sh-head h1 { font-size: var(--text-2xl); }
+.sh-head h1 { font-size: var(--text-2xl); margin-block-end: var(--s-1); }
+.sh-head { margin-block-end: var(--s-3); }
+#products.pdp-section { padding-block-start: var(--s-4); }
+/* The trust ladder, summarised (D-184): one printed line, the ladder itself opens under it. */
+.sh-how { border-block: 1px solid var(--line); margin-block: var(--s-3) 0; }
+.sh-how > summary { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s-2) var(--s-5); min-height: var(--tap); padding-block: var(--s-3); cursor: pointer; list-style: none; }
+.sh-how > summary::-webkit-details-marker { display: none; }
+.sh-how__line { color: var(--ink-2); max-width: 60ch; }
+.sh-how__cue { display: inline-flex; align-items: center; gap: var(--s-2); color: var(--brand); font-weight: 650; }
+.sh-how__cue .ds-icon { transition: transform var(--t-quick) var(--ease); }
+.sh-how[open] .sh-how__cue .ds-icon { transform: rotate(180deg); }
+.sh-how > summary:hover .sh-how__cue { color: var(--brand-hover); text-decoration: underline; text-underline-offset: 0.2em; }
+.sh-how__body { padding-block: var(--s-3) var(--s-5); max-width: 44rem; }
 .sh-chips { display: flex; flex-wrap: wrap; gap: var(--s-2); list-style: none; margin: 0; padding: 0; }
 .sh-chips a { display: inline-flex; align-items: center; gap: var(--s-2); min-height: var(--tap); padding-inline: var(--s-4); border: 1px solid var(--line-strong); border-radius: var(--r-pill); color: var(--ink); text-decoration: none; font-size: var(--text-sm); font-weight: 600; }
 .sh-chips a:hover { background: var(--sunken); }
+/* Phones: the chips are one scrolling row, so the products start under them instead of five rows down. */
+@media (max-width: 39.99rem) { .sh-chips { flex-wrap: nowrap; overflow-x: auto; scroll-snap-type: x proximity; margin-inline: calc(var(--gutter) * -1); padding-inline: var(--gutter); padding-block-end: var(--s-1); scrollbar-width: none; } .sh-chips li { flex: none; scroll-snap-align: start; } }
 .sh-chips a[aria-current="true"] { background: var(--ink); color: var(--ground); border-color: var(--ink); }
 .sh-chips small { color: inherit; opacity: 0.8; font-variant-numeric: tabular-nums; }
 .sh-layout { display: grid; gap: var(--s-6); }

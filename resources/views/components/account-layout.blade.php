@@ -1,5 +1,5 @@
 {{--
-  <x-account-layout>: the CUSTOMER ACCOUNT. The storefront header and footer, with a navigation rail (desktop), a scrolling sub-nav under the header and a bottom bar (phones) for
+  <x-account-layout>: the CUSTOMER ACCOUNT. The storefront header and footer, with a navigation rail (desktop) and a bottom bar with a More sheet (phones; the scrolling sub-nav that repeated the bottom bar was removed, R-43 polish #10, D-183) for
   overview, orders, returns, wishlist, saved searches, addresses, alerts, profile (App\Support\Navigation::account()). Jetstream pages (profile, teams, API tokens) use it too.
   Props and slots are those of <x-store-layout> (title, description, heading, lead, actions, breadcrumbs, location, suggestions, testmode, banner, head, scripts, default; categories, robots='noindex').
 --}}
@@ -30,7 +30,6 @@
             <div class="ds-container ds-account">
                 <aside class="ds-account__rail"><nav class="ds-rail__nav" aria-label="Your account">@include('layouts.partials.desk-rail', ['items' => $items])</nav></aside>
                 <div style="min-width: 0;">
-                    <nav class="ds-subnav" aria-label="Your account">@include('layouts.partials.desk-rail', ['items' => $items, 'plain' => true])</nav>
                     <main id="main" class="ds-main" tabindex="-1" style="padding-bottom: var(--s-6);">
                         @isset($breadcrumbs)<div style="padding-top: var(--s-4);">{{ $breadcrumbs }}</div>@endisset
                         @isset($heading)

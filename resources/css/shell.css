@@ -20,18 +20,32 @@
 .ds-util a { color: var(--ink-2); text-decoration: none; display: inline-flex; align-items: center; min-height: 2rem; }
 .ds-util a:hover { color: var(--ink); text-decoration: underline; }
 .ds-util__loc:empty { display: none; }
-.ds-util__loc, .ds-util__test { display: flex; align-items: center; gap: var(--s-2); }
+.ds-util__loc, .ds-util__test { display: flex; align-items: center; gap: var(--s-2); min-width: 0; }
+.ds-util .disc-region { white-space: nowrap; }
+.ds-util__test .ds-badge { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 @media (min-width: 48rem) { .ds-util__links { display: flex; } }
 .ds-util:not(:has(.ds-util__loc > *, .ds-util__test > *)) .ds-util__row { justify-content: flex-end; }
 @media (max-width: 47.99rem) { .ds-util:not(:has(.ds-util__loc > *, .ds-util__test > *)) { display: none; } }
 
 /* Store header */
-.ds-header { position: sticky; inset-block-start: 0; z-index: 80; background: var(--ground); border-bottom: 1px solid var(--line); }
+.ds-header { position: sticky; inset-block-start: 0; z-index: 80; background: var(--ground); border-bottom: 1px solid var(--line); --hdr-search-h: 3.25rem; }
 .ds-header__bar { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "menu brand actions" "search search search"; align-items: center; gap: var(--s-2) var(--s-3); padding-block: var(--s-2); }
 .ds-header__menu { grid-area: menu; margin-inline-start: calc(var(--s-2) * -1); }
 .ds-header__brand { grid-area: brand; justify-self: start; }
 .ds-header__search { grid-area: search; min-width: 0; }
-.ds-header__actions { grid-area: actions; display: flex; align-items: center; gap: var(--s-1); }
+.ds-header__actions { grid-area: actions; display: flex; align-items: center; gap: 0; }
+/* Phones (R-43 polish #6, D-181): the first row (menu, logo, account, bell, cart) stays; the search row folds away once the page has moved and a search icon takes its place. */
+.ds-header__searchbtn { display: none; }
+@media (max-width: 63.99rem) {
+    .ds-header__search { min-height: 2.75rem; }
+    :root.is-scrolled .ds-header__searchbtn { display: inline-grid; }
+    /* Once the page has moved, the header is clipped to its first row. The layout height does not change (no jump); the clipped part shows the page beneath, and the search row leaves the tab order. */
+    :root.is-scrolled .ds-header { clip-path: inset(0 0 var(--hdr-search-h) 0); border-bottom-color: transparent; }
+    :root.is-scrolled .ds-header::after { content: ""; position: absolute; inset-inline: 0; inset-block-end: var(--hdr-search-h); height: 1px; background: var(--line); }
+    :root.is-scrolled .ds-header__search { visibility: hidden; }
+    .ds-header__actions .ds-dropdown > .ds-header__link > .ds-icon:last-child { display: none; }
+    .ds-header__actions .ds-dropdown > .ds-header__link { padding-inline: 0; min-width: var(--tap); justify-content: center; }
+}
 @media (min-width: 64rem) {
     .ds-header__bar { grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "brand search actions"; gap: var(--s-6); padding-block: var(--s-3); }
     .ds-header__menu { display: none; }
@@ -40,21 +54,27 @@
 .ds-logo { display: inline-flex; align-items: center; gap: var(--s-2); text-decoration: none; min-height: var(--tap); }
 .ds-logo img { display: block; flex: none; }
 .ds-logo__mark { width: 2.25rem; height: 2.25rem; border-radius: 50%; }
-.ds-logo__word { height: 1.25rem; width: auto; }
-.ds-logo .ds-logo__dark { display: none; }
-:root.dark .ds-logo .ds-logo__light { display: none; }
-:root.dark .ds-logo .ds-logo__dark { display: block; }
-@media (min-width: 64rem) { .ds-logo__mark { width: 2.75rem; height: 2.75rem; } .ds-logo__word { height: 1.5rem; } }
+/* The wordmark is live type (D-180): heavy enough that "emall" cannot be misread as "email", with the ll left tight. */
+.ds-logo__word { display: inline-flex; align-items: baseline; gap: 0.06em; font-size: 1.375rem; font-weight: 800; font-stretch: var(--width-price); line-height: 1; letter-spacing: -0.035em; white-space: nowrap; }
+.ds-logo__dot { color: var(--ink); }
+.ds-logo__emall { color: var(--brand); }
+.ds-logo__stop { align-self: baseline; flex: none; width: 0.3em; height: 0.3em; border-radius: 50%; background: var(--awning); box-shadow: 0 0 0 0.075em var(--ink); margin-inline: 0.12em 0.1em; }
+@media (max-width: 29.99rem) { .ds-logo { gap: var(--s-1); } .ds-logo__mark { width: 2rem; height: 2rem; } .ds-logo__word { font-size: 1.1875rem; } }
+@media (min-width: 64rem) { .ds-logo__mark { width: 2.75rem; height: 2.75rem; } .ds-logo__word { font-size: 1.625rem; } }
 .ds-header__link { display: inline-flex; align-items: center; gap: var(--s-2); min-height: var(--tap); padding: 0 var(--s-2); color: var(--ink); text-decoration: none; font-weight: 600; border-radius: var(--r-control); }
 .ds-header__link:hover { background: var(--sunken); color: var(--ink); }
 .ds-header__link .ds-label-text { display: none; }
+@media (max-width: 63.99rem) { .ds-cart-link { justify-content: center; min-width: var(--tap); padding-inline: 0; } }
 @media (min-width: 64rem) { .ds-header__link .ds-label-text { display: inline; } .ds-header__link { padding: 0 var(--s-3); } }
 /* On a phone the account button is its icon (the name stays for screen readers): a first name beside the bell and the cart pushes the logo underneath them. */
 @media (max-width: 63.99rem) { .ds-header__actions .ds-dropdown > .ds-header__link > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; } }
 .ds-cart-link { position: relative; }
-.ds-cart-link .ds-count { position: absolute; inset-block-start: 0.15rem; inset-inline-start: 1.35rem; animation: ds-stamp var(--t-base) var(--ease) both; }
-@media (min-width: 64rem) { .ds-cart-link .ds-count { position: static; animation: none; } }
+/* The count is drawn in place on first paint (no fade: a half-transparent "3" read as a glitch, D-181). Phones pin it to the top right of the icon, inside its own 44px box. */
+.ds-icon-btn > .ds-count, .ds-header__actions .ds-count { position: absolute; z-index: 1; inset-block-start: 0.15rem; inset-inline-end: 0; min-width: 1.2rem; height: 1.2rem; font-size: 0.6875rem; box-shadow: 0 0 0 2px var(--ground); }
+.ds-header__actions .ds-cart-link .ds-count { inset-inline-end: -0.1rem; }
+@media (min-width: 64rem) { .ds-header__actions .ds-cart-link .ds-count { position: static; box-shadow: none; min-width: 1.35rem; height: 1.35rem; font-size: 0.75rem; } }
 @keyframes ds-stamp { from { transform: scale(1.5); opacity: 0; } 60% { transform: scale(0.94); opacity: 1; } to { transform: none; } }
+.ds-count.is-stamped { animation: ds-stamp var(--t-base) var(--ease) both; }
 .ds-header__hide-sm { display: none; }
 @media (min-width: 40rem) { .ds-header__hide-sm { display: inline-flex; } }
 

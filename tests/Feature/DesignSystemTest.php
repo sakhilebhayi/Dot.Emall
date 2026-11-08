@@ -2,7 +2,9 @@
 
 namespace Tests\Feature;
 
+use App\Models\User;
 use App\Support\Icons;
+use App\Support\Shell;
 use App\Support\Status;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Blade;
@@ -15,9 +17,9 @@ class DesignSystemTest extends TestCase
 {
     use AssertsResponsiveShell, BuildsMarketplace, RefreshDatabase;
 
-    private function makeOperatorUser(): \App\Models\User
+    private function makeOperatorUser(): User
     {
-        $user = \App\Models\User::factory()->withPersonalTeam()->create();
+        $user = User::factory()->withPersonalTeam()->create();
         $user->forceFill(['is_platform_operator' => true])->save();
 
         return $user;
@@ -89,10 +91,15 @@ class DesignSystemTest extends TestCase
 
     public function test_error_pages_render_standalone_with_one_h1(): void
     {
+        // 500 and 503 must work with the database and the session down, so they stay standalone. 403, 404, 419 and 429 are drawn inside the storefront layout when it can render
+        // (R-43 polish #17, D-187) and fall back to the standalone frame when it cannot (ChromePolishTest covers the fallback); every one of them has a single h1 and a skip link.
         foreach ([403, 404, 419, 429, 500, 503] as $code) {
             $html = view("errors.{$code}")->render();
             $this->assertSame(1, substr_count($html, '<h1'), "{$code} has one h1");
             $this->assertStringContainsString('Skip to main content', $html);
+        }
+        foreach ([500, 503] as $code) {
+            $html = view("errors.{$code}")->render();
             $this->assertStringNotContainsString('livewire', strtolower($html), 'the error frame needs no Livewire, session or database');
             $this->assertStringNotContainsString('csrf-token', $html);
         }
@@ -205,7 +212,7 @@ class DesignSystemTest extends TestCase
         $this->assertSame('', emall_pending('products.index'));
         $this->assertSame(route('products.index'), emall_route('products.index'));
         $this->assertNull(emall_pending_name('products.index'));
-        $this->assertSame(0, \App\Support\Shell::cartCount(), 'an empty cart counts 0');
+        $this->assertSame(0, Shell::cartCount(), 'an empty cart counts 0');
 
         $html = $this->get('/')->getContent();
         $this->assertStringNotContainsString('data-pending-route="help.returns"', $html, 'the help pages exist now (W5), so the footer link resolves');

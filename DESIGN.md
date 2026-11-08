@@ -157,7 +157,7 @@ components:
 | **Metaphor** | The shelf-edge label with its tear-off perforation and the parcel's waybill. The market stall's awning hangs from the top of every shopping page (the logo's own awning). |
 | **Signature** | `ds.price-label`: price in large numerals, a dashed perforation with a notch each side, then Delivery and Total rows, under a yellow label strip. Its partner is `ds.order-timeline`, the waybill: a real route of dated steps, a step with no date says "Not yet". |
 | **Emotion** | Calm certainty before paying: nothing is hidden, nothing is rushed. |
-| **Motion verb** | **Stamp.** A press travels 1px and settles; a count arrives with a short stamp-in (scale 1.5 to 1, 200ms); a sheet rises 14px and stops. Nothing bounces, nothing pulses at rest, nothing loops. |
+| **Motion verb** | **Stamp.** A hover lifts the primary button 1px and walks its arrow 3px; a press travels 1px and settles; a count arrives with a short stamp-in (scale 1.5 to 1, 200ms); a sheet rises 14px and stops. Nothing bounces, nothing pulses at rest, nothing loops. |
 | **Screenshot** | A product page: the photograph large on its backdrop, the label beside it reading R749.00, Delivery, Total, under the yellow strip. |
 
 ### Three concepts considered (awwwards discipline)
@@ -231,7 +231,7 @@ Anonymous Blade components in `resources/views/components/ds/`, each documented 
 
 | Group | Components |
 |---|---|
-| Base | `button` (primary, quiet, danger, link; sm md lg; loading; block), `icon-button`, `icon`, `badge`, `status`, `alert`, `toasts`, `avatar`, `skeleton`, `dl`, `stat`, `section`, `page-header`, `empty-state`, `panel`, `logo`, `theme-toggle` |
+| Base | `button` (primary, quiet, danger, link; sm md lg; loading; block), `icon-button`, `icon`, `badge`, `status`, `alert`, `toasts`, `avatar`, `skeleton`, `dl`, `stat`, `section`, `page-header`, `empty-state` (a ticket stub, no icon slot), `panel`, `logo` (live-type wordmark: dot in ink, a punched yellow stop, emall in indigo, weight 800), `theme-toggle` |
 | Forms | `field`, `input`, `textarea`, `select`, `checkbox`, `radio`, `toggle`, `quantity-stepper`, `option-picker` (chips, swatches), `search-field`, `sort-select`, `facet-group` |
 | Commerce | `price`, `price-label`, `rating`, `product-card` (grid and row), `product-gallery`, `seller-trust`, `delivery-estimate`, `cart-line`, `order-timeline` (waybill), `address-block`, `review-card`, `progress-steps` |
 | Navigation and layers | `breadcrumbs`, `pagination`, `tabs`, `tab-panel`, `table`, `dropdown`, `dropdown-item`, `dialog`, `confirm-dialog` |
@@ -298,7 +298,7 @@ Four Blade layout components, one language, four postures. Each has one skip lin
 | `<x-seller-layout>` | seller desk: dashboard, products, orders, returns, shipping, promotions, analytics, store profile | `title`, `description`, `heading`, `lead`, `actions`, `breadcrumbs`, `banner`, `head`, `scripts`, default. Rail, bottom bar and "More" sheet; store name in the top bar |
 | `<x-operator-layout>` | moderation, payments, reports, metrics | same as seller |
 | `<x-auth-layout>` | sign in, reset, confirm, two-factor, verify | `title`, `heading`, `lead`, `footer`, default. A centred label |
-| `<x-error-layout>` | 403, 404, 419, 429, 500, 503 | props `code`, `heading`, `message`, `hint`; slot `actions`. Standalone: no session, user, database or Livewire |
+| `<x-error-layout>` | 403, 404, 419, 429, 500, 503 | props `code`, `heading`, `message`, `hint`, `rich`; slot `actions`. With `rich` (403, 404, 419, 429) it draws inside the storefront layout, reading the session, with search and category links, and falls back to the standalone frame if that throws. 500 and 503 are standalone: no session, user, database or Livewire |
 
 Navigation is data (`App\Support\Navigation`), linked through `emall_route('name')`, which returns `#` while a route is not registered and `emall_pending('name')` adds `data-pending-route="name"` to the link. `Shell::first([...])` picks the first registered of several names. The cart count is `Shell::cartCount()`, 0 until the cart feature binds `app()->bind('emall.cart_count', fn () => $count)`.
 
