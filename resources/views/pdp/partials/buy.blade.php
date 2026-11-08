@@ -60,17 +60,6 @@
         :vat-included="$vatRegistered"
     />
 
-    <div class="pdp-facts">
-        @if ($reference)
-            <p class="pdp-fact">Lowest price on Emall from {{ $reference['since']->format('j M') }} to {{ now()->format('j M Y') }}, from our own price record. Not a price the seller typed.</p>
-        @endif
-        @if ($vatCents !== null)
-            <p class="pdp-fact">The price includes {{ \App\Support\Shop::money($vatCents) }} VAT. {{ $store->name }} is VAT registered.</p>
-        @elseif ($vatRegistered === false)
-            <p class="pdp-fact">{{ $store->name }} is not VAT registered, so no VAT is added.</p>
-        @endif
-    </div>
-
     {{-- Choices: a plain GET form, so it works with no script; the script swaps this box in place instead of reloading. --}}
     @if ($hasOptions)
         <form method="GET" action="{{ route('products.show', $product) }}#buy" class="pdp-options" id="options" data-pdp-choose>
@@ -112,7 +101,7 @@
             <x-ds.button type="submit" size="lg" icon="cart" class="ds-pdp__add">Add to cart</x-ds.button>
         </form>
         @if ($cartErrors->has('quantity'))<p class="pdp-error" role="alert"><x-ds.icon name="alert-triangle" :size="16" /><span>{{ $cartErrors->first('quantity') }}</span></p>@endif
-        <p class="pdp-note">Price and delivery are for one item. Quantity, promo codes and other sellers' items are worked out in your cart.@guest No account needed to shop: you check out with an e-mail address.@endguest</p>
+        @guest<p class="pdp-note">No account needed to shop: you check out with an e-mail address.</p>@endguest
     @endif
 
     {{-- Where to deliver: the one thing a delivery cost depends on that the shopper controls. --}}
@@ -174,6 +163,26 @@
             @if ($alertErrors->any())<p class="pdp-error" role="alert"><x-ds.icon name="alert-triangle" :size="16" /><span>{{ $alertErrors->first() }}</span></p>@endif
         @endif
     </div>
+
+    {{-- How the figure is built, one fact per line (D-192): kept out of the way of the price and the button, but never dropped. --}}
+    <details class="pdp-acc" id="price-work">
+        <summary>How this price is worked out<x-ds.icon name="chevron-down" :size="18" /></summary>
+        <div class="pdp-acc__body">
+            <ul class="pdp-work">
+                <li>The price is what {{ $store->name }} charges for one item.</li>
+                @if ($vatCents !== null)
+                    <li>It includes {{ \App\Support\Shop::money($vatCents) }} VAT. {{ $store->name }} is VAT registered.</li>
+                @elseif ($vatRegistered === false)
+                    <li>{{ $store->name }} is not VAT registered, so no VAT is added.</li>
+                @endif
+                @if ($reference)
+                    <li>Lowest price on Emall from {{ $reference['since']->format('j M') }} to {{ now()->format('j M Y') }}, from our own price record. Not a price the seller typed.</li>
+                @endif
+                <li>Delivery and the total above are for one item. Quantity, promo codes and other sellers' items are worked out in your cart.</li>
+                <li>{{ $store->name }} ships it, not Emall.</li>
+            </ul>
+        </div>
+    </details>
 
     {{-- Delivery in full: what the seller offers to this place, with estimates labelled as estimates. --}}
     <details class="pdp-acc" id="delivery">

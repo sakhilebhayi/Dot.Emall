@@ -56,6 +56,7 @@ final class Icons
         'loader' => '<path d="M12 3.5a8.5 8.5 0 1 0 8.5 8.5"/>',
         'chart' => '<path d="M4 4v16h16M8 16v-4M12 16V8M16 16v-6"/>',
         'upload' => '<path d="M12 16V4M7 9l5-5 5 5M4.5 17v3h15v-3"/>',
+        'download' => '<path d="M12 4v12M7 11l5 5 5-5M4.5 17v3h15v-3"/>',
         'flag' => '<path d="M5 21V4M5 4h11l-2 4 2 4H5"/>',
         'percent' => '<path d="M19 5 5 19"/><circle cx="7" cy="7" r="2"/><circle cx="17" cy="17" r="2"/>',
         'message' => '<path d="M4 5h16v11H9l-5 4z"/>',

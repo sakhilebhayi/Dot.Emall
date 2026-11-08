@@ -63,12 +63,17 @@
 .co-step > h2 { text-wrap: balance; display: flex; align-items: center; gap: var(--s-3); font-size: var(--text-lg); }
 .co-step[data-state="todo"] > h2 { color: var(--ink-3); }
 .co-step__n { display: inline-grid; place-items: center; width: 1.75rem; height: 1.75rem; border-radius: 50%; border: 2px solid currentColor; font-size: var(--text-sm); font-variant-numeric: tabular-nums; }
-.co-stepact { display: flex; flex-wrap: wrap; gap: var(--s-3); }
+.co-stepact { display: flex; flex-wrap: wrap; gap: var(--s-3); align-items: center; }
+.co-stepact__note { flex: 1 1 18rem; margin: 0; }
 .co-fields { display: grid; gap: var(--s-4); }
 .co-fields__pair { display: grid; gap: var(--s-4); grid-template-columns: minmax(0, 1fr); }
 @media (min-width: 40rem) { .co-fields__pair { grid-template-columns: 2fr 1fr; } }
-.co-newaddr > summary { cursor: pointer; font-weight: 650; min-height: var(--tap); display: flex; align-items: center; }
-.co-newaddr[open] > summary { margin-block-end: var(--s-3); }
+.co-step__n .ds-icon { stroke-width: 3; }
+.co-step[data-state="done"] > h2 .co-step__n { background: var(--pos); border-color: var(--pos); color: var(--on-brand); }
+/* The address form belongs to "Use a different address": hidden while a saved address is chosen, shown as soon as that radio is (no script). Browsers without :has() show it always. */
+.co-newaddr { display: none; gap: var(--s-4); }
+.co-step--delivery:has(input[name="address_id"][value="new"]:checked) .co-newaddr { display: grid; }
+@supports not selector(:has(*)) { .co-newaddr { display: grid; } }
 .co-parcels { display: grid; gap: var(--s-4); }
 .co-parcelopt legend { font-weight: 700; margin-block-end: var(--s-2); }
 .co-review h3 { font-size: var(--text-base); font-weight: 700; margin-block-start: var(--s-3); }
@@ -143,3 +148,15 @@
 }
 .co-total { font-weight: 700; white-space: nowrap; }
 .co-layout { margin-block-start: var(--s-4); }
+
+/* The orders list: the whole row opens the order (the order number is the link; its click area is stretched over the row), and "Buy again" is the one other action, kept above it (D-197). */
+.co-caption-hidden caption { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.co-orders tbody tr { position: relative; cursor: pointer; }
+.co-orders__open::after { content: ""; position: absolute; inset: 0; }
+.co-orders__open:focus-visible { outline: none; }
+.co-orders tbody tr:has(.co-orders__open:focus-visible) { outline: 2px solid var(--focus); outline-offset: -2px; }
+.co-orders__act { text-align: end; }
+.co-orders__act form { margin: 0; position: relative; z-index: 1; display: inline-block; }
+@media (max-width: 39.99rem) { .co-orders__act { justify-content: flex-end; } .co-orders td[data-label=""]::before { content: none; } }
+
+/* The order's own route: a one-line state above the steps and a key to the markers (D-198). */

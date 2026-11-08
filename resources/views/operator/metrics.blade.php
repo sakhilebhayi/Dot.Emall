@@ -12,22 +12,23 @@
     $periodLabel = $report['from']->format('d M').' to '.$report['to']->copy()->subDay()->format('d M Y');
 
     // One small bar chart as inline SVG: zero baseline, thin bars, a gridline at the top value, first and last day labelled. Only drawn when there is something to draw.
-    $bars = function (array $rows, string $field, callable $fmt, string $name) {
+    $bars = function (array $rows, string $field, callable $fmt, callable $axis, string $name) {
         $max = max(1, collect($rows)->max($field));
-        $w = 640; $h = 160; $left = 84; $top = 14; $bottom = 24; $n = max(1, count($rows));
-        $step = ($w - $left) / $n; $bw = max(2, min(14, $step * 0.62));
-        return compact('max', 'w', 'h', 'left', 'top', 'bottom', 'n', 'step', 'bw', 'fmt', 'name', 'rows', 'field');
+        $w = 640; $h = 160; $n = max(1, count($rows));
+        $step = $w / $n; $bw = max(2, min(14, $step * 0.62));
+        return compact('max', 'w', 'h', 'n', 'step', 'bw', 'fmt', 'axis', 'name', 'rows', 'field');
     };
+    // Axis labels are HTML text placed round the plot (not SVG text), so they stay a real 12px whatever width the chart is drawn at (D-196).
     $charts = [
-        'orders' => $bars($series, 'orders', fn ($v) => number_format($v), 'Orders per day'),
-        'gmv' => $bars($series, 'gmv_cents', fn ($v) => \App\Support\Shop::money((int) $v), 'Order value per day'),
+        'orders' => $bars($series, 'orders', fn ($v) => number_format($v), fn ($v) => number_format(round($v)), 'Orders per day'),
+        'gmv' => $bars($series, 'gmv_cents', fn ($v) => \App\Support\Shop::money((int) $v), fn ($v) => 'R'.number_format(round($v / 100)), 'Order value per day'),
     ];
 @endphp
 <x-operator-layout>
     <x-slot:title>Metrics</x-slot:title>
     <x-slot:heading>Metrics</x-slot:heading>
     <x-slot:lead>Counted from real orders, searches and returns. Each figure prints how it is defined and how many events stand behind it. Where there is nothing to measure it says "No data yet", never zero.</x-slot:lead>
-    <x-slot:actions><x-ds.button variant="quiet" :href="route('operator.metrics.export', ['period' => $report['period']])" icon="upload">Download CSV</x-ds.button></x-slot:actions>
+    <x-slot:actions><x-ds.button variant="quiet" :href="route('operator.metrics.export', ['period' => $report['period']])" icon="download">Download CSV</x-ds.button></x-slot:actions>
 
     <x-op.chips label="Period" :items="collect($periods)->map(fn ($label, $key) => ['label' => $label, 'href' => route('operator.metrics', ['period' => $key]), 'current' => $report['period'] === $key])->values()->all()" />
     <p class="op-muted">{{ $periodLabel }}. Figures refresh at most once a minute.</p>
@@ -40,22 +41,24 @@
                     @php $pts = collect($c['rows']); @endphp
                     <figure class="op-chart-figure op-block">
                         <figcaption>{{ $c['name'] }}</figcaption>
-                        <svg class="op-chart" viewBox="0 0 {{ $c['w'] }} {{ $c['h'] }}" role="img" aria-label="{{ $c['name'] }}, {{ $periodLabel }}. Highest day: {{ ($c['fmt'])($c['max']) }}. The table below has every day.">
-                            <line class="op-chart__grid" x1="{{ $c['left'] }}" x2="{{ $c['w'] }}" y1="{{ $c['top'] }}" y2="{{ $c['top'] }}" />
-                            <text class="op-chart__text" x="{{ $c['left'] - 6 }}" y="{{ $c['top'] + 4 }}" text-anchor="end">{{ ($c['fmt'])($c['max']) }}</text>
-                            <text class="op-chart__text" x="{{ $c['left'] - 6 }}" y="{{ $c['h'] - $c['bottom'] + 4 }}" text-anchor="end">0</text>
-                            @foreach ($pts as $i => $row)
-                                @php
-                                    $plot = $c['h'] - $c['top'] - $c['bottom'];
-                                    $bh = $row[$c['field']] > 0 ? max(2, $plot * $row[$c['field']] / $c['max']) : 0;
-                                    $x = $c['left'] + $i * $c['step'] + ($c['step'] - $c['bw']) / 2;
-                                @endphp
-                                @if ($bh > 0)<rect class="op-chart__bar" x="{{ round($x, 1) }}" y="{{ round($c['h'] - $c['bottom'] - $bh, 1) }}" width="{{ round($c['bw'], 1) }}" height="{{ round($bh, 1) }}" rx="2"><title>{{ \Illuminate\Support\Carbon::parse($row['day'])->format('d M') }}: {{ ($c['fmt'])($row[$c['field']]) }}</title></rect>@endif
-                            @endforeach
-                            <line class="op-chart__base" x1="{{ $c['left'] }}" x2="{{ $c['w'] }}" y1="{{ $c['h'] - $c['bottom'] }}" y2="{{ $c['h'] - $c['bottom'] }}" />
-                            <text class="op-chart__text" x="{{ $c['left'] }}" y="{{ $c['h'] - 6 }}">{{ \Illuminate\Support\Carbon::parse($pts->first()['day'])->format('d M') }}</text>
-                            <text class="op-chart__text" x="{{ $c['w'] }}" y="{{ $c['h'] - 6 }}" text-anchor="end">{{ \Illuminate\Support\Carbon::parse($pts->last()['day'])->format('d M') }}</text>
-                        </svg>
+                        <div class="op-plot" style="--ticks: 3">
+                            <svg class="op-chart" viewBox="0 0 {{ $c['w'] }} {{ $c['h'] }}" preserveAspectRatio="none" role="img" aria-label="{{ $c['name'] }}, {{ $periodLabel }}. Highest day: {{ ($c['fmt'])($c['max']) }}. The table below has every day.">
+                                @foreach ([0, 0.5, 1] as $t)<line class="op-chart__grid" x1="0" x2="{{ $c['w'] }}" y1="{{ round($c['h'] * $t, 1) }}" y2="{{ round($c['h'] * $t, 1) }}" vector-effect="non-scaling-stroke" />@endforeach
+                                @foreach ($pts as $i => $row)
+                                    @php
+                                        $bh = $row[$c['field']] > 0 ? max(2, $c['h'] * $row[$c['field']] / $c['max']) : 0;
+                                        $x = $i * $c['step'] + ($c['step'] - $c['bw']) / 2;
+                                    @endphp
+                                    @if ($bh > 0)<rect class="op-chart__bar" x="{{ round($x, 1) }}" y="{{ round($c['h'] - $bh, 1) }}" width="{{ round($c['bw'], 1) }}" height="{{ round($bh, 1) }}"><title>{{ \Illuminate\Support\Carbon::parse($row['day'])->format('d M') }}: {{ ($c['fmt'])($row[$c['field']]) }}</title></rect>@endif
+                                @endforeach
+                                <line class="op-chart__base" x1="0" x2="{{ $c['w'] }}" y1="{{ $c['h'] }}" y2="{{ $c['h'] }}" vector-effect="non-scaling-stroke" />
+                            </svg>
+                            <span class="op-plot__y" style="inset-block-start: 0%">{{ ($c['axis'])($c['max']) }}</span>
+                            <span class="op-plot__y" style="inset-block-start: 50%">{{ ($c['axis'])($c['max'] / 2) }}</span>
+                            <span class="op-plot__y" style="inset-block-start: 100%">0</span>
+                            <span class="op-plot__x op-plot__x--first">{{ \Illuminate\Support\Carbon::parse($pts->first()['day'])->format('d M') }}</span>
+                            <span class="op-plot__x op-plot__x--last">{{ \Illuminate\Support\Carbon::parse($pts->last()['day'])->format('d M') }}</span>
+                        </div>
                         <details>
                             <summary>Show as a table</summary>
                             <x-ds.table :caption="$c['name']" :stack="false">

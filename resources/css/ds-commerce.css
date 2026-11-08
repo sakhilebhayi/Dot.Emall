@@ -118,13 +118,21 @@
 .ds-waybill__step[data-state="current"] .ds-waybill__mark { border: 2px solid var(--brand); color: var(--brand); box-shadow: inset 0 0 0 2px var(--surface), inset 0 0 0 4px var(--brand); }
 .ds-waybill__step[data-state="stop"] .ds-waybill__mark { background: var(--crit-bg); border: 2px solid var(--crit); color: var(--crit); }
 .ds-waybill__mark .ds-icon { width: 14px; height: 14px; stroke-width: 2.25; }
+.ds-waybill__date, .ds-waybill__time { white-space: nowrap; }
+.ds-waybill__line { margin: 0; padding: var(--s-3) var(--s-4) 0; font-weight: 650; }
+.ds-waybill__key { list-style: none; margin: 0; padding: 0 var(--s-4) var(--s-3); display: flex; flex-wrap: wrap; gap: var(--s-1) var(--s-4); font-size: var(--text-xs); color: var(--ink-2); }
+.ds-waybill__key li { display: inline-flex; align-items: center; gap: var(--s-2); }
+.ds-waybill__swatch { width: 0.875rem; height: 0.875rem; border-radius: 50%; border: 2px dashed var(--line-strong); background: var(--surface); }
+.ds-waybill__swatch[data-state="done"] { background: var(--ink); border: 2px solid var(--ink); }
+.ds-waybill__swatch[data-state="current"] { border: 2px solid var(--brand); box-shadow: inset 0 0 0 2px var(--surface), inset 0 0 0 4px var(--brand); }
+.ds-waybill__swatch[data-state="stop"] { background: var(--crit-bg); border: 2px solid var(--crit); }
 .ds-waybill__word { display: block; font-weight: 700; line-height: 1.3; padding-block-start: 0.2rem; }
 .ds-waybill__step[data-state="todo"] .ds-waybill__word { color: var(--ink-3); font-weight: 600; }
 .ds-waybill__when { display: block; font-size: var(--text-sm); color: var(--ink-3); font-variant-numeric: tabular-nums; }
 .ds-waybill__note { display: block; margin-block-start: var(--s-1); font-size: var(--text-sm); color: var(--ink-2); }
 @media (min-width: 52rem) {
     .ds-waybill--across .ds-waybill__steps { grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: var(--s-4); }
-    .ds-waybill--across .ds-waybill__step { grid-template-columns: minmax(0, 1fr); gap: var(--s-2); padding-block-end: 0; padding-block-start: 0; }
+    .ds-waybill--across .ds-waybill__step { align-content: start; grid-template-columns: minmax(0, 1fr); gap: var(--s-2); padding-block-end: 0; padding-block-start: 0; }
     .ds-waybill--across .ds-waybill__step::before { inset-block: calc(0.875rem - 1px) auto; inset-inline: 1.75rem calc(var(--s-4) * -1); border-inline-start: 0; border-block-start: 2px dashed var(--line-strong); }
     .ds-waybill--across .ds-waybill__step[data-state="done"]::before { border-block-start-style: solid; border-color: var(--ink); }
 }

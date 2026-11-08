@@ -88,3 +88,20 @@ document.addEventListener('submit', (e) => {
     if (msg) msg.hidden = true;
     xhr.send(new FormData(form));
 });
+
+
+/* Unsaved changes (D-195): a form with [data-dirty-form] gets [data-dirty] on the first edit, which shows its [data-dirty-status] and lets its save row float; a
+   save (submit) clears it, and leaving the page with edits that were not saved asks first. Without script the form is just a form. */
+(function dirtyForms() {
+    const dirty = new Set();
+    const mark = (form, on) => {
+        form.toggleAttribute('data-dirty', on);
+        form.querySelectorAll('[data-dirty-status]').forEach((el) => { el.hidden = !on; });
+        if (on) dirty.add(form); else dirty.delete(form);
+    };
+    const edited = (e) => { const f = e.target.closest && e.target.closest('form[data-dirty-form]'); if (f && e.target.type !== 'hidden') mark(f, true); };
+    document.addEventListener('input', edited);
+    document.addEventListener('change', edited);
+    document.addEventListener('submit', (e) => { const f = e.target; if (f instanceof HTMLFormElement && dirty.has(f)) { dirty.delete(f); } });
+    window.addEventListener('beforeunload', (e) => { if (dirty.size) { e.preventDefault(); e.returnValue = ''; } });
+})();

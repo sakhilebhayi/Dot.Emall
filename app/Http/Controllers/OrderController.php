@@ -3,8 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Order;
-use App\Services\Orders\OrderPage;
 use App\Services\OrderAccess;
+use App\Services\Orders\OrderPage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
@@ -44,7 +44,7 @@ class OrderController extends Controller
                 $o->where(fn ($w) => $w->when($digits !== '' && ltrim($q, '#0123456789 ') === '', fn ($x) => $x->orWhere('id', (int) $digits))
                     ->orWhereHas('items', fn ($i) => $i->where('product_name', 'like', '%'.str_replace(['%', '_'], ['\%', '\_'], $q).'%')));
             })
-            ->latest('id')
+            ->latest('created_at')->latest('id')
             ->paginate(10)
             ->withQueryString();
 

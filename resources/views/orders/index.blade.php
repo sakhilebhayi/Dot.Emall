@@ -16,20 +16,17 @@
             <x-slot:actions><x-ds.button :href="route('products.index')">Continue shopping</x-ds.button></x-slot:actions>
         </x-ds.empty-state>
     @else
-        <x-ds.table caption="Your orders">
+        <x-ds.table caption="Your orders" class="co-orders co-caption-hidden">
             <x-slot:head><tr><th scope="col">Order</th><th scope="col">Placed</th><th scope="col">Items</th><th scope="col">Status</th><th scope="col" class="is-num">Total</th><th scope="col"><span class="ds-visually-hidden">Actions</span></th></tr></x-slot:head>
             @foreach ($orders as $order)
                 <tr>
-                    <td data-label="Order"><a href="{{ route('orders.show', $order) }}" class="ds-code">{{ $order->reference() }}</a></td>
+                    <td data-label="Order"><a href="{{ route('orders.show', $order) }}" class="ds-code co-orders__open" aria-label="Open order {{ $order->reference() }}">{{ $order->reference() }}</a></td>
                     <td data-label="Placed">{{ $order->created_at->format('j M Y') }}</td>
                     <td data-label="Items">{{ $order->items->count() }} from {{ max(1, $order->groups->count()) }} {{ $order->groups->count() > 1 ? 'sellers' : 'seller' }}</td>
                     <td data-label="Status"><x-ds.status kind="order" :state="$statuses[$order->id]" /></td>
                     <td data-label="Total" class="is-num"><span class="co-total">{{ $order->money($order->totalCents()) }}</span></td>
-                    <td data-label="">
-                        <div class="co-rowactions">
-                            <x-ds.button :href="route('orders.show', $order)" size="sm" variant="quiet">Open<span class="ds-visually-hidden"> order {{ $order->reference() }}</span></x-ds.button>
-                            <form method="POST" action="{{ route('orders.reorder', $order) }}">@csrf<x-ds.button type="submit" size="sm" variant="link" icon="cart">Buy again<span class="ds-visually-hidden"> order {{ $order->reference() }}</span></x-ds.button></form>
-                        </div>
+                    <td data-label="" class="co-orders__act">
+                        <form method="POST" action="{{ route('orders.reorder', $order) }}">@csrf<x-ds.button type="submit" size="sm" variant="link" icon="cart">Buy again<span class="ds-visually-hidden"> order {{ $order->reference() }}</span></x-ds.button></form>
                     </td>
                 </tr>
             @endforeach

@@ -89,6 +89,7 @@ class SellerDesk
         return OrderGroup::query()->where('store_id', $store->id)
             ->with(['order', 'items'])
             ->whereHas('items', fn ($q) => $q->where('status', '!=', OrderStatus::Cancelled->value))
+            ->orderByDesc(Order::query()->select('created_at')->whereColumn('orders.id', 'order_groups.order_id'))
             ->orderByDesc('id')->limit($limit)->get()
             ->map(function (OrderGroup $group) {
                 $live = $group->items->reject(fn (OrderItem $l) => $l->isCancelled());

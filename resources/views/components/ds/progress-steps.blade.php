@@ -7,7 +7,7 @@
     @foreach ($steps as $i => $label)
         @php($n = $i + 1)
         <li data-state="{{ $n < $current ? 'done' : ($n === (int) $current ? 'current' : 'todo') }}" @if ($n === (int) $current) aria-current="step" @endif>
-            <span class="ds-steps__n">Step {{ $n }}</span>
+            <span class="ds-steps__n">@if ($n < $current)<x-ds.icon name="check" :size="14" /> Done @else Step {{ $n }} @endif</span>
             <span class="ds-steps__label">{{ $label }}@if ($n < $current)<span class="ds-visually-hidden"> (done)</span>@endif</span>
         </li>
     @endforeach

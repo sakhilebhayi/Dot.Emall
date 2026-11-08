@@ -371,17 +371,22 @@ abstract class AbstractSearch implements SearchEngine
         $f = $chosen['filters'];
         $slots = $chosen['slots'];
         $mode = $chosen['mode'];
-        $normalised = $slots === [] ? '' : implode(' ', array_map(fn ($s) => $s[0], $slots));
 
         $total = $this->count($f, $slots, $mode);
-        [$orderSql, $orderBindings, $sortNote] = $this->ordering($f, $slots, $mode, $normalised, $relaxed);
+
+        // A word that became a filter ("tv" became the category "TV, audio and video") must still decide the ORDER: it no longer
+        // narrows the result, but a product that says "TV" in its title comes before one that is only in the same category
+        // (D-190). The rank slots score; they never exclude.
+        $rank = $slots !== [] ? $slots : ($parsed !== null && $parsed->hasInferredFilters() ? $parsed->fullSlots : []);
+        $normalised = $rank === [] ? '' : implode(' ', array_map(fn ($s) => $s[0], $rank));
+        [$orderSql, $orderBindings, $sortNote] = $this->ordering($f, $rank, $mode, $normalised, $relaxed);
 
         $page = min($f->page, max(1, (int) ceil($total / $f->perPage)));
         $select = $this->query($f, $slots, $mode)
             ->select('d.product_id', 'd.brand', 'd.title_n', 'd.brand_n', 'd.category_n', 'd.attributes_n', 'd.store_n', 'p.stock')
             ->selectRaw('substr(d.description_n, 1, 1500) as description_n');
 
-        [$scoreSql, $scoreBindings] = $this->score($slots, $mode, $normalised);
+        [$scoreSql, $scoreBindings] = $this->score($rank, $mode, $normalised);
         $select->selectRaw($scoreSql.' as score', $scoreBindings)
             ->orderByRaw($orderSql, $orderBindings)
             ->offset(($page - 1) * $f->perPage)

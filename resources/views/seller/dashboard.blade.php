@@ -112,21 +112,23 @@
             @if ($recent->isEmpty())
                 <p class="sd-muted">No orders for your store yet. A parcel appears here the moment a buyer places an order.</p>
             @else
+                @php($showShipTo = $recent->contains(fn ($r) => $r['buyerName'] !== null))
                 <x-ds.table caption="Recent orders" class="sd-caption-hidden">
                     <x-slot:head>
-                        <tr><th scope="col">Placed</th><th scope="col">Order</th><th scope="col">Ship to</th><th scope="col" class="is-num">Items</th><th scope="col">Status</th><th scope="col" class="is-num">Your items</th></tr>
+                        <tr><th scope="col">Placed</th><th scope="col">Order</th>@if ($showShipTo)<th scope="col">Ship to</th>@endif<th scope="col" class="is-num">Items</th><th scope="col">Status</th><th scope="col" class="is-num">Your items</th></tr>
                     </x-slot:head>
                     @foreach ($recent as $row)
                         <tr>
                             <td data-label="Placed">{{ $row['order']->created_at->format('j M Y') }}</td>
                             <td data-label="Order"><a href="{{ route('seller.orders.show', $row['group']) }}">{{ $row['order']->reference() }}</a></td>
-                            <td data-label="Ship to">{{ $row['buyerName'] ?? 'Not shown after dispatch' }}</td>
+                            @if ($showShipTo)<td data-label="Ship to">{{ $row['buyerName'] ?? 'Sent' }}</td>@endif
                             <td data-label="Items" class="is-num">{{ $row['lineCount'] }}</td>
                             <td data-label="Status">@if ($row['awaitingPayment'])<x-ds.status state="awaiting_payment" />@else<x-ds.status :state="$row['status']->value" />@endif</td>
                             <td data-label="Your items" class="is-num"><strong>{{ $row['order']->money($row['netCents']) }}</strong></td>
                         </tr>
                     @endforeach
                 </x-ds.table>
+                @if ($showShipTo)<p class="sd-quiet">The buyer's name shows while something of theirs is left to pack or send. After dispatch it reads "Sent".</p>@endif
             @endif
         </section>
 

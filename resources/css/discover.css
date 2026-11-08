@@ -244,3 +244,10 @@
 
 /* The filter panel scrolls as a whole when it is taller than the window; a facet inside it does not scroll on its own (a half-cut row reads as broken). */
 .disc-filters .ds-facet__body { max-height: none; overflow: visible; }
+
+/* "Show N more" under a long facet (D-191): a native details, so nothing is clipped and it works without script. */
+.ds-facet__more > summary { list-style: none; cursor: pointer; display: flex; align-items: center; min-height: var(--tap); color: var(--brand); font-weight: 650; font-size: var(--text-sm); }
+.ds-facet__more > summary::-webkit-details-marker { display: none; }
+.ds-facet__more > summary:hover { text-decoration: underline; }
+.ds-facet__more .ds-facet__more-close, .ds-facet__more[open] .ds-facet__more-open { display: none; }
+.ds-facet__more[open] .ds-facet__more-close { display: inline; }
