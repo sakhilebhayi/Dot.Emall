@@ -38,6 +38,7 @@ final class SignedInSmoke
         'user/two-factor-secret-key' => 'needs a recent password confirmation and 2FA set up',
         'user/confirm-password' => "Fortify's own page; it redirects when a password confirmation is still fresh, so its status depends on the session",
         'user/confirmed-password-status' => 'JSON status, not a page',
+        'operator/reports/{type}/{id}' => 'opened as /operator/reports/product/{id}: the {type} segment is a word, which the pattern matcher does not collapse',
     ];
 
     /** @var array<string, mixed> */
@@ -69,7 +70,13 @@ final class SignedInSmoke
         $guestOrder = app(CheckoutService::class)->placeAsGuest('smoke-guest@example.test', [['variant_id' => ProductVariant::query()->where('product_id', $live->id)->value('id'), 'quantity' => 1]], ['shipping_address' => '2 Smoke Street, Testville', 'shipping_name' => 'Smoke Guest'], (string) Str::uuid());
         $guestLink = (string) parse_url((string) app(GuestOrderAccess::class)->url($guestOrder), PHP_URL_PATH);
 
-        $this->world = compact('store', 'live', 'pending', 'order', 'line', 'seller', 'buyer', 'newcomer', 'operator', 'category', 'guestLink');
+        // Something in every operator queue, so those pages draw rows and not only their empty states.
+        $report = \App\Models\ContentReport::query()->create(['reportable_type' => 'product', 'reportable_id' => $live->id, 'reporter_id' => $newcomer->id, 'reason' => 'fake', 'details' => 'Looks like a copy']);
+        $collection = \App\Models\Collection::query()->create(['title' => 'Smoke collection', 'slug' => 'smoke-collection', 'type' => 'manual', 'visibility' => 'draft']);
+        $return = (new \App\Models\ReturnRequest)->forceFill(['order_item_id' => $line->id, 'order_id' => $order->id, 'requester_id' => $buyer->id, 'seller_id' => $seller->id, 'reason_category' => 'faulty', 'status' => 'escalated', 'refund_cents' => 12000, 'escalated_at' => now(), 'escalation_reason' => 'buyer_disputed_decline', 'respond_by' => now()->addDays(10)]);
+        $return->save();
+
+        $this->world = compact('store', 'live', 'pending', 'order', 'line', 'seller', 'buyer', 'newcomer', 'operator', 'category', 'guestLink', 'report', 'collection', 'return');
 
         return compact('seller', 'buyer', 'newcomer', 'operator');
     }
@@ -134,6 +141,45 @@ final class SignedInSmoke
             ['who' => 'operator', 'uri' => '/operator/products'],
             ['who' => 'operator', 'uri' => '/operator/payments'],
             ['who' => 'operator', 'uri' => "/orders/{$order}"],
+            ['who' => 'operator', 'uri' => '/operator'],
+            ['who' => 'operator', 'uri' => "/operator/products/{$pending}"],
+            ['who' => 'operator', 'uri' => '/operator/products?status=all'],
+            ['who' => 'operator', 'uri' => '/operator/flags'],
+            ['who' => 'operator', 'uri' => '/operator/stores?status=all'],
+            ['who' => 'operator', 'uri' => '/operator/stores/'.$w['store']->id],
+            ['who' => 'operator', 'uri' => '/operator/moderation'],
+            ['who' => 'operator', 'uri' => '/operator/moderation?kind=questions'],
+            ['who' => 'operator', 'uri' => '/operator/reports'],
+            ['who' => 'operator', 'uri' => '/operator/reports?view=repeat'],
+            ['who' => 'operator', 'uri' => '/operator/reports/product/'.$live],
+            ['who' => 'operator', 'uri' => '/operator/returns'],
+            ['who' => 'operator', 'uri' => '/operator/returns/'.$w['return']->id],
+            ['who' => 'operator', 'uri' => '/operator/payment-events'],
+            ['who' => 'operator', 'uri' => '/operator/ledger'],
+            ['who' => 'operator', 'uri' => '/operator/metrics'],
+            ['who' => 'operator', 'uri' => '/operator/metrics/export'],
+            ['who' => 'operator', 'uri' => '/operator/merchandising'],
+            ['who' => 'operator', 'uri' => '/operator/collections'],
+            ['who' => 'operator', 'uri' => '/operator/collections/create'],
+            ['who' => 'operator', 'uri' => '/operator/collections/find?q=smoke'],
+            ['who' => 'operator', 'uri' => '/operator/collections/'.$w['collection']->id.'/edit'],
+            ['who' => 'operator', 'uri' => '/operator/search/synonyms?test=kettle'],
+            ['who' => 'operator', 'uri' => '/operator/search/queries'],
+            ['who' => 'operator', 'uri' => '/operator/search/complements'],
+            ['who' => 'operator', 'uri' => '/operator/catalogue/categories?category='.$w['category']->id],
+            ['who' => 'operator', 'uri' => '/operator/catalogue/featured'],
+            ['who' => 'operator', 'uri' => '/operator/people?type=user&q=smoke'],
+            ['who' => 'operator', 'uri' => '/operator/people/users/'.$w['buyer']->id],
+            ['who' => 'operator', 'uri' => '/operator/people/stores/'.$w['store']->id],
+            ['who' => 'operator', 'uri' => "/operator/people/orders/{$order}"],
+            ['who' => 'operator', 'uri' => '/operator/operators'],
+            ['who' => 'operator', 'uri' => '/operator/health'],
+            ['who' => 'operator', 'uri' => '/operator/audit'],
+            ['who' => 'operator', 'uri' => '/operator/audit?tab=access'],
+            // and nobody else gets in
+            ['who' => 'newcomer', 'uri' => '/operator', 'expect' => 403],
+            ['who' => 'seller', 'uri' => '/operator/metrics/export', 'expect' => 403],
+            ['who' => 'buyer', 'uri' => '/operator/people', 'expect' => 403],
         ];
     }
 
