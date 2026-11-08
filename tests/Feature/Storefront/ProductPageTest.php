@@ -4,9 +4,10 @@ namespace Tests\Feature\Storefront;
 
 use App\Models\Address;
 use App\Models\Product;
-use App\Models\ProductPriceHistory;
+use App\Models\ProductImage;
 use App\Models\ShippingMethod;
 use App\Services\Cart\CartManager;
+use App\Services\Catalogue\ProductVariants;
 use App\Services\Storefront\DeliveryRegion;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -99,6 +100,21 @@ class ProductPageTest extends TestCase
         $this->assertStringContainsString('Tell me when it is back', $html);
         $this->assertStringNotContainsString('name="quantity"', $html, 'there is nothing to add');
         $this->assertStringContainsString('is-soldout', $html);
+    }
+
+    public function test_a_variant_that_has_its_own_photo_tells_the_script_which_photo_to_show(): void
+    {
+        [, $product] = $this->shirt();
+        $first = ProductImage::query()->create(['product_id' => $product->id, 'path' => 'product-images/a.jpg', 'sort_order' => 0]);
+        $second = ProductImage::query()->create(['product_id' => $product->id, 'path' => 'product-images/b.jpg', 'sort_order' => 1]);
+        $blue = $product->variants()->get()->first(fn ($v) => ($v->options['Colour'] ?? null) === 'Blue');
+        $blue->forceFill(['image_id' => $second->id])->saveQuietly();
+
+        $page = $this->get(route('products.show', $product))->getContent();
+        $fragment = $this->withHeader('X-PDP-Fragment', 'buy')->get(route('products.show', ['product' => $product, 'variant' => $blue->id]))->assertOk()->getContent();
+        $this->assertStringContainsString('data-image-index="1"', $fragment);
+        $this->assertStringContainsString('Colour: Blue, photo 2', $page, 'the photo linked to a variant is named after it for screen readers');
+        $this->assertStringNotContainsString('data-image-index', $this->withHeader('X-PDP-Fragment', 'buy')->get(route('products.show', ['product' => $product, 'opt' => ['Size' => 'M', 'Colour' => 'Red']]))->getContent());
     }
 
     public function test_a_combination_that_is_not_made_is_said_plainly(): void
@@ -369,7 +385,7 @@ class ProductPageTest extends TestCase
         $before = $count($small);
 
         // Twelve more variants on the same product, and more reviews: the number of queries must not move with them.
-        $variants = app(\App\Services\Catalogue\ProductVariants::class);
+        $variants = app(ProductVariants::class);
         $variants->defineOptions($small, ['Size' => ['S', 'M', 'L', 'XL', 'XXL'], 'Colour' => ['Red', 'Blue', 'Green']]);
         foreach (['XL', 'XXL'] as $size) {
             foreach (['Red', 'Blue', 'Green'] as $colour) {

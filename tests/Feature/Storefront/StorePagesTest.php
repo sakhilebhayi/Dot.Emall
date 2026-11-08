@@ -3,8 +3,6 @@
 namespace Tests\Feature\Storefront;
 
 use App\Models\ContentReport;
-use App\Models\Store;
-use App\Models\User;
 use App\Notifications\StoreEnquiryNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;

@@ -155,11 +155,13 @@ document.addEventListener('submit', async (e) => {
 (() => {
     const dialog = document.getElementById('lightbox');
     if (!dialog) return;
-    const img = $('[data-lightbox-img]', dialog);
+    const fig = $('.pdp-lightbox__fig', dialog);
+    let img = null; // created on first use, so the page never carries an <img> without a source
     const caption = $('[data-lightbox-caption]', dialog);
     let group = []; let at = 0;
     const show = (n) => {
         at = (n + group.length) % group.length;
+        if (!img) { img = document.createElement('img'); img.width = 800; img.height = 800; fig.prepend(img); }
         img.src = group[at].href; img.alt = group[at].dataset.alt || '';
         caption.textContent = group[at].dataset.alt || '';
         $$('[data-lightbox-nav]', dialog).forEach((b) => { b.hidden = group.length < 2; });

@@ -9,6 +9,7 @@ use App\Models\ReviewResponse;
 use App\Models\ReviewVote;
 use App\Models\User;
 use App\Services\Community\ReviewPhotos;
+use App\Services\ReviewService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
@@ -40,7 +41,7 @@ class ReviewsPageTest extends TestCase
         $user = $this->makeBuyer();
         $review = new Review(['product_id' => $this->product->id, 'user_id' => $user->id, 'rating' => $rating, 'body' => $body]);
         $review->forceFill(array_merge(['verified_purchase' => $verified, 'status' => Review::PUBLISHED], $extra))->save();
-        app(\App\Services\ReviewService::class)->refreshAggregate($this->product);
+        app(ReviewService::class)->refreshAggregate($this->product);
 
         return $review;
     }

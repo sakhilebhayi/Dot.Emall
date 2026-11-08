@@ -4,6 +4,7 @@ namespace App\Services\Community;
 
 use App\Models\Store;
 use App\Models\User;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -29,9 +30,9 @@ class StoreMembers
     /**
      * Everyone who speaks for a store: its owner and the members of a team the owner leads. Used to tell them about a shopper's message.
      *
-     * @return \Illuminate\Support\Collection<int, User>
+     * @return Collection<int, User>
      */
-    public function people(Store $store): \Illuminate\Support\Collection
+    public function people(Store $store): Collection
     {
         $teamUserIds = DB::table('team_user')
             ->join('teams', 'teams.id', '=', 'team_user.team_id')

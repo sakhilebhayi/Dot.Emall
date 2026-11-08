@@ -41,7 +41,8 @@
 .pdp-region__now .ds-icon { margin-top: 0.1rem; color: var(--ink-2); }
 .pdp-region__change summary { cursor: pointer; font-weight: 650; font-size: var(--text-sm); color: var(--brand); min-height: var(--tap); display: flex; align-items: center; }
 .pdp-region__change summary:hover { color: var(--brand-hover); }
-.pdp-region__form { display: grid; gap: var(--s-3); padding-block: var(--s-2) var(--s-1); max-width: 24rem; }
+.pdp-region__form { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: var(--s-3); padding-block: var(--s-2) var(--s-1); align-items: start; }
+.pdp-region__actions { grid-column: 1 / -1; }
 .pdp-region__actions { display: flex; flex-wrap: wrap; gap: var(--s-3); align-items: center; }
 
 /* Accordions */
@@ -55,7 +56,7 @@
 .pdp-methods li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0 var(--s-4); padding-block-end: var(--s-3); border-bottom: 1px dashed var(--line); }
 .pdp-methods li:last-child { border-bottom: 0; }
 .pdp-methods__name { font-weight: 650; }
-.pdp-methods__price { font-weight: 650; text-align: end; font-variant-numeric: tabular-nums lining-nums; }
+.pdp-methods__price { font-weight: 650; text-align: end; font-variant-numeric: lining-nums; }
 .pdp-methods__when { grid-column: 1 / -1; font-size: var(--text-sm); }
 .pdp-policy { white-space: pre-line; color: var(--ink-2); font-size: var(--text-sm); }
 
@@ -70,6 +71,7 @@
 .pdp-sub { font-size: var(--text-md); margin-block-end: var(--s-3); }
 .pdp-details__grid { display: grid; gap: var(--s-6); }
 .pdp-desc { white-space: pre-line; color: var(--ink-2); }
+.pdp-details .ds-table caption { font-size: var(--text-md); margin-block-end: var(--s-1); }
 .pdp-details .ds-table th[scope="row"] { color: var(--ink-3); font-weight: 500; border-bottom: 1px solid var(--line); width: 40%; }
 .ds-code { font-family: var(--font-code); font-size: var(--text-xs); }
 @media (min-width: 48rem) { .pdp-details__grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--s-7); } }
@@ -204,3 +206,8 @@
 .wl-share__row { display: flex; flex-wrap: wrap; gap: var(--s-2); }
 .wl-share__row .ds-input { flex: 1 1 14rem; }
 @media (min-width: 48rem) { .wl-item { grid-template-columns: 7rem minmax(0, 1fr) auto; } .wl-item__actions { grid-column: 3; flex-direction: column; align-items: stretch; } }
+
+/* The label's small notes are sentences, not columns of figures: tabular numerals would space their commas and full stops like digits. */
+.ds-label__row small { font-variant-numeric: lining-nums; font-feature-settings: "lnum" 1; }
+.pdp-inline { display: flex; align-items: flex-start; gap: var(--s-2); }
+.pdp-inline .ds-icon { margin-top: 0.2rem; }

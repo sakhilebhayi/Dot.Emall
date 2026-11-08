@@ -93,7 +93,6 @@
                 <p class="ds-muted pdp-note">Written by {{ $store->name }}. Emall does not check what sellers write.</p>
             </div>
             <div>
-                <h3 class="pdp-sub">Specifications</h3>
                 @if (count($specs) > 0 || $brand || $product->sku)
                     <x-ds.table caption="Specifications" :stack="false">
                         <x-slot:head><tr><th scope="col">Feature</th><th scope="col">Value</th></tr></x-slot:head>
@@ -127,14 +126,13 @@
             @auth
                 <x-report-form :action="route('products.report', $product)" :bag="'reportproduct'.$product->id" label="Report this listing" what="this listing" />
             @else
-                <p class="ds-muted"><x-ds.icon name="flag" :size="16" /> <a href="{{ route('login') }}">Sign in with InfoDot</a> to report this listing.</p>
+                <p class="ds-muted pdp-inline"><x-ds.icon name="flag" :size="16" /><span><a href="{{ route('login') }}">Sign in with InfoDot</a> to report this listing.</span></p>
             @endauth
         </section>
     @endif
 
     <x-ds.dialog id="lightbox" title="Review photo" :sheet="false" class="pdp-lightbox">
         <figure class="pdp-lightbox__fig">
-            <img src="" alt="" data-lightbox-img width="800" height="800">
             <figcaption data-lightbox-caption class="ds-muted"></figcaption>
         </figure>
         <x-slot:footer>

@@ -3,9 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\Product;
-use App\Services\Discovery\Recommender;
-use App\Services\Discovery\RecentlyViewed;
 use App\Services\Community\ProductQuestions;
+use App\Services\Discovery\RecentlyViewed;
+use App\Services\Discovery\Recommender;
 use App\Services\Discovery\Track;
 use App\Services\Storefront\ProductPage;
 use App\Services\Storefront\ProductReviews;

@@ -4,12 +4,13 @@ namespace Tests\Unit;
 
 use App\Models\ProductVariant;
 use App\Services\Storefront\ProductChoices;
+use Illuminate\Support\Collection;
 use PHPUnit\Framework\TestCase;
 
 /** The choice logic of the product page, with no database: which variant, what is left to choose, what is crossed out. */
 class ProductChoicesTest extends TestCase
 {
-    private function variants(): \Illuminate\Support\Collection
+    private function variants(): Collection
     {
         $make = fn (int $id, array $options, int $stock) => (new ProductVariant)->forceFill(['id' => $id, 'options' => $options, 'stock' => $stock, 'price' => '10.00', 'is_active' => true]);
 

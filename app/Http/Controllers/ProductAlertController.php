@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\Product;
 use App\Models\ProductAlert;
+use App\Models\ProductVariant;
 use App\Services\Discovery\ProductAlerts;
+use App\Support\Shell;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -17,13 +19,13 @@ class ProductAlertController extends Controller
     public function index(Request $request): View
     {
         $alerts = ProductAlert::query()->where('user_id', $request->user()->id)->with(['product.store', 'product.images'])->orderByDesc('active')->orderByDesc('id')->get();
-        $variants = \App\Models\ProductVariant::query()->whereIn('id', $alerts->pluck('variant_id')->filter())->get()->keyBy('id');
+        $variants = ProductVariant::query()->whereIn('id', $alerts->pluck('variant_id')->filter())->get()->keyBy('id');
 
         return view('alerts.index', [
             'active' => $alerts->where('active', true)->values(),
             'past' => $alerts->where('active', false)->whereNotNull('triggered_at')->take(10)->values(),
             'variants' => $variants,
-            'preferencesUrl' => \App\Support\Shell::first(['account.notifications', 'account.preferences', 'notifications.preferences', 'profile.show'])['url'],
+            'preferencesUrl' => Shell::first(['account.notifications', 'account.preferences', 'notifications.preferences', 'profile.show'])['url'],
         ]);
     }
 

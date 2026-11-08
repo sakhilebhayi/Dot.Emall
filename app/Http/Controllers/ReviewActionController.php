@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ContentReport;
 use App\Models\Review;
 use App\Services\Community\ContentReports;
 use App\Services\Community\ReviewPhotos;
@@ -79,7 +80,7 @@ class ReviewActionController extends Controller
     public function file(Request $request, ContentReports $reports, string $type, int $id, callable $back, string $thanks): RedirectResponse
     {
         $data = $request->validateWithBag('report'.$type.$id, [
-            'reason' => ['required', 'string', 'in:'.implode(',', \App\Models\ContentReport::REASONS)],
+            'reason' => ['required', 'string', 'in:'.implode(',', ContentReport::REASONS)],
             'details' => ['nullable', 'string', 'max:1000'],
         ], ['reason.required' => 'Choose what is wrong with it.', 'reason.in' => 'Choose what is wrong with it.']);
 

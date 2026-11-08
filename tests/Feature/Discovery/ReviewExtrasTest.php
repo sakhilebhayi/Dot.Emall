@@ -165,7 +165,10 @@ class ReviewExtrasTest extends TestCase
         Notification::assertNotSentTo($this->seller, NewReviewNotification::class);
 
         $this->assertSame(0, $this->product->fresh()->rating_count);
-        $this->get(route('products.show', $this->product))->assertDontSee('Lovely potjie.');
+        // The author sees their own held review, marked as waiting (R-43 W4); everyone else sees nothing of it.
+        $this->get(route('products.show', $this->product))->assertSee('Waiting for review');
+        $this->app['auth']->forgetGuards();
+        $this->get(route('products.show', $this->product))->assertDontSee('Lovely potjie.')->assertDontSee('Waiting for review');
     }
 
     public function test_helpfulness_one_vote_per_person_never_on_your_own(): void

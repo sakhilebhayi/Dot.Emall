@@ -4,6 +4,8 @@
 --}}
 @php
     $product->loadMissing('images');
+    // Estimates are printed with words, not dashes (DESIGN.md copy voice): "9 to 11 Nov".
+    $dateRange = fn (string $text) => str_replace(['–', '—'], [' to ', ', '], $text);
     $d = $delivery;
     $opt = $d['option'];
     $needs = $missing ? implode(' and ', array_map('strtolower', $missing)) : null;
@@ -24,7 +26,7 @@
             $totalCents = $priceCents;
         } else {
             $deliveryCents = $opt->priceCents;
-            $deliveryNote = $opt->name.($opt->isCollection() ? '' : '. '.preg_replace('/\s*\(.*$/', '', $opt->estimateLabel));
+            $deliveryNote = $opt->name.($opt->isCollection() ? '' : '. '.preg_replace('/\s*\(.*$/', '', $dateRange($opt->estimateLabel)));
         }
     }
 
@@ -67,29 +69,6 @@
         @elseif ($vatRegistered === false)
             <p class="pdp-fact">{{ $store->name }} is not VAT registered, so no VAT is added.</p>
         @endif
-        <p class="pdp-fact">For one item. Quantity, promo codes and other sellers' items are worked out in your cart.</p>
-    </div>
-
-    {{-- Where to deliver: the one thing a delivery cost depends on that the shopper controls. --}}
-    <div class="pdp-region" id="region">
-        @if ($d['region'])
-            <p class="pdp-region__now"><x-ds.icon name="pin" :size="18" /><span>Delivering to <strong>{{ $d['region']['label'] }}</strong>@if ($d['region']['source'] === 'address') <span class="ds-muted">(your saved address)</span>@endif</span></p>
-        @endif
-        <details class="pdp-region__change" @if (! $d['region'] || $errors->has('province') || $errors->has('postal_code')) open @endif>
-            <summary>{{ $d['region'] ? 'Change where to deliver' : 'Where should it go?' }}</summary>
-            <form method="POST" action="{{ route('delivery.region') }}" class="pdp-region__form">
-                @csrf
-                <input type="hidden" name="return" value="{{ $returnTo }}">
-                <x-ds.select name="province" label="Province" id="region-province" placeholder="Choose a province" :options="array_combine($regions, $regions)" :selected="$d['region']['province'] ?? null" required />
-                <x-ds.input name="postal_code" id="region-postal" label="Postal code (optional)" inputmode="numeric" autocomplete="postal-code" maxlength="4" :value="$d['region']['postal_code'] ?? ''" hint="Some sellers price by postal code." />
-                <div class="pdp-region__actions">
-                    <x-ds.button type="submit" variant="quiet" size="sm">Show delivery</x-ds.button>
-                    @if ($d['region'] && $d['region']['source'] === 'chosen' && $user)
-                        <button type="submit" name="use" value="address" class="ds-btn ds-btn--link">Use my saved address</button>
-                    @endif
-                </div>
-            </form>
-        </details>
     </div>
 
     {{-- Choices: a plain GET form, so it works with no script; the script swaps this box in place instead of reloading. --}}
@@ -133,8 +112,30 @@
             <x-ds.button type="submit" size="lg" icon="cart" class="ds-pdp__add">Add to cart</x-ds.button>
         </form>
         @if ($cartErrors->has('quantity'))<p class="pdp-error" role="alert"><x-ds.icon name="alert-triangle" :size="16" /><span>{{ $cartErrors->first('quantity') }}</span></p>@endif
-        @guest<p class="ds-muted pdp-note">No account needed to shop. You check out with an e-mail address.</p>@endguest
+        <p class="pdp-note">Price and delivery are for one item. Quantity, promo codes and other sellers' items are worked out in your cart.@guest No account needed to shop: you check out with an e-mail address.@endguest</p>
     @endif
+
+    {{-- Where to deliver: the one thing a delivery cost depends on that the shopper controls. --}}
+    <div class="pdp-region" id="region">
+        @if ($d['region'])
+            <p class="pdp-region__now"><x-ds.icon name="pin" :size="18" /><span>Delivering to <strong>{{ $d['region']['label'] }}</strong>@if ($d['region']['source'] === 'address') <span class="ds-muted">(your saved address)</span>@endif</span></p>
+        @endif
+        <details class="pdp-region__change" @if (! $d['region'] || $errors->has('province') || $errors->has('postal_code')) open @endif>
+            <summary>{{ $d['region'] ? 'Change where to deliver' : 'Where should it go?' }}</summary>
+            <form method="POST" action="{{ route('delivery.region') }}" class="pdp-region__form">
+                @csrf
+                <input type="hidden" name="return" value="{{ $returnTo }}">
+                <x-ds.select name="province" label="Province" id="region-province" placeholder="Choose a province" :options="array_combine($regions, $regions)" :selected="$d['region']['province'] ?? null" required />
+                <x-ds.input name="postal_code" id="region-postal" label="Postal code (optional)" inputmode="numeric" autocomplete="postal-code" maxlength="4" :value="$d['region']['postal_code'] ?? ''" />
+                <div class="pdp-region__actions">
+                    <x-ds.button type="submit" variant="quiet" size="sm">Show delivery</x-ds.button>
+                    @if ($d['region'] && $d['region']['source'] === 'chosen' && $user)
+                        <button type="submit" name="use" value="address" class="ds-btn ds-btn--link">Use my saved address</button>
+                    @endif
+                </div>
+            </form>
+        </details>
+    </div>
 
     <div class="pdp-secondary">
         <x-wish-toggle :product="$product" :variant-id="$variant?->id" :saved="$wished" style="button" />
@@ -184,7 +185,7 @@
                         <li>
                             <span class="pdp-methods__name">{{ $o->name }}</span>
                             <span class="pdp-methods__price">@if ($o->isArranged()) Arranged with the seller @elseif ($o->priceCents === 0) Free @else {{ \App\Support\Shop::money($o->priceCents) }} @endif</span>
-                            <span class="pdp-methods__when ds-muted">{{ $o->isArranged() ? 'No date until you and the seller agree one.' : $o->estimateLabel }}</span>
+                            <span class="pdp-methods__when ds-muted">{{ $o->isArranged() ? 'No date until you and the seller agree one.' : $dateRange($o->estimateLabel) }}</span>
                             @if ($o->isCollection() && $o->collectionAddress)<span class="pdp-methods__when ds-muted">Collect from {{ $o->collectionAddress }}</span>@endif
                             @if ($o->remainingForFree($priceCents) !== null && $o->remainingForFree($priceCents) > 0)<span class="pdp-methods__when ds-muted">Free over {{ \App\Support\Shop::money($o->freeOverCents) }} from this seller.</span>@endif
                         </li>
@@ -216,7 +217,7 @@
     @elseif ($canBuy && $hasOptions)
         <div class="ds-buybar pdp-bar">
             <x-ds.price :cents="$priceCents" size="lg" />
-            <x-ds.button href="#options" icon="sliders">Choose {{ $needs }}</x-ds.button>
+            <x-ds.button href="#options" icon="sliders">Choose options</x-ds.button>
         </div>
     @endif
 </div>

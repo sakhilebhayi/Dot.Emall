@@ -26,7 +26,7 @@
                 @endforeach
             </ol>
             <div class="rv-summary__how">
-                <p><strong>{{ $sum['verified'] }} of {{ $sum['count'] }}</strong> {{ $sum['verified'] === 1 ? 'is a' : 'are' }} verified {{ $sum['verified'] === 1 ? 'purchase' : 'purchases' }}@if ($sum['photos'] > 0), and {{ $sum['photos'] }} {{ $sum['photos'] === 1 ? 'has' : 'have' }} photos @endif.</p>
+                <p><strong>{{ $sum['verified'] }} of {{ $sum['count'] }}</strong> {{ $sum['verified'] === 1 ? 'is a verified purchase' : 'are verified purchases' }}{{ $sum['photos'] > 0 ? ', and '.$sum['photos'].($sum['photos'] === 1 ? ' has photos' : ' have photos') : '' }}.</p>
                 <p class="ds-muted">A review says <em>Verified purchase</em> only when its writer has an order for this product that was delivered or collected on Emall. A review that looks copied, or that arrives in a burst, waits for a person to check it. Sellers can reply once; they cannot remove a review.</p>
             </div>
         </div>

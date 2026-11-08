@@ -8,15 +8,18 @@ use App\Models\ProductVariant;
 use App\Models\ShippingMethod;
 use App\Models\StoreCategory;
 use App\Models\User;
+use App\Services\Addresses\AddressRules;
 use App\Services\Catalogue\CategoryTree;
 use App\Services\Catalogue\ReferencePrice;
 use App\Services\Community\StoreMembers;
 use App\Services\Community\StoreRatings;
+use App\Services\Discovery\RecommendationSet;
 use App\Services\Discovery\Wishlists;
 use App\Services\Shipping\ShippingOption;
 use App\Services\Shipping\ShippingQuote;
 use App\Services\Stores\StoreTrust;
 use App\Support\Money;
+use App\Support\Shop;
 use App\Support\Status;
 use App\Support\Vat;
 use Illuminate\Http\Request;
@@ -122,7 +125,7 @@ class ProductPage
             'vatCents' => $product->store->vat_registered && $complete && ! $priceFrom ? Vat::includedIn($priceCents) : null,
             'delivery' => $delivery,
             'methods' => $region === null || $delivery['options'] === [] ? $this->methodFacts($product->store->shippingMethods()->where('is_active', true)->get()->all()) : [],
-            'regions' => \App\Services\Addresses\AddressRules::PROVINCES,
+            'regions' => AddressRules::PROVINCES,
             'alerts' => $user ? $this->alertsFor($user, $product, $variant) : [],
             'wished' => $user ? app(Wishlists::class)->has($user, $product) : false,
             'user' => $user,
@@ -166,7 +169,7 @@ class ProductPage
      * @param  array<string, mixed>  $buy
      * @return array{ids: list<int>, count: int, total: int, total_from: bool, skipped: list<string>}|null
      */
-    public function bundle(\App\Services\Discovery\RecommendationSet $set, array $buy): ?array
+    public function bundle(RecommendationSet $set, array $buy): ?array
     {
         $products = collect($set->items)->map(fn ($item) => $item->product)->unique('id')->values();
         $counts = ProductVariant::query()->whereIn('product_id', $products->pluck('id'))->where('is_active', true)->get(['product_id', 'price', 'stock'])->groupBy('product_id');
@@ -205,7 +208,7 @@ class ProductPage
         $product->loadMissing('images', 'brand', 'store');
         $url = route('products.show', $product);
         $available = $buy['stock'] > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock';
-        $currency = \App\Support\Shop::currency();
+        $currency = Shop::currency();
 
         $offer = $buy['priceFrom']
             ? [
@@ -322,8 +325,8 @@ class ProductPage
             $type = $m->type->value;
             $price = match ($type) {
                 'collection' => 'Collect from the seller',
-                'free_over' => 'Free over '.\App\Support\Shop::money(Money::toCents($m->free_over)).', otherwise '.\App\Support\Shop::money(Money::toCents($m->price)),
-                default => \App\Support\Shop::money(Money::toCents($m->price)),
+                'free_over' => 'Free over '.Shop::money(Money::toCents($m->free_over)).', otherwise '.Shop::money(Money::toCents($m->price)),
+                default => Shop::money(Money::toCents($m->price)),
             };
             $window = $type === 'collection'
                 ? ($m->handling_days > 0 ? "Ready in {$m->handling_days} working ".Str::plural('day', $m->handling_days) : 'Ready when the seller confirms')

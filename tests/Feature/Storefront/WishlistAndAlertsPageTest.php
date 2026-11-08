@@ -3,11 +3,12 @@
 namespace Tests\Feature\Storefront;
 
 use App\Models\ProductAlert;
-use App\Models\ProductVariant;
 use App\Models\Wishlist;
 use App\Models\WishlistItem;
 use App\Services\Cart\CartManager;
+use App\Services\Catalogue\ProductVariants;
 use App\Services\Discovery\AlertEvaluator;
+use App\Services\Discovery\ProductAlerts;
 use App\Services\Discovery\Wishlists;
 use App\Support\WishState;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -206,7 +207,7 @@ class WishlistAndAlertsPageTest extends TestCase
         $this->assertSame(0, app(AlertEvaluator::class)->backInStock());
         $this->assertTrue($alert->fresh()->active);
 
-        app(\App\Services\Catalogue\ProductVariants::class)->saveVariant($product, ['Size' => 'L', 'Colour' => 'Red'], ['price' => 140, 'stock' => 4]);
+        app(ProductVariants::class)->saveVariant($product, ['Size' => 'L', 'Colour' => 'Red'], ['price' => 140, 'stock' => 4]);
         $this->assertSame(1, app(AlertEvaluator::class)->backInStock());
         $this->assertFalse($alert->fresh()->active);
     }
@@ -231,7 +232,7 @@ class WishlistAndAlertsPageTest extends TestCase
         $mine = $this->makeBuyer();
         $theirs = $this->makeBuyer();
         $product = $this->makeListing($this->makeSeller(['name' => 'Alert Seller']), ['name' => 'Watched Kettle Distinct', 'stock' => 3]);
-        $alerts = app(\App\Services\Discovery\ProductAlerts::class);
+        $alerts = app(ProductAlerts::class);
         $mine1 = $alerts->subscribe($mine, $product, 'price_drop');
         $theirs1 = $alerts->subscribe($theirs, $product, 'price_drop');
 

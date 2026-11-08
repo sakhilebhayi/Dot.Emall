@@ -76,7 +76,7 @@
 
         <form method="GET" action="{{ route('stores.show', $store) }}#products" class="ds-toolbar" role="search" aria-label="Search this store" style="margin-block: var(--s-4);">
             @if (! empty($input['category']))<input type="hidden" name="category" value="{{ $input['category'] }}">@endif
-            <x-ds.input name="q" id="shop-q" label="Search {{ $store->name }}" type="search" :value="$input['q'] ?? ''" />
+            <x-ds.input name="q" id="shop-q" :label="'Search '.$store->name" type="search" :value="$input['q'] ?? ''" />
             <x-ds.select name="sort" id="shop-sort" label="Sort by" :selected="$input['sort'] ?? 'relevance'" :options="$sorts" data-autosubmit />
             <x-ds.checkbox name="in_stock" id="shop-stock" value="1" label="In stock only" :checked="! empty($input['in_stock'])" data-autosubmit />
             <noscript><x-ds.button type="submit" variant="quiet">Apply</x-ds.button></noscript>
@@ -98,7 +98,7 @@
                 @endforeach
             </div>
             @if ($result->lastPage() > 1)
-                <x-ds.pagination :paginator="new \Illuminate\Pagination\LengthAwarePaginator([], $result->total, $result->perPage, $result->page, ['path' => route('stores.show', $store), 'query' => request()->except('page')])" />
+                <x-ds.pagination :paginator="new \Illuminate\Pagination\LengthAwarePaginator(array_fill(0, max(0, min($result->perPage, $result->total - ($result->page - 1) * $result->perPage)), null), $result->total, $result->perPage, $result->page, ['path' => route('stores.show', $store), 'query' => request()->except('page')])" />
             @endif
         @endif
     </section>
@@ -149,7 +149,7 @@
                     <x-report-form :action="route('stores.report', $store)" :bag="'reportstore'.$store->id" label="Report this store" what="this store" />
                 @endunless
             @else
-                <p class="ds-muted"><x-ds.icon name="flag" :size="16" /> <a href="{{ route('login') }}">Sign in with InfoDot</a> to report this store.</p>
+                <p class="ds-muted pdp-inline"><x-ds.icon name="flag" :size="16" /><span><a href="{{ route('login') }}">Sign in with InfoDot</a> to report this store.</span></p>
             @endauth
         </section>
     @endif
