@@ -317,7 +317,8 @@ class PublishMetricsCommandTest extends TestCase
             'buyer_email' => 'sentinel-buyer-email-'.str_repeat('m', 40).'@example.test',
             'shipping_name' => $long('SHIPPING-NAME', 'n'),
             'shipping_address' => $long('SHIPPING-ADDRESS', 'a'),
-            'shipping_phone' => '+27-SENTINEL-'.str_repeat('9', 30),
+            // 40 characters is the column (and the checkout form's limit): a longer sentinel only passed on SQLite.
+            'shipping_phone' => '+27-SENTINEL-'.str_repeat('9', 20),
             'promo' => 'SENTINELPROMO'.str_repeat('Z', 30),
         ];
         $seller = $this->makeSeller(['name' => $sentinels['store_name'], 'description' => $sentinels['store_description']]);
