@@ -25,8 +25,8 @@ class DashboardTest extends TestCase
     {
         $user = User::factory()->withPersonalTeam()->create();
 
-        // /dashboard is only a doorway: someone with no store lands on their account overview.
-        $this->actingAs($user)->get('/dashboard')->assertRedirect(route('account.home'));
+        // /dashboard is the landing (R-50, tests/Feature/LandingTest.php); the account overview it used to redirect to is one link away.
+        $this->actingAs($user)->get('/dashboard')->assertOk()->assertViewIs('landing.buyer')->assertSee(route('account.home'), false);
         $this->actingAs($user)->get(route('account.home'))->assertOk()->assertViewIs('account.home')->assertSee('Recent orders');
     }
 
@@ -50,7 +50,7 @@ class DashboardTest extends TestCase
         $reviewer = User::factory()->create();
         Review::create(['product_id' => $product->id, 'user_id' => $reviewer->id, 'rating' => 5]);
 
-        $this->actingAs($seller)->get('/dashboard')->assertRedirect(route('seller.dashboard'));
+        $this->actingAs($seller)->get('/dashboard')->assertOk()->assertViewIs('landing.seller')->assertSee(route('seller.dashboard'), false);
         $response = $this->actingAs($seller)->get(route('seller.dashboard'));
 
         $response->assertOk();

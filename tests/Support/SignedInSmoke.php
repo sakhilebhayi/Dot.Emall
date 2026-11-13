@@ -185,7 +185,7 @@ final class SignedInSmoke
             ['who' => 'guest', 'uri' => '/up'],
             ['who' => 'guest', 'uri' => '/dashboard', 'expect' => 302],
             // buyer
-            ['who' => 'buyer', 'uri' => '/dashboard', 'expect' => 302],
+            ['who' => 'buyer', 'uri' => '/dashboard'],
             ['who' => 'buyer', 'uri' => '/products'],
             ['who' => 'buyer', 'uri' => "/products/{$live}"],
             ['who' => 'buyer', 'uri' => '/cart'],
@@ -215,7 +215,7 @@ final class SignedInSmoke
             ['who' => 'newcomer', 'uri' => '/sell/dashboard', 'expect' => 302],
             ['who' => 'guest', 'uri' => '/sell/start'],
             // seller
-            ['who' => 'seller', 'uri' => '/dashboard', 'expect' => 302],
+            ['who' => 'seller', 'uri' => '/dashboard'],
             ['who' => 'seller', 'uri' => '/sell/dashboard'],
             ['who' => 'seller', 'uri' => "/products/{$pending}"],
             ['who' => 'seller', 'uri' => '/sell/store/edit'],

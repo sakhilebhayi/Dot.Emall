@@ -23,7 +23,7 @@ Emall already has a sound marketplace core: stores, products, cart, orders with 
 13. **Wishlist, saved searches, alerts.** Wishlist; saved searches; back-in-stock and price-drop alerts (price drop only against real recorded history); recently viewed.
 14. **Shopping assistant.** A conversational helper that turns a request such as "a reliable laptop for university under R15,000" into structured filters and a short list with the facts it used (price, stock, specs, total cost); deterministic rules by default, a model only if a key is configured, always labelled, never inventing product facts.
 15. **Design** is one system for storefront, account, seller and operator areas, self-hosted, light and dark, mobile first; product imagery leads; no Amazon grid clone.
-16. **Ecosystem.** Real: InfoDot sign-in and team link; Dot.Notify events where the client exists; Dot.Analytics aggregate publisher (inert without env); Dot.Files not used unless an API exists; Pulse/Brain/Memory/Engage/Billing only where a real API is documented, otherwise listed as not integrated.
+16. **Ecosystem.** Real: InfoDot sign-in and team link; Dot.Notify events where the client exists; Dot.Analytics aggregate publisher (inert without env); Dot.Files not used unless an API exists; Pulse/Brain/Memory/Engage only where a real API is documented, otherwise listed as not integrated.
 
 ## Workstreams
 

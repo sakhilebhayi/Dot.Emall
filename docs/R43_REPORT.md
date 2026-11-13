@@ -28,7 +28,7 @@ Legend: **Working** (existed and verified), **Improved**, **New**, **Partial**, 
 | Personalisation | New | Wishlist (shareable), price/stock alerts, saved searches, notification bell and preferences. |
 | Operator desk | New | Listing and store review, flags, reports/moderation, returns escalations, payments desk, ledger, metrics (+CSV), merchandising, people search with access log, audit log. |
 | Privacy | Improved | Data export; account closing anonymises the person and keeps financial records (D-98); closing is refused with the list of reasons while orders, returns, refunds or earnings are open. |
-| Ecosystem | Partial | InfoDot sign-in and team hand-off is real. Analytics, Notify, Files, Pulse, Agents, Brain, Memory, Engage, Billing are **not** integrated: no real API contract was available (see D-50 to D-62). |
+| Ecosystem | Partial | InfoDot sign-in and team hand-off is real. Analytics, Notify, Files, Pulse, Agents, Brain, Memory and Engage are **not** integrated: no real API contract was available (see D-50 to D-62). |
 | Registration | Unchanged | Public sign-up stays closed; accounts come from InfoDot. |
 
 ## 3. Test results (this branch, final merged state)
@@ -79,7 +79,7 @@ Tenant isolation: 66 seller/buyer id-taking route-methods x 6 identities (396 re
 ## 7. Not implemented, partial, and not verified
 
 Not implemented / partial:
-- Integrations with Analytics, Notify, Files, Pulse, Agents, Brain, Memory, Engage and Billing (no real API contract).
+- Integrations with Analytics, Notify, Files, Pulse, Agents, Brain, Memory and Engage (no real API contract).
 - Automated seller payouts.
 - Suggest box has no typo tolerance (full search does).
 - The search fallback that matches any of your words lists loosely related products for nonsense queries (it says so on the page).

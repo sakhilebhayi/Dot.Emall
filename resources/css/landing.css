@@ -1,0 +1,83 @@
+/*
+ * The landing (R-50): the page a person arrives on after signing in (/dashboard), for a buyer and for a seller. Shelf Edge, tokens only.
+ * Composition: a masthead (the owner's logo file, the welcome, the way back to InfoDot) closed by the perforation; the headline, one sentence and
+ * the ONE primary action against real listings; then what is waiting for this person beside the quieter links. Bands and columns, no boxes.
+ * Motion: one stamp-in for the headline block and its action, transform and opacity only, from a page that is already complete without it.
+ */
+.ld { display: grid; gap: var(--s-6); padding-block: var(--s-4) var(--s-6); }
+
+.ld-mast { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: var(--s-3) var(--s-4); padding-block-end: var(--s-4); border-block-end: var(--perf); }
+/* The logo file carries its own clear space (about a fifth of its width on every side), so the box is pulled in by that much and the artwork lines up with the text column. */
+.ld-logo { display: block; width: 8.5rem; margin: -0.875rem -1.5rem -0.625rem -1.625rem; }
+.ld-logo__img { display: block; width: 100%; height: auto; }
+.ld-logo__img--dark { display: none; }
+:root.dark .ld-logo__img--light { display: none; }
+:root.dark .ld-logo__img--dark { display: block; }
+@media (prefers-color-scheme: dark) {
+    :root:not(.light) .ld-logo__img--light { display: none; }
+    :root:not(.light) .ld-logo__img--dark { display: block; }
+}
+.ld-welcome { display: grid; gap: var(--s-1); min-width: 0; color: var(--ink-2); overflow-wrap: anywhere; }
+.ld-welcome strong { color: var(--ink); font-size: var(--text-lg); font-weight: 700; line-height: 1.2; }
+.ld-back { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: var(--s-2) var(--s-5); }
+.ld-back a { display: inline-flex; align-items: center; min-height: var(--tap); font-weight: 600; }
+
+.ld-hero { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s-6); align-items: start; }
+.ld-hero__text { display: grid; gap: var(--s-4); justify-items: start; min-width: 0; }
+.ld-hero__text h1 { font-size: var(--text-2xl); letter-spacing: -0.025em; max-width: 14ch; overflow-wrap: break-word; min-width: 0; text-wrap: balance; }
+.ld-hero__lead { font-size: var(--text-md); color: var(--ink-2); max-width: 34rem; }
+.ld-hero__act { padding-block-start: var(--s-2); }
+
+.ld-shelf { min-width: 0; }
+.ld-shelf h2 { font-size: var(--text-md); margin-block-end: var(--s-4); }
+/* Phones show two listings side by side; the third joins from 40rem up. */
+.ld-shelf__row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-4) var(--s-3); }
+.ld-shelf__row > :nth-child(3) { display: none; }
+.ld-basis { margin-block-start: var(--s-3); font-size: var(--text-sm); color: var(--ink-3); max-width: var(--measure); }
+.ld-empty.ds-empty { margin-block: 0; max-width: 34rem; }
+
+.ld-context { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s-6); padding-block-start: var(--s-5); border-block-start: 2px solid var(--ink); }
+.ld-context h2 { font-size: var(--text-lg); }
+.ld-context__head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--s-2) var(--s-4); margin-block-end: var(--s-3); }
+.ld-context__head a { display: inline-flex; align-items: center; min-height: var(--tap); }
+.ld-none { color: var(--ink-2); max-width: var(--measure); }
+.ld-note { display: flex; gap: var(--s-2); align-items: flex-start; margin-block-end: var(--s-3); color: var(--cau); }
+.ld-note span { color: var(--ink); }
+.ld-note .ds-icon { flex: none; margin-block-start: 0.15em; }
+.ld-list { list-style: none; margin: 0; padding: 0; }
+.ld-list li { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s-2) var(--s-4); min-height: var(--tap); padding-block: var(--s-3); border-block-start: 1px solid var(--line); }
+/* A row's link is a full touch target: the row is the thing you press. */
+.ld-list a { display: inline-flex; align-items: center; min-height: var(--tap); }
+.ld-list li { padding-block: 0; }
+.ld-list li:last-child { border-block-end: 1px solid var(--line); }
+.ld-more h2 { margin-block-end: var(--s-3); }
+.ld-more ul { list-style: none; margin: 0; padding: 0; }
+.ld-more li { display: grid; gap: 0; padding-block: var(--s-2); border-block-start: 1px solid var(--line); }
+.ld-more li:last-child { border-block-end: 1px solid var(--line); }
+.ld-more a { display: inline-flex; align-items: center; min-height: var(--tap); width: fit-content; font-weight: 650; }
+.ld-more span { color: var(--ink-3); font-size: var(--text-sm); padding-block-end: var(--s-2); }
+
+@media (min-width: 40rem) {
+    .ld-mast { grid-template-columns: auto minmax(0, 1fr) auto; }
+    .ld-back { grid-column: auto; justify-content: flex-end; }
+    .ld-logo { width: 12rem; margin: -1.25rem -2rem -0.875rem -2.375rem; }
+    .ld-shelf__row { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s-5) var(--s-4); }
+    .ld-shelf__row > :nth-child(3) { display: grid; }
+}
+@media (min-width: 72rem) {
+    .ld { gap: var(--s-7); }
+    .ld-hero { grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: var(--s-7); }
+    .ld-hero__text { padding-block-start: var(--s-3); }
+    .ld-context { grid-template-columns: minmax(0, 7fr) minmax(0, 4fr); gap: var(--s-7); }
+}
+
+/* The one authored moment: the headline block and its action are stamped in. The default state is the finished page, so nothing waits on this. */
+@media (prefers-reduced-motion: no-preference) {
+    .ld-hero__text > * { animation: ld-stamp 420ms var(--ease) both; }
+    .ld-hero__text > :nth-child(2) { animation-delay: 60ms; }
+    .ld-hero__text > :nth-child(3) { animation-delay: 120ms; }
+}
+@keyframes ld-stamp {
+    from { opacity: 0; transform: translateY(0.625rem); }
+    to { opacity: 1; transform: none; }
+}

@@ -43,8 +43,8 @@ use Illuminate\Support\Facades\Schema;
  *                       they were placed); with no delivered lines it is 0 in today's SHOP_CURRENCY.
  *                       A snapshot is one company with one `currency`, so if its delivered lines in
  *                       the window span several currencies both money keys are left out and a
- *                       warning is logged (nothing is converted or added across currencies, as in
- *                       Billing). ANALYTICS_CURRENCY, if set, only PINS the currency: money in any
+ *                       warning is logged (nothing is converted or added across currencies).
+ *                       ANALYTICS_CURRENCY, if set, only PINS the currency: money in any
  *                       other one is left out the same way
  *   low_stock_products  active products in the company's stores with fewer than
  *                       SellerDashboard::LOW_STOCK_BELOW in stock, right now. Archived products
