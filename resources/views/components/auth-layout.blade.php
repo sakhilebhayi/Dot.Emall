@@ -7,7 +7,7 @@
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 <head>
-    @include('layouts.partials.head', ['title' => $title ?? null, 'description' => $description ?? null, 'robots' => 'noindex'])
+    @include('layouts.partials.head', ['title' => $title ?? null, 'description' => $description ?? null, 'robots' => 'noindex', 'dotUi' => false])
     @livewireStyles(['nonce' => csp_nonce()])
 </head>
 <body class="ds-ctx-auth">

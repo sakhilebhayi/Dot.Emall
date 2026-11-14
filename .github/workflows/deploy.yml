@@ -381,9 +381,9 @@ jobs:
             echo "== docroot build/ did not exist; linked to $APPDIR/public/build"
           fi
 
-          # ---- fonts and images (R-43): the built CSS asks for /fonts/*.woff2 and the layouts for /images/*.png. Both folders are tracked, so the
+          # ---- fonts, images and the shared Dot UI (R-43, R-51): the built CSS asks for /fonts/*.woff2, the layouts for /images/*.png and /dot-ui/*. Both folders are tracked, so the
           # checkout above refreshed them, but a docroot that is not <app>/public serves its own copy (a link, or a stale folder). Same three cases as build/.
-          for STATIC in fonts images; do
+          for STATIC in fonts images dot-ui; do
             STATICLINK="$DOCROOT/$STATIC"
             if [ -L "$STATICLINK" ]; then
               echo "== docroot $STATIC/ is a symlink; nothing to copy"
@@ -570,6 +570,11 @@ jobs:
           for IMG in images/emall-mark.png images/emall-wordmark.png; do
             CODE=$(curl -s --max-time 30 -o /dev/null -w '%{http_code}' "$SITE_URL/$IMG" || true)
             if [ "$CODE" = "200" ]; then echo "200 $SITE_URL/$IMG"; else echo "::error::$SITE_URL/$IMG answered ${CODE:-no response} (expected 200): the docroot is not serving public/images"; FAILED=1; fi
+          done
+          # The shared Dot UI (search pill, platform switcher) is served from /dot-ui/: a docroot that does not serve it leaves the header unstyled.
+          for DOTUI in dot-ui/css/dot-search.css dot-ui/css/dot-switcher.css dot-ui/js/dot-switcher.js; do
+            CODE=$(curl -s --max-time 30 -o /dev/null -w '%{http_code}' "$SITE_URL/$DOTUI" || true)
+            if [ "$CODE" = "200" ]; then echo "200 $SITE_URL/$DOTUI"; else echo "::error::$SITE_URL/$DOTUI answered ${CODE:-no response} (expected 200): the docroot is not serving public/dot-ui"; FAILED=1; fi
           done
           # A GET-only route answering POST is a harmless 405: ~1 KB in
           # production, an ~840 KB stack-trace page when APP_DEBUG is on.

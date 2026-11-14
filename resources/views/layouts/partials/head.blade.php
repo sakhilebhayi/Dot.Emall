@@ -1,5 +1,5 @@
 {{--
-  Shared <head> for every layout. Variables: $title (the page's own name; the app name is appended), $description, $robots ('noindex' for signed-in areas), $vite (entry list).
+  Shared <head> for every layout. Variables: $title (the page's own name; the app name is appended), $description, $robots ('noindex' for signed-in areas), $vite (entry list), $dotUiSwitcher (default false; true in the account and the desks), $dotUi (default true; false on pages with no header search or switcher: sign-in, the packing slip).
   The inline script puts class "light" or "dark" on <html> before first paint: the saved choice, else the system's; the toggle itself lives in resources/js/app.js.
 --}}
 @php
@@ -32,4 +32,17 @@
         } catch (e) {}
     })();
 </script>
+@if ($dotUi ?? true)
+{{-- Shared Dot UI (R-51): the header search pill and the platform switcher, served from this site's own public/dot-ui ('self', no inline style or script).
+     The switcher's files load only where the switcher is drawn: the signed-in account and the seller and operator desks ($dotUiSwitcher). The public shop never draws it, so a catalogue page never asks InfoDot. --}}
+<link rel="stylesheet" href="{{ asset('dot-ui/css/dot-fonts.css') }}">
+<link rel="stylesheet" href="{{ asset('dot-ui/css/dot-tokens.css') }}">
+<link rel="stylesheet" href="{{ asset('dot-ui/css/dot-search.css') }}">
+@if (($dotUiSwitcher ?? false) && \App\Support\Navigation::viewer()['user'])
+<link rel="stylesheet" href="{{ asset('dot-ui/css/dot-switcher-fonts.css') }}">
+<link rel="stylesheet" href="{{ asset('dot-ui/css/dot-switcher.css') }}">
+<script src="{{ asset('dot-ui/js/dot-switcher.js') }}" defer></script>
+@endif
+<script src="{{ asset('dot-ui/js/dot-search.js') }}" defer></script>
+@endif
 @vite(['resources/css/app.css', 'resources/js/app.js'])

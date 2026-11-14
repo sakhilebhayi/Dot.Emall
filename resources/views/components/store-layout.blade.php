@@ -6,7 +6,7 @@
            bottomBar=false (reserve room for a fixed bottom bar, for example the sticky add-to-cart bar on a product page; the page supplies the bar).
   Slots:   title (REQUIRED, unique per page: the <title>, "Title | Dot.Emall"), description (meta description), heading (the page's one <h1>, rendered as a page header; omit it when the page
            renders its own <h1>), lead (one sentence under the heading), actions (buttons right of the heading), breadcrumbs (a <x-ds.breadcrumbs>), location (the delivery-location chip, shown
-           top left), suggestions (server-rendered search suggestions: <li role="option"> items), testmode (overrides the automatic test-mode badge), banner (a full-width <x-ds.alert banner>),
+           top left), suggestions (server-rendered search suggestions: <a class="dsr-item" role="option" href=".."> rows inside the shared search pill's panel), testmode (overrides the automatic test-mode badge), banner (a full-width <x-ds.alert banner>),
            head (extra <head> content), scripts (end of <body>), default (the page).
   Also provides: skip link, one <main id="main">, toast region for session flash messages, the notification bell for signed-in users, theme toggle, the phone menu drawer.
 --}}

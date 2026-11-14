@@ -15,7 +15,7 @@ return [
     */
 
     'platforms' => [
-        'infodot' => ['name' => 'InfoDot', 'url' => env('DOT_INFODOT_URL', 'https://infodot.app'), 'icon' => 'home', 'accent' => '#2f8fd6', 'active' => true],
+        'infodot' => ['name' => 'InfoDot', 'url' => env('DOT_INFODOT_URL', 'https://infodot.co.za'), 'icon' => 'home', 'accent' => '#2f8fd6', 'active' => true],
         'agents' => ['name' => 'Dot.Agents', 'url' => env('DOT_AGENTS_URL', 'https://agents.infodot.app'), 'icon' => 'smart_toy', 'accent' => '#f1c62e', 'active' => true],
         'analytics' => ['name' => 'Dot.Analytics', 'url' => env('DOT_ANALYTICS_URL', 'https://analytics.infodot.app'), 'icon' => 'insights', 'accent' => '#f1c62e', 'active' => true],
         'auction' => ['name' => 'Dot.Auction', 'url' => env('DOT_AUCTION_URL', 'https://auction.infodot.app'), 'icon' => 'gavel', 'accent' => '#f1c62e', 'active' => true],

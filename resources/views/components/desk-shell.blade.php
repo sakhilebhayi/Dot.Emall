@@ -9,7 +9,7 @@
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 <head>
-    @include('layouts.partials.head', ['title' => $title ?? null, 'description' => $description ?? null, 'robots' => $robots])
+    @include('layouts.partials.head', ['title' => $title ?? null, 'description' => $description ?? null, 'robots' => $robots, 'dotUiSwitcher' => true])
     @isset($head){{ $head }}@endisset
     @livewireStyles(['nonce' => csp_nonce()])
 </head>
@@ -26,7 +26,9 @@
                 @if (($testLabel = \App\Support\Shell::testModeLabel()) !== null)<x-ds.badge tone="cau" icon="alert-triangle" class="ds-header__hide-sm">{{ $testLabel }}</x-ds.badge>
 @endif
                 <a href="{{ url('/') }}" class="ds-header__link ds-header__hide-sm"><x-ds.icon name="store" :size="20" /><span>Storefront</span></a>
-                <x-ds.theme-toggle />
+                @if ($user)@include('layouts.partials.dot-switcher', ['user' => $user])@endif
+                {{-- On a phone the theme switch moves into the account menu (as in the storefront header) to make room for the platform switcher. --}}
+                <x-ds.theme-toggle class="ds-header__hide-sm" />
                 @if ($user)
                     <livewire:notification-bell />
                     <x-ds.dropdown :label="\Illuminate\Support\Str::of($user->name)->before(' ')" id="desk-account" icon="user" bare>
@@ -35,6 +37,7 @@
                         <x-ds.dropdown-item :href="url('/')" icon="store">Back to the shop</x-ds.dropdown-item>
                         <x-ds.dropdown-item :href="emall_route('profile.show')" icon="lock">Profile and security</x-ds.dropdown-item>
                         <hr class="ds-dropdown__sep">
+                        <x-ds.theme-toggle variant="menu" />
                         <form method="POST" action="{{ route('logout') }}">@csrf<x-ds.dropdown-item type="submit" icon="logout">Sign out</x-ds.dropdown-item></form>
                     </x-ds.dropdown>
                 @endif

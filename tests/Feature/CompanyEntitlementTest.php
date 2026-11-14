@@ -13,6 +13,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Factory;
 use Illuminate\Http\Client\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -91,6 +92,10 @@ class CompanyEntitlementTest extends TestCase
         $owner ??= User::factory()->withPersonalTeam()->create();
         $team = Team::forceCreate(['user_id' => $owner->id, 'name' => $name, 'personal_team' => false, 'infodot_team_uuid' => $uuid]);
         $owner->forceFill(['current_team_id' => $team->id])->save();
+        // The signed-in account and the desks draw the shared platform switcher (R-51), which reads this same InfoDot endpoint under its own cache key.
+        // These tests count and sequence the ENTITLEMENT check's requests, so the switcher's answer is parked as a recent failure: it then asks nothing and
+        // the counts stay the entitlement check's own. The switcher has its own tests (DotUiHeaderTest).
+        Cache::put('infodot:platforms:emall:'.strtolower($uuid), ['ok' => false, 'personal' => false, 'rows' => []], 3600);
         $store = Store::query()->where('owner_id', $owner->id)->first() ?? Store::factory()->create(['owner_id' => $owner->id, 'name' => 'Karoo Biltong Co']);
         $product = Product::factory()->create(['store_id' => $store->id, 'name' => 'Karoo Biltong Sticks '.Str::random(4), 'is_active' => true, 'stock' => 20]);
 
