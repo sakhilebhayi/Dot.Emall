@@ -269,7 +269,7 @@ class CompanyEntitlementTest extends TestCase
         $this->actingAs($owner)->get(route('orders.show', $bought))->assertOk();
         $this->actingAs($owner)->get(route('orders.receipt', $bought))->assertOk();
         $this->actingAs($owner)->get(route('seller.orders.index'))->assertOk();
-        $this->actingAs($owner)->get(route('seller.orders.show', $sold))->assertOk();
+        $this->actingAs($owner)->get(route('seller.orders.show', $sold->groups()->firstOrFail()))->assertOk();
         $this->actingAs($owner)->get(route('account.privacy'))->assertOk();
 
         // Paying an open order is not blocked either (what it answers is the payment's own business, never the refusal).
