@@ -25,13 +25,13 @@ class LandingTest extends TestCase
     use BuildsShopFlows;
     use RefreshDatabase;
 
-    /** The landing's own markup: from its root to the end of the page's <main>, tags removed. */
+    /** The arrival band's own markup (the headline and its sentence): from the landing root to the lists, tags removed. */
     private function landingText(TestResponse $response): string
     {
         $html = (string) $response->getContent();
         $start = strpos($html, 'data-landing=');
         $this->assertNotFalse($start, 'the landing root is on the page');
-        $end = strpos($html, '</main>', $start);
+        $end = strpos($html, 'class="dx-desk"', $start);
 
         return html_entity_decode(strip_tags(substr($html, $start, $end - $start)));
     }
@@ -60,8 +60,8 @@ class LandingTest extends TestCase
         $this->makeListing($seller, ['name' => 'Landing Kettle', 'price' => 349.50, 'stock' => 8]);
         $buyer = User::factory()->withPersonalTeam()->create(['name' => 'Thandi Mokoena']);
 
-        $page = $this->actingAs($buyer)->get('/dashboard')->assertOk()->assertViewIs('landing.buyer');
-        $page->assertSee('<title>Welcome | Dot.Emall</title>', false)->assertSee('Welcome, Thandi.')->assertSee('Shop every store in one mall.');
+        $page = $this->actingAs($buyer)->get('/dashboard')->assertOk()->assertViewIs('account.dashboard');
+        $page->assertSee('<title>Welcome | Dot.Emall</title>', false)->assertSee('Welcome, Thandi.')->assertSee('Your orders will show up here.');
         $page->assertSee('Landing Kettle')->assertSee('Vaal Traders');
         $this->assertSame(1, substr_count((string) $page->getContent(), '<h1'), 'one h1');
 
@@ -74,15 +74,15 @@ class LandingTest extends TestCase
     {
         $member = User::factory()->withPersonalTeam()->create(['name' => 'Nomsa Zulu']);
 
-        $page = $this->actingAs($member)->get('/dashboard')->assertOk()->assertViewIs('landing.buyer');
+        $page = $this->actingAs($member)->get('/dashboard')->assertOk()->assertViewIs('account.dashboard');
         $page->assertSee('The shelves are still empty.')->assertSee('Nothing is listed yet')->assertSee('You have not ordered anything yet.');
-        $page->assertDontSee('Shop every store in one mall.')->assertDontSee('New on the shelves');
+        $page->assertDontSee('New on the shelves');
 
         $href = $this->primaryHref($page);
         $this->assertSame(route('sell.start'), $href);
         $this->get($href)->assertOk();
 
-        // A brand-new member in an empty mall: there is no record to count, so the landing prints no figure at all.
+        // A brand-new member in an empty mall: there is no record to count, so the arrival band prints no figure at all.
         $this->assertDoesNotMatchRegularExpression('/\d/', $this->landingText($page));
     }
 
@@ -90,8 +90,8 @@ class LandingTest extends TestCase
     {
         $seller = $this->makeSeller(['name' => 'Busi Bakes']);
 
-        $page = $this->actingAs($seller)->get('/dashboard')->assertOk()->assertViewIs('landing.seller');
-        $page->assertSee('Welcome, '.Landing::firstName($seller).'.')->assertSee('You run Busi Bakes.')->assertSee('No products yet')->assertSee('Nothing needs you right now.');
+        $page = $this->actingAs($seller)->get('/dashboard')->assertOk()->assertViewIs('seller.dashboard');
+        $page->assertSee('Welcome, '.Landing::firstName($seller).'.')->assertSee('You run Busi Bakes.')->assertSee('Your shop has nothing listed yet.')->assertSee('Nothing needs you right now.');
 
         $href = $this->primaryHref($page);
         $this->assertSame(route('seller.products.create'), $href);
@@ -105,17 +105,16 @@ class LandingTest extends TestCase
         $this->makeListing($seller, ['name' => 'Cast Iron Pot', 'price' => 1249, 'stock' => 3, 'low_stock_threshold' => 5]);
         $this->makeListing($seller, ['name' => 'Waiting Whisk', 'price' => 89.90, 'stock' => 40, 'status' => 'pending_approval']);
 
-        $page = $this->actingAs($seller)->get('/dashboard')->assertOk()->assertViewIs('landing.seller');
-        $page->assertSee('Your shelf, kept honest.')->assertSee('Cast Iron Pot')->assertSee('Waiting Whisk')->assertSee('Pending review');
-        $page->assertSee('1 product at or below your low-stock level')->assertSee('1 listing is waiting for the Dot.Emall team to review.');
+        $page = $this->actingAs($seller)->get('/dashboard')->assertOk()->assertViewIs('seller.dashboard');
+        $page->assertSee('1 thing needs you today.')->assertSee('That is 1 product at low stock.')->assertSee('Cast Iron Pot (3 left)')->assertSee('1 listing is waiting for the Emall team to review.');
 
         $href = $this->primaryHref($page);
         $this->assertSame(route('seller.products.index'), $href);
         $this->get($href)->assertOk()->assertSee('Cast Iron Pot');
 
-        // Every figure in the landing is one of the seeded ones: two prices, one stock count of 3, one low-stock product, one pending listing.
+        // Every figure in the arrival band is a real count: one product at low stock, nothing else.
         preg_match_all('/\d[\d,]*(?:\.\d+)?/', $this->landingText($page), $found);
-        $this->assertEqualsCanonicalizing([], array_values(array_diff(array_unique($found[0]), ['1,249.00', '89.90', '3', '1'])), 'no figure that is not a seeded record');
+        $this->assertSame([], array_values(array_diff(array_unique($found[0]), ['1'])), 'no figure that is not a seeded record');
     }
 
     public function test_a_buyers_orders_and_totals_come_from_their_own_records(): void
@@ -179,14 +178,17 @@ class LandingTest extends TestCase
             $this->get(route($name))->assertOk();
         }
 
+        // An operator with something waiting sees the desk as a row of Needs you; with nothing waiting there is no such row (the rail still has the desk).
         $operator = User::factory()->withPersonalTeam()->create(['is_platform_operator' => true]);
-        $this->actingAs($operator)->get('/dashboard')->assertOk()->assertSee('href="'.route('operator.home').'"', false);
+        $this->actingAs($operator)->get('/dashboard')->assertOk()->assertDontSee('Operator desk');
+        $this->makeListing($this->makeSeller(), ['status' => 'pending_approval']);
+        $this->actingAs($operator)->get('/dashboard')->assertOk()->assertSee('Operator desk')->assertSee('href="'.route('operator.home').'"', false);
         $this->actingAs($buyer)->get('/dashboard')->assertDontSee('Operator desk');
 
         $seller = $this->makeSeller();
         $this->makeListing($seller);
         $page = $this->actingAs($seller)->get('/dashboard');
-        foreach (['seller.dashboard', 'seller.products.create', 'seller.orders.index', 'account.home'] as $name) {
+        foreach (['seller.dashboard', 'seller.products.index', 'seller.orders.index', 'account.home'] as $name) {
             $page->assertSee('href="'.route($name).'"', false);
             $this->get(route($name))->assertOk();
         }

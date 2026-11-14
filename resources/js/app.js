@@ -4,6 +4,7 @@
  */
 
 import './seller.js';
+import './dashboard.js';
 
 const root = document.documentElement;
 const $$ = (sel, ctx = document) => Array.from(ctx.querySelectorAll(sel));

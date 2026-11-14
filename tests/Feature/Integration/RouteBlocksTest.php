@@ -43,8 +43,8 @@ class RouteBlocksTest extends TestCase
         Store::factory()->create(['owner_id' => $seller->id, 'name' => 'Alias Stores']);
 
         $this->actingAs($seller->fresh());
-        // /dashboard is the landing (R-50): a seller gets the seller landing, and /account is the buyer's overview (W5), not the seller desk.
-        $this->get('/dashboard')->assertOk()->assertViewIs('landing.seller')->assertSee(route('seller.dashboard'), false);
+        // /dashboard is the landing (R-50): a seller gets the seller dashboard (the same page as /sell/dashboard, R-51), and /account is the buyer's overview (W5), not the seller desk.
+        $this->get('/dashboard')->assertOk()->assertViewIs('seller.dashboard')->assertSee(route('seller.dashboard'), false);
         $this->get('/sell/dashboard')->assertOk()->assertSee('Seller desk')->assertSee('Alias Stores');
         $this->get('/account')->assertOk()->assertSee('<title>Your account | Dot.Emall</title>', false)->assertSee('Open your seller desk');
         // A seller who already has a store reads the same public page, and it says so and points at their store (W6 made it public for everyone).

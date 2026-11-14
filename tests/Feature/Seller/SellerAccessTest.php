@@ -104,7 +104,7 @@ class SellerAccessTest extends TestCase
         $this->get(route('seller.ledger'))->assertOk()->assertDontSee($order->reference());
         $this->get(route('seller.promo-codes.index'))->assertOk()->assertDontSee('ALPHAONLY');
         $this->get(route('seller.analytics'))->assertOk()->assertSee('No data yet');
-        $this->get(route('seller.dashboard'))->assertOk()->assertDontSee('to pack and ship');
+        $this->get(route('seller.dashboard'))->assertOk()->assertSee('0 parcels to pack and ship')->assertDontSee($order->reference());
         $csv = $this->get(route('seller.analytics.export', ['what' => 'orders', 'period' => 30]))->assertOk()->streamedContent();
         $this->assertStringNotContainsString('Alpha Private Kettle Model', $csv);
         $this->assertStringNotContainsString('Alpha Private Kettle Model', $this->get(route('seller.analytics.export', ['what' => 'products', 'period' => 30]))->streamedContent());

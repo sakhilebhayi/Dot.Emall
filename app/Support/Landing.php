@@ -2,18 +2,13 @@
 
 namespace App\Support;
 
-use App\Models\Order;
-use App\Models\Product;
-use App\Models\Store;
 use App\Models\Team;
 use App\Models\User;
-use App\Services\Orders\OrderPage;
-use App\Services\Seller\SellerDesk;
 
 /**
  * What the page a person arrives on after signing in (/dashboard) shows. Everything here is read from that person's own records
- * or from the live catalogue: nothing is estimated, and where there is nothing the view says so. Each role gets ONE primary action,
- * chosen from the real state of the shop:
+ * or from the live catalogue: nothing is estimated, and where there is nothing the view says so. Each role gets ONE primary action. The R-50 rule below
+ * is the FALLBACK: since R-51 a state-driven action (parcels to ship, an unpaid order) comes first (Services\Dashboard\SellerHome, BuyerHome):
  *
  *   seller, no product yet      Add your first product   seller.products.create
  *   seller, with products       Manage your products     seller.products.index
@@ -59,49 +54,35 @@ final class Landing
         return $linked instanceof Team ? (string) $linked->name : null;
     }
 
-    /** @return array<string, mixed> */
-    public static function buyer(User $user, OrderPage $page): array
+    /** The R-50 rule for a seller when no state-driven action applies (Services\Dashboard\SellerHome puts "Open orders to ship" ahead of it). @return array{label: string, href: string, route: string, state: string} */
+    public static function sellerFallback(bool $hasProducts): array
     {
-        $shelf = Product::query()->browsable()->with(['images', 'store:id,name'])->latest('id')->limit(3)->get();
-        $orders = Order::query()->where('user_id', $user->id)->with(['items', 'groups'])->latest('id')->limit(3)->get();
-        $open = $shelf->isNotEmpty();
-
-        return self::common($user) + [
-            'shelf' => $shelf,
-            'orders' => $orders,
-            'statuses' => $orders->mapWithKeys(fn (Order $o) => [$o->id => $page->status($o, $o->items)['key']]),
-            'awaiting' => Order::query()->where('user_id', $user->id)->where('requires_payment', true)
-                ->whereIn('payment_status', ['unpaid', 'pending', 'failed'])->where('status', '!=', 'cancelled')->count(),
-            'isOperator' => (bool) $user->is_platform_operator,
-            'primary' => $open
-                ? ['label' => 'Shop the mall', 'href' => route('products.index'), 'route' => 'products.index']
-                : ['label' => 'Open a shop', 'href' => route('sell.start'), 'route' => 'sell.start'],
-        ];
+        return $hasProducts
+            ? ['label' => 'Manage your products', 'href' => route('seller.products.index'), 'route' => 'seller.products.index', 'state' => 'fallback']
+            : ['label' => 'Add your first product', 'href' => route('seller.products.create'), 'route' => 'seller.products.create', 'state' => 'fallback'];
     }
 
-    /** @return array<string, mixed> */
-    public static function seller(User $user, Store $store, SellerDesk $desk): array
+    /** The R-50 rule for a buyer when no state-driven action applies (Services\Dashboard\BuyerHome puts "See the unpaid order" ahead of it). @return array{label: string, href: string, route: string, state: string} */
+    public static function buyerFallback(bool $mallHasProducts): array
     {
-        $listings = Product::query()->where('store_id', $store->id)->with('images')->latest('id')->limit(3)->get();
-        $hasProducts = $listings->isNotEmpty();
-
-        return self::common($user) + [
-            'store' => $store,
-            'listings' => $listings,
-            'needs' => $desk->needsYou($store, $user),
-            'primary' => $hasProducts
-                ? ['label' => 'Manage your products', 'href' => route('seller.products.index'), 'route' => 'seller.products.index']
-                : ['label' => 'Add your first product', 'href' => route('seller.products.create'), 'route' => 'seller.products.create'],
-        ];
+        return $mallHasProducts
+            ? ['label' => 'Shop the mall', 'href' => route('products.index'), 'route' => 'products.index', 'state' => 'fallback']
+            : ['label' => 'Open a shop', 'href' => route('sell.start'), 'route' => 'sell.start', 'state' => 'fallback'];
     }
 
-    /** @return array<string, mixed> */
-    private static function common(User $user): array
+    /**
+     * What every dashboard needs to say hello: the person, their company and the InfoDot host. $company overrides the linked company
+     * (a seller is welcomed as the person who runs their store).
+     *
+     * @return array<string, mixed>
+     */
+    public static function common(User $user, ?string $running = null): array
     {
         return [
             'user' => $user,
             'firstName' => self::firstName($user),
-            'company' => self::company($user),
+            'company' => $running ?? self::company($user),
+            'role' => $running !== null ? 'running' : 'for',
             'infodot' => self::infodot(),
         ];
     }
