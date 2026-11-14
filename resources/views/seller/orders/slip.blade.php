@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 <head>
-    @include('layouts.partials.head', ['title' => 'Packing slip '.$order->reference(), 'description' => null, 'robots' => 'noindex'])
+    @include('layouts.partials.head', ['title' => 'Packing slip '.$order->reference(), 'description' => null, 'robots' => 'noindex', 'dotUi' => false])
 </head>
 <body>
     <main id="main" class="sd-slip" tabindex="-1">

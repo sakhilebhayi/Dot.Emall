@@ -217,45 +217,44 @@ function initGallery(g) {
 }
 $$('.ds-gallery').forEach(initGallery);
 
-/* Search field with suggestions (ds.search-field): the ARIA 1.2 combobox with a listbox. Suggestions come from the slot, or from data-endpoint (JSON). */
+/* Header search suggestions. The pill is the shared Dot UI search (<x-dot.search>, dot-ui/js/dot-search.js opens and closes it); this is the shop's own
+   behaviour inside it: the ARIA 1.2 combobox over [data-suggest-list], fed by data-suggest-endpoint (JSON {"suggestions":[{label,url,meta}]}) or by server-rendered
+   rows. The query, the endpoint and the results page are untouched. An empty list keeps the panel hidden (CSS :has). */
 function initSearch(box) {
     if (box.dataset.ready) return; box.dataset.ready = '1';
-    const input = box.querySelector('input[role="combobox"]'); const panel = box.querySelector('.ds-search__panel'); const list = panel && panel.querySelector('ul');
-    if (!input || !panel || !list) return;
-    const endpoint = box.dataset.endpoint; let timer = null; let active = -1;
+    const input = box.querySelector('.dsr-input'); const list = box.querySelector('[data-suggest-list]');
+    if (!input || !list) return;
+    const endpoint = box.dataset.suggestEndpoint; let timer = null; let active = -1;
     const options = () => $$('[role="option"]', list);
-    const open = (v) => { panel.hidden = !v; input.setAttribute('aria-expanded', v ? 'true' : 'false'); if (!v) { active = -1; input.removeAttribute('aria-activedescendant'); } };
-    const mark = (n) => { const o = options(); o.forEach((el, k) => el.setAttribute('aria-selected', k === n ? 'true' : 'false')); active = n; if (n >= 0) { input.setAttribute('aria-activedescendant', o[n].id); o[n].scrollIntoView({ block: 'nearest' }); } else input.removeAttribute('aria-activedescendant'); };
+    const reset = () => { active = -1; input.removeAttribute('aria-activedescendant'); options().forEach((el) => { el.classList.toggle('is-active', false); el.setAttribute('aria-selected', 'false'); }); };
+    const mark = (n) => { const o = options(); o.forEach((el, k) => { el.classList.toggle('is-active', k === n); el.setAttribute('aria-selected', k === n ? 'true' : 'false'); }); active = n; if (n >= 0) { input.setAttribute('aria-activedescendant', o[n].id); o[n].scrollIntoView({ block: 'nearest' }); } else input.removeAttribute('aria-activedescendant'); };
     const render = (items) => {
-        list.replaceChildren();
+        list.replaceChildren(); reset();
         items.forEach((s, k) => {
-            const li = document.createElement('li'); li.className = 'ds-search__opt'; li.setAttribute('role', 'option'); li.id = box.id + '-opt-' + k; li.setAttribute('aria-selected', 'false');
-            const a = document.createElement('a'); a.href = s.url; a.tabIndex = -1; const t = document.createElement('span'); t.textContent = s.label; a.append(t);
-            if (s.meta) { const m = document.createElement('small'); m.textContent = s.meta; a.append(m); }
-            li.append(a); list.append(li);
+            const a = document.createElement('a'); a.className = 'dsr-item'; a.setAttribute('role', 'option'); a.id = box.id + '-opt-' + k; a.setAttribute('aria-selected', 'false'); a.href = s.url; a.tabIndex = -1;
+            const t = document.createElement('span'); t.className = 'dsr-label'; t.textContent = s.label; a.append(t);
+            if (s.meta) { const m = document.createElement('span'); m.className = 'dsr-tag'; m.textContent = s.meta; a.append(m); }
+            list.append(a);
         });
-        open(items.length > 0);
     };
     input.addEventListener('input', () => {
         const q = input.value.trim();
-        if (!endpoint) { open(options().length > 0 && q.length > 0); return; }
-        clearTimeout(timer); if (q.length < 2) { open(false); return; }
-        timer = setTimeout(async () => { try { const r = await fetch(endpoint + (endpoint.includes('?') ? '&' : '?') + 'q=' + encodeURIComponent(q), { headers: { Accept: 'application/json' } }); if (r.ok) { const j = await r.json(); if (input.value.trim() === q) render(j.suggestions || []); } } catch (err) { open(false); } }, 160);
+        if (!endpoint) return;
+        clearTimeout(timer); if (q.length < 2) { render([]); return; }
+        timer = setTimeout(async () => { try { const r = await fetch(endpoint + (endpoint.includes('?') ? '&' : '?') + 'q=' + encodeURIComponent(q), { headers: { Accept: 'application/json' } }); if (r.ok) { const j = await r.json(); if (input.value.trim() === q) render(j.suggestions || []); } } catch (err) { render([]); } }, 160);
     });
     input.addEventListener('keydown', (e) => {
         const n = options().length;
-        if (e.key === 'ArrowDown' && n) { open(true); mark((active + 1) % n); e.preventDefault(); }
-        else if (e.key === 'ArrowUp' && n) { open(true); mark((active - 1 + n) % n); e.preventDefault(); }
-        else if (e.key === 'Enter' && active >= 0) { const a = options()[active].querySelector('a'); if (a) { window.location.href = a.href; e.preventDefault(); } }
-        else if (e.key === 'Escape') { open(false); }
+        if (e.key === 'ArrowDown' && n) { mark((active + 1) % n); e.preventDefault(); }
+        else if (e.key === 'ArrowUp' && n) { mark((active - 1 + n) % n); e.preventDefault(); }
+        else if (e.key === 'Enter' && active >= 0) { const a = options()[active]; if (a && a.href) { window.location.href = a.href; e.preventDefault(); } }
+        else if (e.key === 'Escape') { reset(); }
     });
-    document.addEventListener('click', (e) => { if (!box.contains(e.target)) open(false); });
-    box.addEventListener('focusout', (e) => { if (!box.contains(e.relatedTarget)) open(false); });
 }
-$$('[data-search]').forEach(initSearch);
+$$('.dsr:has([data-suggest-list])').forEach(initSearch);
 
 /* Livewire morphs add new nodes: set up galleries, searches and steppers that arrived after load. */
-document.addEventListener('livewire:navigated', () => { $$('.ds-gallery').forEach(initGallery); $$('[data-search]').forEach(initSearch); $$('.ds-stepper').forEach(syncStepper); });
+document.addEventListener('livewire:navigated', () => { $$('.ds-gallery').forEach(initGallery); $$('.dsr:has([data-suggest-list])').forEach(initSearch); $$('.ds-stepper').forEach(syncStepper); });
 
 /* Alert dismiss (ds.alert with dismissible). */
 document.addEventListener('click', (e) => { const c = e.target.closest('[data-alert-close]'); if (c) c.closest('.ds-alert')?.remove(); });

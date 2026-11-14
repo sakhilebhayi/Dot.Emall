@@ -19,8 +19,6 @@
 }
 .ld-welcome { display: grid; gap: var(--s-1); min-width: 0; color: var(--ink-2); overflow-wrap: anywhere; }
 .ld-welcome strong { color: var(--ink); font-size: var(--text-lg); font-weight: 700; line-height: 1.2; }
-.ld-back { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: var(--s-2) var(--s-5); }
-.ld-back a { display: inline-flex; align-items: center; min-height: var(--tap); font-weight: 600; }
 
 .ld-hero { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s-6); align-items: start; }
 .ld-hero__text { display: grid; gap: var(--s-4); justify-items: start; min-width: 0; }
@@ -58,8 +56,6 @@
 .ld-more span { color: var(--ink-3); font-size: var(--text-sm); padding-block-end: var(--s-2); }
 
 @media (min-width: 40rem) {
-    .ld-mast { grid-template-columns: auto minmax(0, 1fr) auto; }
-    .ld-back { grid-column: auto; justify-content: flex-end; }
     .ld-logo { width: 12rem; margin: -1.25rem -2rem -0.875rem -2.375rem; }
     .ld-shelf__row { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s-5) var(--s-4); }
     .ld-shelf__row > :nth-child(3) { display: grid; }

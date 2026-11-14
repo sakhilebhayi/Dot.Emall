@@ -129,6 +129,27 @@ final class Navigation
         }
     }
 
+    /**
+     * The InfoDot uuid of the company the platform switcher is drawn for (R-51): the signed-in person's current company,
+     * resolved the way the entitlement check resolves it. A personal workspace, a team InfoDot does not know, and any
+     * failure give null, and the switcher then shows its personal state without asking InfoDot anything.
+     */
+    public static function switcherCompany(?object $user = null): ?string
+    {
+        try {
+            $user ??= request()->user();
+            $team = $user?->currentTeam;
+
+            if (! $team || $team->personal_team || blank($team->infodot_team_uuid)) {
+                return null;
+            }
+
+            return (string) $team->infodot_team_uuid;
+        } catch (Throwable) {
+            return null;
+        }
+    }
+
     /** The signed-in user's relationship to the platform, for the account menu. Safe when the database is down. */
     public static function viewer(): array
     {

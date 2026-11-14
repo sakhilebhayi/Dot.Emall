@@ -157,14 +157,17 @@ class LandingTest extends TestCase
         }
     }
 
-    public function test_the_way_back_to_infodot_follows_the_configured_infodot_host(): void
+    public function test_the_way_back_to_infodot_is_the_header_switcher_and_follows_the_configured_infodot_host(): void
     {
-        $page = $this->actingAs($this->makeBuyer())->get('/dashboard');
-        $page->assertSee('<a href="https://infodot.co.za/home">InfoDot</a>', false)->assertSee('<a href="https://infodot.co.za/platforms">Platforms</a>', false);
+        config(['ecosystem.platforms.infodot.url' => 'https://infodot.co.za']);
+        $html = $this->actingAs($this->makeBuyer())->get('/dashboard')->assertOk()->getContent();
+        $this->assertStringNotContainsString('ld-back', $html, 'the interim two-link nav is replaced by the header switcher (R-51)');
+        $this->assertStringContainsString('data-dsw', $html);
+        $this->assertStringContainsString('href="https://infodot.co.za/platforms"', $html, 'InfoDot stays reachable from the switcher, in every state');
 
+        // The landing helper still derives the host this app really signs in against.
         config(['ecosystem.infodot.redeem_url' => 'https://id.example.test:8443/api/ecosystem/redeem']);
         $this->assertSame(['home' => 'https://id.example.test:8443/home', 'platforms' => 'https://id.example.test:8443/platforms'], Landing::infodot());
-        $this->actingAs($this->makeSeller())->get('/dashboard')->assertSee('<a href="https://id.example.test:8443/home">InfoDot</a>', false);
     }
 
     public function test_everything_the_old_doorway_led_to_is_still_one_link_away(): void

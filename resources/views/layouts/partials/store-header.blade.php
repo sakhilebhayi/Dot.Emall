@@ -1,6 +1,6 @@
 {{--
   The public storefront header. Included by x-store-layout and x-account-layout. Variables: $categories (list, see App\Support\Navigation::categories()), $location (slot or null), $suggestions (slot or null),
-  $testmode (slot or null), $viewer (App\Support\Navigation::viewer()), $cartCount.
+  $testmode (slot or null), $viewer (App\Support\Navigation::viewer()), $cartCount, $switcher (true only in the signed-in account: the platform switcher is drawn there and never on the public shop, so a catalogue page never asks InfoDot).
 --}}
 @php
     $user = $viewer['user'];
@@ -24,15 +24,18 @@
         <button type="button" class="ds-icon-btn ds-header__menu" data-dialog-open="menu-drawer" aria-label="Open menu"><x-ds.icon name="menu" :size="24" /></button>
         <x-ds.logo class="ds-header__brand" :href="url('/')" />
         <div class="ds-header__search">
-            <x-ds.search-field :action="$searchUrl" :endpoint="\App\Support\Shell::routeExists('search.suggest') ? route('search.suggest') : null">
-                @isset($suggestions)<x-slot:suggestions>{{ $suggestions }}</x-slot:suggestions>
-@endisset
-            </x-ds.search-field>
+            {{-- The shared Dot UI pill (R-51), the same control as InfoDot's. Only its look is shared: the form still GETs the shop's own search with ?q=, and the
+                 suggestions still come from the shop's own search.suggest endpoint (resources/js/app.js fills [data-suggest-list]). The panel stays hidden while it is empty. --}}
+            <x-dot.search name="q" id="site-search-input" :action="$searchUrl" :value="is_string(request('q')) ? request('q') : ''" placeholder="Search products, brands and stores" label="Search products"
+                :root-attributes="array_filter(['id' => 'site-search', 'data-suggest-endpoint' => \App\Support\Shell::routeExists('search.suggest') ? route('search.suggest') : null])">
+                <x-slot:results><div class="dsr-quick ds-suggest" data-suggest-list>@isset($suggestions){{ $suggestions }}@endisset</div></x-slot:results>
+            </x-dot.search>
         </div>
         <div class="ds-header__actions">
             <button type="button" class="ds-icon-btn ds-header__searchbtn" data-search-reveal aria-label="Search"><x-ds.icon name="search" :size="22" /></button>
             <x-ds.theme-toggle class="ds-header__hide-sm" />
             @if ($user)
+                @if ($switcher ?? false)@include('layouts.partials.dot-switcher', ['user' => $user])@endif
                 <x-ds.dropdown :label="\Illuminate\Support\Str::of($user->name)->before(' ')" id="account-menu" icon="user" bare>
                     <p class="ds-dropdown__note">Signed in as <strong>{{ $user->name }}</strong></p>
                     <hr class="ds-dropdown__sep">

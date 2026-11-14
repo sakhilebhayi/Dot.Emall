@@ -53,6 +53,33 @@
     .ds-header__menu { display: none; }
     .ds-header__search { max-width: 44rem; width: 100%; justify-self: center; }
 }
+/* Shared Dot UI (R-51): the header search pill and the platform switcher (public/dot-ui, loaded in layouts/partials/head.blade.php before this file).
+   The pill itself is not mapped: it is the same cream pill with the dark arrow circle in every Dot platform, in light and dark. What follows is the host mapping
+   of the dropdown surfaces and the switcher button onto Shelf Edge's own tokens (they are light-dark() values, so one block serves both themes). */
+body {
+    --dsr-panel: var(--raised);
+    --dsr-hover: var(--sunken);
+    --dsr-rule: var(--line);
+    --dsr-rule-strong: var(--line-strong);
+    --dsr-text: var(--ink);
+    --dsr-text-2: var(--ink-2);
+    --dsr-text-3: var(--ink-3);
+    --dsr-radius-panel: var(--r-control);
+    --dsr-panel-shadow: var(--lift-1);
+}
+.ds-header .dsw, .ds-deskbar .dsw {
+    --dsw-btn-ink: var(--ink-2);
+    --dsw-btn-border: var(--line-strong);
+    --dsw-btn-bg-hover: var(--sunken);
+    --dsw-focus: var(--focus);
+    --dsw-radius: var(--r-control);
+}
+/* The shop's own suggestions fill [data-suggest-list]; while it is empty the pill's panel stays closed instead of opening as an empty box. */
+.ds-header .dsr:focus-within .dsr-panel:has(> [data-suggest-list]:empty), .ds-header .dsr.is-open .dsr-panel:has(> [data-suggest-list]:empty) { display: none; }
+.ds-header .dsr .dsr-item { text-decoration: none; }
+/* A signed-in phone header also holds the switcher: below about 410px the wordmark's live type gives way to the original mark so the row does not overlap (the seller desk bar does the same at every width). */
+@media (max-width: 25.6rem) { .ds-header:has(.dsw) .ds-logo__word { display: none; } }
+.ds-header .dsr .dsr-item .dsr-tag { margin-inline-start: auto; }
 .ds-logo { display: inline-flex; align-items: center; gap: var(--s-2); text-decoration: none; min-height: var(--tap); }
 .ds-logo img { display: block; flex: none; }
 .ds-logo__mark { width: 2.25rem; height: 2.25rem; border-radius: 50%; }
@@ -181,8 +208,8 @@
 .ds-auth__foot a { color: var(--ink-2); display: inline-flex; align-items: center; min-height: 2rem; }
 @media (pointer: coarse) { .ds-auth__foot a { min-height: var(--tap); } }
 
-/* On phones the desk's account button keeps only its icon (the name stays for screen readers). */
-@media (max-width: 39.99rem) {
+/* Below the desktop rail (64rem) the desk's Storefront link and account button keep only their icon (the names stay for screen readers): the platform switcher (R-51) takes their room, and the test-mode badge may be showing too. */
+@media (max-width: 63.99rem) {
     .ds-deskbar .ds-header__link > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
     .ds-deskbar .ds-header__link > .ds-icon:last-child { display: none; }
 }
