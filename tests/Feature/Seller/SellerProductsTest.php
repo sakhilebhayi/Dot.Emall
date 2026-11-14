@@ -379,7 +379,7 @@ class SellerProductsTest extends TestCase
 
         $html = $this->actingAs($seller)->get(route('seller.dashboard'))->assertOk()->getContent();
 
-        $this->assertStringContainsString('<h1>Salt &amp; Pepper Trading</h1>', $html);
+        $this->assertStringContainsString('You run Salt &amp; Pepper Trading.', $html);
         $this->assertStringNotContainsString('&amp;amp;', $html);
     }
 }

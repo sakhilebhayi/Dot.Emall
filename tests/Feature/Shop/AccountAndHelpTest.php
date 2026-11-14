@@ -5,6 +5,7 @@ namespace Tests\Feature\Shop;
 use App\Models\Address;
 use App\Models\NotificationPreference;
 use App\Services\Notifications\NotificationPreferences;
+use App\Support\Landing;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Concerns\BuildsCommerce;
 use Tests\Concerns\BuildsMarketplace;
@@ -32,8 +33,8 @@ class AccountAndHelpTest extends TestCase
     public function test_dashboard_is_the_landing_and_links_on_to_each_roles_own_home(): void
     {
         $seller = $this->makeSeller();
-        $this->actingAs($seller)->get('/dashboard')->assertOk()->assertViewIs('landing.seller')->assertSee(route('seller.dashboard'), false);
-        $this->actingAs($this->makeBuyer())->get('/dashboard')->assertOk()->assertViewIs('landing.buyer')->assertSee(route('account.home'), false);
+        $this->actingAs($seller)->get('/dashboard')->assertOk()->assertViewIs('seller.dashboard')->assertSee(route('seller.dashboard'), false);
+        $this->actingAs($this->makeBuyer())->get('/dashboard')->assertOk()->assertViewIs('account.dashboard')->assertSee(route('account.home'), false);
     }
 
     public function test_the_overview_is_a_buyers_page_with_orders_returns_wishlist_and_address(): void
@@ -45,8 +46,8 @@ class AccountAndHelpTest extends TestCase
         $order = $this->placeOrder($buyer, [[$this->makeListing($seller, ['name' => 'Overview Kettle', 'stock' => 5]), 1]]);
         Address::create(['user_id' => $buyer->id, 'is_default_shipping' => true] + $this->address(['recipient_name' => 'Overview Person']));
 
-        $this->actingAs($buyer)->get(route('account.home'))->assertOk()->assertViewIs('account.home')
-            ->assertSee('Hello, '.$buyer->name)->assertSee($order->reference())->assertSee('1 order is waiting for payment')->assertSee('Overview Person')
+        $this->actingAs($buyer)->get(route('account.home'))->assertOk()->assertViewIs('account.dashboard')
+            ->assertSee('Welcome, '.Landing::firstName($buyer).'.')->assertSee($order->reference())->assertSee('1 order is waiting for payment')->assertSee('Overview Person')
             ->assertSee('Download or delete')->assertDontSee('Open your seller desk')->assertDontSee('Revenue');
 
         $this->actingAs($seller)->get(route('account.home'))->assertSee('Open your seller desk');

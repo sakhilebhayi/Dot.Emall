@@ -187,15 +187,15 @@ class SellerLedgerFeedbackDashboardTest extends TestCase
 
         $page = $this->actingAs($seller)->get(route('seller.dashboard'))->assertOk();
 
-        $page->assertSee('R200.00')->assertSee('from 1 order and 1 item')->assertSee('Held, waiting out the return window')->assertSee('R250.00')
-            ->assertSee('1 parcel is waiting for the buyer to pay: do not ship it yet')->assertSee('items after any discount, VAT included, delivery left out');
+        $page->assertSee('R200.00')->assertSee('From 1 order and 1 item')->assertSee('Held, waiting out the return window')->assertSee('R250.00')
+            ->assertSee('1 parcel is waiting for the buyer to pay: do not ship it yet')->assertSee('Items after any discount, VAT included, delivery left out');
         $this->assertSame(20000, $page->viewData('sales')['sales_cents']);
     }
 
     public function test_response_times_are_the_median_over_real_answers_and_absent_without_any(): void
     {
         [$seller, $product] = $this->shippingSeller();
-        $this->actingAs($seller)->get(route('seller.dashboard'))->assertSee('No data yet: you have not answered a question');
+        $this->actingAs($seller)->get(route('seller.dashboard'))->assertSee('You have not answered a question');
 
         Carbon::setTestNow('2026-03-02 08:00:00');
         $q = app(ProductQuestions::class)->ask($this->makeBuyer(), $product, 'Is the cord long enough for us?');

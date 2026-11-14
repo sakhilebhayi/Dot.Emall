@@ -26,8 +26,8 @@ class DashboardTest extends TestCase
         $user = User::factory()->withPersonalTeam()->create();
 
         // /dashboard is the landing (R-50, tests/Feature/LandingTest.php); the account overview it used to redirect to is one link away.
-        $this->actingAs($user)->get('/dashboard')->assertOk()->assertViewIs('landing.buyer')->assertSee(route('account.home'), false);
-        $this->actingAs($user)->get(route('account.home'))->assertOk()->assertViewIs('account.home')->assertSee('Recent orders');
+        $this->actingAs($user)->get('/dashboard')->assertOk()->assertViewIs('account.dashboard')->assertSee(route('account.home'), false);
+        $this->actingAs($user)->get(route('account.home'))->assertOk()->assertViewIs('account.dashboard')->assertSee('Your orders');
     }
 
     public function test_dashboard_shows_review_and_low_stock_widgets_for_the_sellers_own_products(): void
@@ -50,14 +50,14 @@ class DashboardTest extends TestCase
         $reviewer = User::factory()->create();
         Review::create(['product_id' => $product->id, 'user_id' => $reviewer->id, 'rating' => 5]);
 
-        $this->actingAs($seller)->get('/dashboard')->assertOk()->assertViewIs('landing.seller')->assertSee(route('seller.dashboard'), false);
+        $this->actingAs($seller)->get('/dashboard')->assertOk()->assertViewIs('seller.dashboard')->assertSee(route('seller.dashboard'), false);
         $response = $this->actingAs($seller)->get(route('seller.dashboard'));
 
         $response->assertOk();
         $response->assertSee('Product at or below your low-stock level');
         $response->assertSee('Low Stock Widget (2 left)');
         $response->assertSee('5.0'); // average rating from the single 5-star review
-        $response->assertSee('from 1 review');
+        $response->assertSee('From 1 review');
     }
 
     public function test_dashboard_lists_the_sellers_recent_orders(): void
