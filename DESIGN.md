@@ -316,13 +316,23 @@ Pending (the shell links to them now, as `#` with `data-pending-route`, until th
 | `stores.index`, `stores.show` | `store` | header, footer |
 | `checkout.show` | none | cart |
 | `wishlist.index` | none | account menu, footer, account rail |
-| `account.home` | none | account overview (falls back to `dashboard`) |
+| `account.home` | none | account overview |
 | `account.returns`, `account.saved-searches`, `account.addresses`, `account.alerts` | none | account rail |
 | `seller.dashboard` | none | seller rail (falls back to `dashboard`) |
 | `seller.returns`, `seller.shipping`, `seller.analytics` | none | seller rail |
 | `operator.reports`, `operator.metrics` | none | operator rail |
 | `help.index`, `help.delivery`, `help.returns`, `help.contact`, `help.sellers` | none | footer, utility row |
 | `sell.start` | none | "Sell on Emall" (falls back to `seller.store.create`) |
+
+### The landing (`/dashboard`)
+
+`dashboard` is the page a person arrives on after signing in through InfoDot. It is drawn inside the account layout for a buyer (`landing.buyer`) and inside the seller desk for a seller (`landing.seller`), styled by `landing.css` (`ld-` classes), and built from `App\Support\Landing`:
+
+- **Masthead.** The owner's original logo file, unaltered (`public/images/logo.png`, and `logo-light.png` on the dark theme: never the live-type wordmark here), the welcome from the person's first name and their company or shop, and the way back: "InfoDot" and "Platforms", on the InfoDot host the app signs in against. Closed by the perforation.
+- **One primary action**, the only large primary button on the page, marked `data-primary-action`: Shop the mall (something is listed), Open a shop (nothing is listed yet), Add your first product (a shop with none), Manage your products (a shop with some).
+- **The product itself as the picture:** the newest real listings at their real prices, or the ticket-stub empty state. No invented figure anywhere.
+- **Context from records only:** the buyer's own orders, or the seller's "Needs you" counts, beside quiet links to everything the old doorway led to (`account.home`, `seller.dashboard`).
+- **Motion:** one stamp-in for the headline block and its action, transform and opacity, none under reduced motion; the page is complete without it.
 
 ## Do and do not
 

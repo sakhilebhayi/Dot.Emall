@@ -42,3 +42,9 @@
 .ds-input-wrap__reveal:hover { color: var(--ink); }
 .ds-input-wrap__reveal .when-shown, .ds-input-wrap__reveal[aria-pressed="true"] .when-hidden { display: none; }
 .ds-input-wrap__reveal[aria-pressed="true"] .when-shown { display: inline-block; }
+
+/* R-50: the refusal page lists the person's other companies, each with one quiet Switch button. */
+.ds-entitle-others { list-style: none; margin: 0; padding: 0; display: grid; }
+.ds-entitle-others li { border-top: 1px solid var(--line); }
+.ds-entitle-others form { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: var(--s-3); min-height: 3.25rem; }
+.ds-entitle-others b { color: var(--ink); font-weight: 650; overflow-wrap: anywhere; }

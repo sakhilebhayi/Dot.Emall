@@ -16,7 +16,7 @@ final class Navigation
     public static function account(): array
     {
         return [
-            ['label' => 'Overview', 'route' => 'account.home', 'alt' => ['dashboard'], 'icon' => 'home', 'match' => ['account.home', 'dashboard']],
+            ['label' => 'Overview', 'route' => 'account.home', 'alt' => ['dashboard'], 'icon' => 'home', 'match' => ['account.home']],
             ['label' => 'Orders', 'route' => 'orders.index', 'icon' => 'receipt', 'match' => ['orders.*', 'order-items.*']],
             ['label' => 'Returns', 'route' => 'account.returns', 'icon' => 'return', 'match' => ['account.returns*']],
             ['label' => 'Wishlist', 'route' => 'wishlist.index', 'icon' => 'heart', 'match' => ['wishlist.*']],
@@ -31,7 +31,7 @@ final class Navigation
     public static function seller(): array
     {
         return [
-            ['label' => 'Dashboard', 'route' => 'seller.dashboard', 'alt' => ['dashboard'], 'icon' => 'home', 'match' => ['seller.dashboard', 'dashboard']],
+            ['label' => 'Dashboard', 'route' => 'seller.dashboard', 'alt' => ['dashboard'], 'icon' => 'home', 'match' => ['seller.dashboard']],
             ['label' => 'Products', 'route' => 'seller.products.index', 'icon' => 'box', 'match' => ['seller.products.*']],
             ['label' => 'Orders', 'route' => 'seller.orders.index', 'icon' => 'package-check', 'match' => ['seller.orders.*', 'seller.order-items.*', 'seller.shipments.*']],
             ['label' => 'Returns', 'route' => 'seller.returns', 'icon' => 'return', 'match' => ['seller.returns*']],

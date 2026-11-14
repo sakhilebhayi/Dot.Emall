@@ -295,7 +295,7 @@ seller's own order **line**, matched on the `seller_id` snapshot taken at checko
 currency.** That is the normal case: the code is the orders' own currency (`SHOP_CURRENCY`, `ZAR` by
 default), or today's `SHOP_CURRENCY` when there is nothing delivered yet (a true zero). One snapshot carries
 one `currency`, so if a company's delivered lines in the window span several currencies (the setting was
-changed mid-window) both money keys are **left out** and a warning is logged, as Dot.Billing does;
+changed mid-window) both money keys are **left out** and a warning is logged;
 `orders_7d` and `low_stock_products` are still sent. Nothing is ever converted or added across currencies.
 `ANALYTICS_CURRENCY` is an optional override that only *pins* the published currency: money in any other
 currency, or an override that is not three uppercase letters, is left out the same way (never relabelled).

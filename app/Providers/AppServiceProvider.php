@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Http\Middleware\EnsureCompanyEntitled;
 use App\Models\PersonalAccessToken;
 use App\Support\Shop;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -9,6 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Sanctum\Sanctum;
+use Livewire\Livewire;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -25,6 +27,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // R-50: Livewire updates from a page in the signed-in area carry that page's entitlement check with them.
+        Livewire::addPersistentMiddleware([EnsureCompanyEntitled::class]);
+
         // A mistyped SHOP_CURRENCY would print wrong prices and ask Paystack
         // for the wrong money, so the app refuses to start instead.
         Shop::assertConfigured();

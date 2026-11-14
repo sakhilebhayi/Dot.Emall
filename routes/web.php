@@ -60,6 +60,7 @@ use App\Http\Controllers\SellerProductController;
 use App\Http\Controllers\StoreController;
 use App\Http\Controllers\StorefrontController;
 use App\Http\Controllers\WishlistController;
+use App\Http\Middleware\EnsureCompanyEntitled;
 use App\Models\User;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
@@ -125,6 +126,7 @@ Route::middleware([
     'auth:sanctum',
     config('jetstream.auth_session'),
     'verified',
+    EnsureCompanyEntitled::class,
 ])->group(function () {
     Route::get('/dashboard', DashboardController::class)->name('dashboard');
 
@@ -233,7 +235,7 @@ Route::middleware('throttle:guest-order')->prefix('guest/orders/{order}')->name(
 Route::get('/return-photos/{return}/{index}', ReturnPhotoController::class)->whereNumber('index')->name('return-photos.show');
 
 // Signed-in buyer: the cart's wishlist move, order actions, returns, account area. All behind sign-in and the usual verified check.
-Route::middleware(['auth:sanctum', config('jetstream.auth_session'), 'verified'])->group(function () {
+Route::middleware(['auth:sanctum', config('jetstream.auth_session'), 'verified', EnsureCompanyEntitled::class])->group(function () {
     Route::post('/cart/lines/{variant}/wishlist', [CartController::class, 'moveToWishlist'])->name('cart.wishlist');
 
     Route::post('/orders/{order}/payment/check', [OrderActionsController::class, 'checkPayment'])->name('orders.payment.check');
@@ -297,6 +299,7 @@ Route::middleware([
     'auth:sanctum',
     config('jetstream.auth_session'),
     'verified',
+    EnsureCompanyEntitled::class,
 ])->group(function () {
     Route::get('/account/saved-searches', [SavedSearchController::class, 'index'])->name('account.saved-searches');
     Route::post('/account/saved-searches', [SavedSearchController::class, 'store'])->name('account.saved-searches.store');
@@ -408,6 +411,7 @@ Route::middleware([
     'auth:sanctum',
     config('jetstream.auth_session'),
     'verified',
+    EnsureCompanyEntitled::class,
 ])->prefix('sell')->group(function () {
     Route::get('/dashboard', Seller\DashboardController::class)->name('seller.dashboard');
 
@@ -476,6 +480,7 @@ Route::middleware([
     'auth:sanctum',
     config('jetstream.auth_session'),
     'verified',
+    EnsureCompanyEntitled::class,
 ])->group(function () {
     Route::get('/wishlist', [WishlistController::class, 'index'])->name('wishlist.index');
     Route::post('/wishlist/sharing', [WishlistController::class, 'sharing'])->name('wishlist.sharing');

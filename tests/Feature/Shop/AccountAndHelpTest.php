@@ -29,11 +29,11 @@ class AccountAndHelpTest extends TestCase
         }
     }
 
-    public function test_dashboard_is_only_a_doorway(): void
+    public function test_dashboard_is_the_landing_and_links_on_to_each_roles_own_home(): void
     {
         $seller = $this->makeSeller();
-        $this->actingAs($seller)->get('/dashboard')->assertRedirect(route('seller.dashboard'));
-        $this->actingAs($this->makeBuyer())->get('/dashboard')->assertRedirect(route('account.home'));
+        $this->actingAs($seller)->get('/dashboard')->assertOk()->assertViewIs('landing.seller')->assertSee(route('seller.dashboard'), false);
+        $this->actingAs($this->makeBuyer())->get('/dashboard')->assertOk()->assertViewIs('landing.buyer')->assertSee(route('account.home'), false);
     }
 
     public function test_the_overview_is_a_buyers_page_with_orders_returns_wishlist_and_address(): void
