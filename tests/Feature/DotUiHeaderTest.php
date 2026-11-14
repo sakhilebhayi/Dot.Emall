@@ -324,6 +324,28 @@ class DotUiHeaderTest extends TestCase
         $this->assertStringContainsString('See all platforms', $html);
     }
 
+    public function test_with_no_infodot_url_set_the_switcher_links_start_with_the_real_infodot_host(): void
+    {
+        if (getenv('DOT_INFODOT_URL') !== false || isset($_ENV['DOT_INFODOT_URL'])) {
+            $this->markTestSkipped('DOT_INFODOT_URL is set in this environment.');
+        }
+
+        // The file's own default, as it resolves when the host sets nothing.
+        $default = (require config_path('ecosystem.php'))['platforms']['infodot']['url'];
+        $this->assertSame('https://infodot.co.za', $default);
+        config(['ecosystem.platforms.infodot.url' => $default, 'ecosystem.infodot.redeem_url' => 'https://infodot.co.za/api/ecosystem/redeem']);
+        $this->fakeInfoDot(['https://infodot.co.za/api/ecosystem/companies/'.self::ACME.'/platforms*' => Http::response(self::body(self::ACME))]);
+
+        $panel = $this->switcherHtml($this->actingAs($this->memberOf(self::ACME, 'Acme Ltd'))->get(route('account.home'))->assertOk()->getContent());
+
+        $this->assertStringContainsString('href="https://infodot.co.za/home"', $panel);
+        $this->assertStringContainsString('href="https://infodot.co.za/go/files?company='.self::ACME.'"', $panel);
+        preg_match_all('/href="([^"]+)"/', $panel, $hrefs);
+        foreach ($hrefs[1] as $href) {
+            $this->assertStringStartsWith('https://infodot.co.za/', $href);
+        }
+    }
+
     // ── CSP: self-hosted, nothing inline, nothing external ──────────────────
 
     public function test_the_shared_assets_are_served_from_this_site_and_resolve(): void
