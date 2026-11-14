@@ -22,7 +22,7 @@
 
         <div class="ds-err__find">
             @if ($otherCompanies->isNotEmpty())
-                <h2>Your other {{ $otherCompanies->count() === 1 ? 'company' : 'companies' }} here</h2>
+                <h2>Switch to {{ $otherCompanies->count() === 1 ? 'your other workspace' : 'another workspace' }}</h2>
                 <ul class="ds-entitle-others">
                     @foreach ($otherCompanies as $other)
                         <li>
@@ -38,7 +38,7 @@
                 </ul>
             @endif
             <h2>The shop is still open</h2>
-            <p class="ds-muted">Browsing, the cart and checkout need no company. <a href="{{ url('/') }}">Back to the shop</a>.</p>
+            <p class="ds-muted">Browsing, the cart and checkout need no company, and orders you have already placed keep working. <a href="{{ url('/') }}">Back to the shop</a>@auth, or <a href="{{ route('orders.index') }}">see your orders</a>@endauth.</p>
         </div>
     </section>
 </x-store-layout>

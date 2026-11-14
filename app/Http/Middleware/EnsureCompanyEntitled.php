@@ -90,7 +90,9 @@ class EnsureCompanyEntitled
         return $this->refuse($request, fn () => EntitlementRefusal::response(
             $answer['status'],
             $team->name,
-            $user->allTeams()->reject(fn ($other) => $other->id === $team->id),
+            // Someone whose personal workspace InfoDot refused is not offered it (or any team InfoDot does not know) as a way round.
+            $user->allTeams()->reject(fn ($other) => $other->id === $team->id
+                || ($request->hasSession() && $request->session()->get(self::PERSONAL) === false && ($other->personal_team || blank($other->infodot_team_uuid)))),
         ));
     }
 
