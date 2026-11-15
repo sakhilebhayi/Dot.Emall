@@ -11,7 +11,7 @@
     $items = \App\Support\Navigation::account();
 @endphp
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="dot-roboto" data-dh-theme-class="dark" data-dh-theme-key="emall-theme" data-dh-theme-default="system">
 <head>
     @include('layouts.partials.head', ['title' => $title ?? null, 'description' => $description ?? null, 'robots' => $robots, 'dotUiSwitcher' => true])
     @isset($head){{ $head }}@endisset
@@ -21,7 +21,7 @@
     <a class="ds-skip" href="#main">Skip to main content</a>
     <div class="ds-app">
         <div>
-            @include('layouts.partials.store-header', ['categories' => $cats, 'location' => $location ?? null, 'suggestions' => $suggestions ?? null, 'testmode' => $testmode ?? null, 'viewer' => $viewer, 'cartCount' => $cartCount, 'switcher' => true])
+            @include('layouts.partials.store-header', ['categories' => $cats, 'location' => $location ?? null, 'suggestions' => $suggestions ?? null, 'testmode' => $testmode ?? null, 'viewer' => $viewer, 'cartCount' => $cartCount, 'switcher' => true, 'accountItems' => $items])
             <div class="ds-banners"><x-banner />
                 @isset($banner){{ $banner }}@endisset
                 @if (session('warning'))<x-ds.alert tone="cau" banner>{{ session('warning') }}</x-ds.alert>
@@ -45,17 +45,7 @@
         </div>
         @include('layouts.partials.store-footer', ['viewer' => $viewer])
     </div>
-    @include('layouts.partials.desk-bottom-bar', ['items' => $items, 'moreId' => 'account-menu-sheet'])
-    <x-ds.dialog id="account-menu-sheet" title="Your account" :drawer="true" :sheet="false">
-        <nav class="ds-drawer-nav" aria-label="Your account menu">@include('layouts.partials.desk-rail', ['items' => $items, 'plain' => true])<hr><a href="{{ url('/') }}">Back to the shop</a></nav>
-    </x-ds.dialog>
-    <x-ds.dialog id="menu-drawer" title="Menu" :drawer="true" :sheet="false">
-        <nav class="ds-drawer-nav" aria-label="Menu">
-            <a href="{{ emall_route('products.index') }}">All products</a>
-            @foreach ($cats as $c)<details><summary>{{ $c['name'] }}<x-ds.icon name="chevron-down" :size="18" /></summary><div><a href="{{ $c['href'] }}">All in {{ $c['name'] }}</a>@foreach ($c['children'] as $k)<a href="{{ $k['href'] }}">{{ $k['name'] }}</a>@endforeach</div></details>@endforeach
-            <hr><x-ds.theme-toggle variant="menu" />
-        </nav>
-    </x-ds.dialog>
+    @include('layouts.partials.desk-bottom-bar', ['items' => $items])
     <x-ds.toasts />
     @isset($scripts){{ $scripts }}@endisset
     @stack('modals')

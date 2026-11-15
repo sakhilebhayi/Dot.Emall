@@ -60,7 +60,7 @@
                     @foreach ($products as $p)
                         @php $cover = $p->images->first(); $multi = $p->active_variants_count > 1; @endphp
                         <li class="sd-item">
-                            <span class="sd-select-cell"><input type="checkbox" name="ids[]" value="{{ $p->id }}" aria-label="Select {{ $p->name }}"></span>
+                            <label class="sd-select-cell"><input type="checkbox" name="ids[]" value="{{ $p->id }}" aria-label="Select {{ $p->name }}"></label>
                             <div class="sd-item__main">
                                 <div class="sd-cluster">
                                     <span class="sd-thumb">@if ($cover)<img src="{{ $cover->url() }}" alt="" width="56" height="56" loading="{{ $loop->index < 8 ? 'eager' : 'lazy' }}" decoding="async">@else<x-ds.icon name="image" :size="24" />@endif</span>

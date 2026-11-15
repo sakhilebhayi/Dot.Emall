@@ -9,7 +9,7 @@
 .pdp__buy { min-width: 0; }
 @media (min-width: 64rem) {
     .ds-pdp.pdp .pdp__buy { position: static; }
-    .ds-pdp.pdp .pdp__media { position: sticky; inset-block-start: 9.5rem; align-self: start; }
+    .ds-pdp.pdp .pdp__media { position: sticky; inset-block-start: calc(var(--dot-header-offset, 3.5rem) + var(--s-4)); align-self: start; }
 }
 .pdp__head h1 { overflow-wrap: break-word; }
 .ds-pdp__store a { color: var(--ink-2); }

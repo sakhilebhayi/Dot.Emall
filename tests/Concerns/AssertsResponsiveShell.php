@@ -7,8 +7,9 @@ use DOMXPath;
 use Illuminate\Testing\TestResponse;
 
 /**
- * Markup contract of the four layout contexts (store, account, seller desk, operator): a skip link, one main landmark, one h1, a theme toggle, and a
- * labelled menu button that opens a <dialog> (the phone menu). Reads rendered HTML, never pixels; behaviour lives in resources/js/app.js.
+ * Markup contract of the four layout contexts (store, account, seller desk, operator): a skip link, one main landmark, one h1, a theme control, and (R-52) the
+ * shared dot-ui header with ONE labelled menu button that opens its drawer (#dh-drawer, a modal dialog, printed right after the header). Reads rendered HTML, never
+ * pixels; behaviour lives in public/dot-ui/js/dot-nav.js and resources/js/app.js.
  */
 trait AssertsResponsiveShell
 {
@@ -23,8 +24,8 @@ trait AssertsResponsiveShell
         return new DOMXPath($document);
     }
 
-    /** @param  string  $menuId  the dialog the menu button opens: menu-drawer (store, account) or desk-menu (seller, operator) */
-    protected function assertResponsiveShell(TestResponse $response, string $menuId = 'menu-drawer'): DOMXPath
+    /** The one header, one drawer contract of every layout context (R-52). */
+    protected function assertResponsiveShell(TestResponse $response): DOMXPath
     {
         $response->assertOk();
         $xpath = $this->shellXPath($response);
@@ -33,15 +34,18 @@ trait AssertsResponsiveShell
         $this->assertSame(1, $xpath->query('//a[contains(@class, "ds-skip")][@href="#main"]')->length, 'skip link');
         $this->assertSame(1, $xpath->query('//main[@id="main"]')->length, 'one main landmark');
         $this->assertSame(1, $xpath->query('//h1')->length, 'one h1');
-        $this->assertGreaterThan(0, $xpath->query('//button[@data-theme-toggle]')->length, 'theme toggle');
+        $this->assertGreaterThan(0, $xpath->query('//button[@data-theme-toggle] | //button[@data-dh-theme-set]')->length, 'a theme control: the icon button (signed out) or the account menu buttons (signed in)');
         $this->assertSame(1, $xpath->query('//title')->length);
+        $this->assertSame(1, $xpath->query('//header[contains(concat(" ", normalize-space(@class), " "), " dh ")]')->length, 'one shared dot-ui header');
 
-        $button = $xpath->query('//button[@data-dialog-open="'.$menuId.'"][@aria-label="Open menu"]');
+        $button = $xpath->query('//header//button[@data-dh-menu-button][@aria-label="Open menu"]');
         $this->assertSame(1, $button->length, 'one menu button');
         $this->assertSame('button', $button->item(0)->getAttribute('type'));
-        $this->assertSame(1, $xpath->query('//dialog[@id="'.$menuId.'"][@aria-labelledby]')->length, 'the menu dialog');
-        $this->assertGreaterThan(0, $xpath->query('//dialog[@id="'.$menuId.'"]//nav//a[@href]')->length, 'navigation links live inside the menu');
+        $this->assertSame('dh-drawer', $button->item(0)->getAttribute('aria-controls'));
+        $this->assertSame(1, $xpath->query('//div[@id="dh-drawer"]//div[@role="dialog"][@aria-modal="true"][@aria-label]')->length, 'the menu drawer');
+        $this->assertGreaterThan(0, $xpath->query('//div[@id="dh-drawer"]//nav//a[@href]')->length, 'navigation links live inside the menu');
         $this->assertSame(0, $xpath->query('//*[contains(@class, "shell-legacy-nav")]')->length, 'no duplicate legacy navigation');
+        $this->assertSame(0, $xpath->query('//dialog[@id="menu-drawer" or @id="desk-menu" or @id="account-menu-sheet"]')->length, 'the old phone menu dialogs are gone');
 
         return $xpath;
     }

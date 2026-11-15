@@ -1,7 +1,7 @@
 ---
 version: alpha
 name: Shelf Edge
-description: The Dot.Emall design system. The price label is the unit of the interface and the waybill is the order. Label paper and indigo ink, Stamp indigo for action, Awning yellow from the logo for the strip, Schibsted Grotesk for text and prices, Martian Mono for printed codes.
+description: The Dot.Emall design system. The price label is the unit of the interface and the waybill is the order. Label paper and indigo ink, Stamp indigo for action, Awning yellow from the logo for the strip, Roboto (the shared Dot face) for text and prices, Martian Mono for printed codes.
 colors:
   primary: "#4b58a8"
   secondary: "#1b1e36"
@@ -48,29 +48,29 @@ colors:
   crit-bg-dark: "#4a2326"
 typography:
   display:
-    fontFamily: Schibsted Grotesk
+    fontFamily: Roboto
     fontSize: 4.25rem
     fontWeight: 750
     lineHeight: 1.1
     letterSpacing: -0.015em
   headline:
-    fontFamily: Schibsted Grotesk
+    fontFamily: Roboto
     fontSize: 2rem
     fontWeight: 700
     lineHeight: 1.1
     letterSpacing: -0.015em
   body:
-    fontFamily: Schibsted Grotesk
+    fontFamily: Roboto
     fontSize: 1rem
     fontWeight: 400
     lineHeight: 1.55
   label:
-    fontFamily: Schibsted Grotesk
+    fontFamily: Roboto
     fontSize: 0.875rem
     fontWeight: 650
     lineHeight: 1.3
   price:
-    fontFamily: Schibsted Grotesk
+    fontFamily: Roboto
     fontSize: 3rem
     fontWeight: 750
     lineHeight: 1
@@ -201,14 +201,14 @@ Named by role. Every value is a CSS custom property in `resources/css/tokens.css
 
 Contrast is checked as numbers in `tests/Unit/DesignTokensTest.php`: text pairs at 4.5:1 or better, control edges and focus at 3:1, in both themes. The Tailwind palette used by the older Jetstream views is bridged to the same values (`tailwind.config.js`, "Tailwind bridge" in `tokens.css`). New views must not use Tailwind colour utilities.
 
-Theme: class `light` or `dark` on `<html>`, set before first paint by an inline script from `localStorage["emall-theme"]` or else `prefers-color-scheme`, and followed live when no choice is stored. `ds.theme-toggle` switches it. It works on every page, Jetstream pages included.
+Theme: class `dark` and `data-theme="light|dark"` on `<html>`, set before first paint by dot-ui's `dot-theme-boot.js` (an external file, so the strict CSP needs no inline script) from `localStorage["emall-theme"]` or else `prefers-color-scheme`, and followed live when the choice is "system". The account menu has Light, Dark and System; `ds.theme-toggle` (the signed-out header, the sign-in pages, the phone menu) calls `DotNav.setTheme()`. It works on every page, Jetstream pages included.
 
 ## Typography
 
-Two self-hosted faces (`public/fonts`, SIL OFL licences beside them), no Google Fonts, no icon font:
+R-52: Roboto is the one text face of every Dot platform. It is self-hosted by the shared dot-ui (`public/dot-ui/fonts/roboto`, `dot-roboto.css` + `dot-type.css`, `class="dot-roboto"` on `<html>`), the Tailwind preset maps `font-sans` to it, and `--font-text` is `var(--dot-font-sans)`. No Google Fonts, no icon font, nothing from another origin.
 
-- **Schibsted Grotesk** (variable, 400 to 900): text, headings, prices, labels. Chosen for sturdy figures: a zero that reads as a zero (R749.00, never "R749.oo"), lining numerals, and a plain humanist warmth that is readable at 16px on a phone. Headings 700 to 750 at a tight 1.1 line height with -0.015em tracking.
-- **Martian Mono** (variable, 100 to 800): printed codes only (order numbers, SKUs, tracking numbers, the 01 02 03 numerals of the how-it-works list). Never a label face.
+- **Roboto** (variable, 100 to 900): text, headings, prices, labels, navigation, forms, tables, the search and every menu. It replaced Schibsted Grotesk. Prices and counts keep their lining and tabular numerals (`font-variant-numeric`), so a zero still reads as a zero (R749.00) and columns of figures stack. The wordmark in the header and the footer is live type in Roboto 800 (ink "dot", the punched yellow stop, indigo "emall", tracking -0.02em); the round mark beside it is the owner's original logo artwork, never redrawn.
+- **Martian Mono** (variable, 100 to 800, `public/fonts`, OFL licence beside it): printed codes only (order numbers, SKUs, tracking numbers, the 01 02 03 numerals of the how-it-works list). Kept because these are data readouts where equal-width glyphs are the point, and because it is the one place the platform's identity still speaks in a second voice. It is never used for prices, counts or table figures. A page downloads it only when it prints a code.
 
 Scale (fluid with `clamp`): `--text-xs` 13px caption, `--text-sm` 14px, `--text-base` 16px body, `--text-md` 18px, `--text-lg` 20 to 24px, `--text-xl` 24 to 32px, `--text-2xl` 30 to 48px, `--text-3xl` 36 to 68px. Labels, captions and table heads are sentence case, untracked, never small caps. Prices: `lining-nums`; inside tables and cart lines also `tabular-nums` so figures stack.
 
@@ -289,16 +289,32 @@ Confident, warm, plain. Sentence case everywhere. Say what happens and what it c
 
 ## Layout contexts
 
-Four Blade layout components, one language, four postures. Each has one skip link, one `<main id="main">`, one h1 (from the `heading` slot, or the page's own), a unique `<title>`, a flash and banner region, toasts, a theme toggle and a notification bell for signed-in people. A strip across the very top marks the context: the hanging awning (store, account), a plain yellow strip (seller desk), an ink strip (operator).
+Four Blade layout components, one language, four postures. Each has one skip link, one `<main id="main">`, one h1 (from the `heading` slot, or the page's own), a unique `<title>`, a flash and banner region, toasts, the shared dot-ui header (below) and a notification bell for signed-in people. A strip across the very top marks the context: the hanging awning (store, account), a plain yellow strip (seller desk), an ink strip (operator).
 
 | Layout | For | Slots (all optional except title) |
 |---|---|---|
 | `<x-store-layout>` | home, search, categories, product, store, cart, checkout, help, legal | `title`, `description`, `heading`, `lead`, `actions`, `breadcrumbs`, `location` (delivery chip), `suggestions` (search options), `testmode`, `banner`, `head`, `scripts`, default. Props `categories`, `robots`, `contained` (default true), `bottomBar` |
-| `<x-account-layout>` | orders, returns, wishlist, saved searches, addresses, alerts, profile, teams, API tokens | same slots as store; rail on desktop, scrolling sub-nav and bottom bar on phones. `robots` defaults to noindex |
-| `<x-seller-layout>` | seller desk: dashboard, products, orders, returns, shipping, promotions, analytics, store profile | `title`, `description`, `heading`, `lead`, `actions`, `breadcrumbs`, `banner`, `head`, `scripts`, default. Rail, bottom bar and "More" sheet; store name in the top bar |
+| `<x-account-layout>` | orders, returns, wishlist, saved searches, addresses, alerts, profile, teams, API tokens | same slots as store; rail on desktop, bottom bar on phones ("More" opens the header's drawer). `robots` defaults to noindex |
+| `<x-seller-layout>` | seller desk: dashboard, products, orders, returns, shipping, promotions, analytics, store profile | `title`, `description`, `heading`, `lead`, `actions`, `breadcrumbs`, `banner`, `head`, `scripts`, default. Rail, bottom bar ("More" opens the header's drawer); the store name is the header's status |
 | `<x-operator-layout>` | moderation, payments, reports, metrics | same as seller |
 | `<x-auth-layout>` | sign in, reset, confirm, two-factor, verify | `title`, `heading`, `lead`, `footer`, default. A centred label |
-| `<x-error-layout>` | 403, 404, 419, 429, 500, 503 | props `code`, `heading`, `message`, `hint`, `rich`; slot `actions`. With `rich` (403, 404, 419, 429) it draws inside the storefront layout, reading the session, with search and category links, and falls back to the standalone frame if that throws. 500 and 503 are standalone: no session, user, database or Livewire |
+| `<x-error-layout>` | 403, 404, 419, 429, 500, 503 | props `code`, `heading`, `message`, `hint`, `rich`; slot `actions`. With `rich` (403, 404, 419, 429) it draws inside the storefront layout, reading the session, with search and category links, and falls back to the standalone frame if that throws. 500 and 503 are standalone: no session, user, database or Livewire (they still carry the shared bar and a plain GET search form) |
+
+### The header (R-52, dot-ui 0.6.1)
+
+Assets: one stylesheet, `dot-ui/css/dot-ui.min.css` (Roboto, type scale, tokens, search, header, switcher; first in `<head>`), `dot-theme-boot.min.js` (head) and one deferred script: `dot-ui-core.min.js` everywhere (results controller loads on first focus), `dot-ui.min.js` on the seller and operator desks, whose search calls `DotSearchResults.attach()` from `resources/js/app.js`. The Roboto file is not preloaded. The dashboards' entrance animation `dx-rise` starts from opacity .01, not 0: Chrome skips an opacity-0 paint for largest-contentful-paint and an opacity-only animation never repaints, so the welcome line used to count at page load (2.1 s under the harness profile) instead of first paint (1.0 s).
+
+One 56px bar on every page type, from `<x-dot.header>` (public/dot-ui; the grid keeps the search centred in the viewport, 0px measured at 1024 to 1920). Before it the storefront stacked an awning, a utility row, a bar and a category row (113 to 118px, the category row 152px wider than a 1024px viewport, the pill 119px off centre).
+
+| Context | Bar (left to right) | Search | Menu on a phone |
+|---|---|---|---|
+| Storefront, account | logo + wordmark, **Categories** (dropdown of every top-level category, plus All products), **Stores**, **Sell**, **Help** | the shop search (`q` to `/search`, suggestions from `/search/suggest`), unchanged | drawer: your account pages (signed in), All products, every category with its sub-categories, Stores, Sell on Emall, Help, then the account section (theme, sign out) or Sign in. Signed in, the bar also holds the platform switcher (account pages only), the bell and the cart; the account menu has Account overview, Orders, Wishlist, Seller desk or Sell on Emall, Operator area, Profile and security, theme, Sign out |
+| Seller desk, operator area | mark, the desk label as the always-visible status ("Seller desk", store name from 1280px), no primary items (the rail is the navigation), platform switcher, bell, account | a real search of that desk (below) | drawer: the desk's pages and Back to the shop. The bottom bar (4 items + More, 60px) stays; More opens the same drawer |
+| Sign-in and legal pages, the standalone 500 and 503 | logo, Back to the shop | the shop search | the drawer (Back to the shop, theme) |
+
+Where things went: Help and Sell on Emall are bar items (the label is "Sell" in the bar so that four items fit beside the search at 1440px; the full words are in the drawer and the account menu). The delivery-province chip and the test-mode badge sit in a thin strip under the bar, only when there is something to say. The phone reveal-search icon and the scroll clip are gone, because the shared header's search is one tap everywhere (a full-screen sheet). The mega menu is the Categories dropdown; sub-categories stay reachable from every category page and the phone drawer. The platform switcher stays on account pages and desks and is never drawn on the public shop, so a catalogue page never asks InfoDot (decision D8 kept: a signed-out visitor has no company).
+
+Desk search (seller and operator): `GET /sell/find` and `GET /operator/find` (`DeskSearchController`, `App\Services\DeskSearch\DeskSearch`) answer JSON groups for the shared pill's results controller. Everything is scoped from the signed-in person, never from the request: a seller finds only their own store's products (name, SKU), parcels (order reference or the buyer's name) and returns; the operator search needs the `is_platform_operator` flag and finds listings, stores, orders and people (people with a masked e-mail, as in the support lookup; opening a person, store or order is still the access-logged page). 5 rows per group, 2 to 60 characters, LIKE wildcards escaped, answers private and `no-store`, throttled 60 a minute. Without JavaScript the pill submits to the existing filtered list (`/sell/products?q=`, `/operator/products?q=&status=all`).
 
 Navigation is data (`App\Support\Navigation`), linked through `emall_route('name')`, which returns `#` while a route is not registered and `emall_pending('name')` adds `data-pending-route="name"` to the link. `Shell::first([...])` picks the first registered of several names. The cart count is `Shell::cartCount()`, 0 until the cart feature binds `app()->bind('emall.cart_count', fn () => $count)`.
 

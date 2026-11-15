@@ -60,8 +60,8 @@ class DesignSystemTest extends TestCase
         $this->assertResponsiveShell($this->get('/'));
         $this->assertResponsiveShell($this->get(route('products.index')));
         $this->assertResponsiveShell($this->actingAs($this->makeBuyer())->get(route('orders.index')));
-        $this->assertResponsiveShell($this->actingAs($seller)->get(route('seller.products.index')), 'desk-menu');
-        $this->assertResponsiveShell($this->actingAs($this->makeOperatorUser())->get(route('operator.products.index')), 'desk-menu');
+        $this->assertResponsiveShell($this->actingAs($seller)->get(route('seller.products.index')));
+        $this->assertResponsiveShell($this->actingAs($this->makeOperatorUser())->get(route('operator.products.index')));
     }
 
     public function test_every_page_has_its_own_title_and_the_auth_pages_have_one_h1(): void
@@ -117,9 +117,11 @@ class DesignSystemTest extends TestCase
         foreach (['cdn.tailwindcss.com', 'fonts.googleapis.com', 'fonts.gstatic.com', 'unpkg.com', 'jsdelivr', 'images.unsplash.com', 'ui-avatars.com', 'material-symbols', 'Material Symbols'] as $needle) {
             $this->assertStringNotContainsString($needle, $all, "{$needle} is gone");
         }
-        $this->assertFileExists(dirname(__DIR__, 2).'/public/fonts/schibsted-grotesk-var-latin.woff2');
+        // R-52: Roboto comes from the shared dot-ui, self-hosted; the Schibsted Grotesk files are gone, Martian Mono stays for codes only.
+        $this->assertFileExists(dirname(__DIR__, 2).'/public/dot-ui/fonts/roboto/roboto-latin-wght-normal.woff2');
+        $this->assertFileDoesNotExist(dirname(__DIR__, 2).'/public/fonts/schibsted-grotesk-var-latin.woff2');
         $this->assertFileExists(dirname(__DIR__, 2).'/public/fonts/martian-mono-var-latin.woff2');
-        $this->assertFileExists(dirname(__DIR__, 2).'/public/fonts/LICENSE-SchibstedGrotesk-OFL.txt');
+        $this->assertFileExists(dirname(__DIR__, 2).'/public/dot-ui/fonts/roboto/OFL.txt');
         $this->assertFileExists(dirname(__DIR__, 2).'/public/fonts/LICENSE-MartianMono-OFL.txt');
     }
 

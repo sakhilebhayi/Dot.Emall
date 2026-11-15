@@ -34,10 +34,10 @@
 
         <h2 id="k-type">Type</h2>
         <div class="kit__type">
-            <p style="font-size: var(--text-3xl); font-weight: 750; font-stretch: var(--width-head); line-height: 1.1; letter-spacing: -0.02em;">Display, Schibsted Grotesk 750</p>
+            <p style="font-size: var(--text-3xl); font-weight: 750; font-stretch: var(--width-head); line-height: 1.1; letter-spacing: -0.02em;">Display, Roboto 700</p>
             <h2 style="border: 0; margin: 0; padding: 0; font-size: var(--text-xl);">A heading for a section</h2>
             <h3 style="margin: 0;">A smaller heading for a group</h3>
-            <p>Body text is sixteen pixels at a 1.55 line height, in Schibsted Grotesk. It stays in sentence case and says plainly what is on offer, what it costs and when it arrives.</p>
+            <p>Body text is sixteen pixels at a 1.55 line height, in Roboto. It stays in sentence case and says plainly what is on offer, what it costs and when it arrives.</p>
             <p class="ds-muted">Quiet text is for hints and notes. It still passes AA on every ground.</p>
             <p>Money in tabular numerals: <x-ds.price :cents="74900" size="xl" /> <x-ds.price :cents="1299900" size="lg" /> <x-ds.price :cents="5" size="md" /> <x-ds.price :cents="100000" size="md" /></p>
             <p>Codes in Martian Mono: <span class="ds-code">EM-2025-004172</span> <span class="ds-code">1Z 999 AA1 01 2345 6784</span></p>

@@ -21,44 +21,23 @@ document.addEventListener('click', (e) => {
     b.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
 });
 
-/* Phone header (R-43 polish #6): once the page has scrolled the search row is gone, so a search icon appears in the first row; it goes back to the top and focuses the field. */
-{
-    let ticking = false;
-    const mark = () => { ticking = false; root.classList.toggle('is-scrolled', window.scrollY > 72); };
-    window.addEventListener('scroll', () => { if (!ticking) { ticking = true; requestAnimationFrame(mark); } }, { passive: true });
-    mark();
-    document.addEventListener('click', (e) => {
-        if (!e.target.closest('[data-search-reveal]')) return;
-        root.classList.remove('is-scrolled');
-        window.scrollTo(0, 0);
-        document.querySelector('.ds-header__search input[type="search"]')?.focus();
-    });
-}
-
-/* Theme: class "light" or "dark" on <html>, remembered in localStorage ("emall-theme"). With nothing stored the system decides. */
-const THEME_KEY = 'emall-theme';
-function effectiveTheme() {
+/* Theme (R-52): the choice is dot-ui's. dot-nav.js stores it under "emall-theme" and puts class "dark" and data-theme="light|dark" on <html> (dot-theme-boot.js does the same before first paint); the
+   account menu's Light / Dark / System buttons and the icon buttons below ([data-theme-toggle]: the signed-out header, the sign-in pages, the phone menu) all go through DotNav.setTheme(). */
+const effectiveTheme = () => {
     if (root.classList.contains('dark')) return 'dark';
-    if (root.classList.contains('light')) return 'light';
+    if (root.getAttribute('data-theme') === 'light') return 'light';
     return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-}
-function setTheme(mode) {
-    root.classList.remove('light', 'dark');
-    root.classList.add(mode);
-    try { localStorage.setItem(THEME_KEY, mode); } catch (e) { /* private mode: the choice lasts for this page only */ }
-    $$('[data-theme-toggle]').forEach((b) => b.setAttribute('aria-pressed', mode === 'dark' ? 'true' : 'false'));
-}
-// With no saved choice the class follows the system when it changes (the head script set it once at load).
-window.matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', (e) => {
-    let saved = null;
-    try { saved = localStorage.getItem(THEME_KEY); } catch (err) { /* no storage */ }
-    if (saved !== 'dark' && saved !== 'light') { root.classList.remove('light', 'dark'); root.classList.add(e.matches ? 'dark' : 'light'); }
-});
+};
+const syncThemeButtons = () => $$('[data-theme-toggle]').forEach((b) => b.setAttribute('aria-pressed', effectiveTheme() === 'dark' ? 'true' : 'false'));
 document.addEventListener('click', (e) => {
-    const t = e.target.closest('[data-theme-toggle]');
-    if (t) setTheme(effectiveTheme() === 'dark' ? 'light' : 'dark');
+    if (!e.target.closest('[data-theme-toggle]')) return;
+    const next = effectiveTheme() === 'dark' ? 'light' : 'dark';
+    if (window.DotNav && window.DotNav.setTheme) window.DotNav.setTheme(next);
+    else { root.classList.toggle('dark', next === 'dark'); root.setAttribute('data-theme', next); try { localStorage.setItem('emall-theme', next); } catch (err) { /* private mode: for this page only */ } }
+    syncThemeButtons();
 });
-$$('[data-theme-toggle]').forEach((b) => b.setAttribute('aria-pressed', effectiveTheme() === 'dark' ? 'true' : 'false'));
+document.addEventListener('dot:theme', syncThemeButtons);
+syncThemeButtons();
 
 /* Dialog and drawer (ds.dialog, ds.confirm-dialog, the phone menu): <dialog> + showModal() gives the focus trap, Esc and an inert page. */
 document.addEventListener('click', (e) => {
@@ -219,20 +198,18 @@ function initGallery(g) {
 $$('.ds-gallery').forEach(initGallery);
 
 /* Header search suggestions. The pill is the shared Dot UI search (<x-dot.search>, dot-ui/js/dot-search.js opens and closes it); this is the shop's own
-   behaviour inside it: the ARIA 1.2 combobox over [data-suggest-list], fed by data-suggest-endpoint (JSON {"suggestions":[{label,url,meta}]}) or by server-rendered
-   rows. The query, the endpoint and the results page are untouched. An empty list keeps the panel hidden (CSS :has). */
+   behaviour inside it: the list under [data-suggest-list], fed by data-suggest-endpoint (JSON {"suggestions":[{label,url,meta}]}) or by server-rendered rows. The query, the
+   endpoint and the results page are untouched. The arrow keys, Enter on a highlighted row, Escape and aria-activedescendant are dot-ui's results controller (results-nav, dot-search-results.js).
+   An empty list keeps the panel hidden (CSS :has). */
 function initSearch(box) {
     if (box.dataset.ready) return; box.dataset.ready = '1';
     const input = box.querySelector('.dsr-input'); const list = box.querySelector('[data-suggest-list]');
     if (!input || !list) return;
     const endpoint = box.dataset.suggestEndpoint; let timer = null; let active = -1;
-    const options = () => $$('[role="option"]', list);
-    const reset = () => { active = -1; input.removeAttribute('aria-activedescendant'); options().forEach((el) => { el.classList.toggle('is-active', false); el.setAttribute('aria-selected', 'false'); }); };
-    const mark = (n) => { const o = options(); o.forEach((el, k) => { el.classList.toggle('is-active', k === n); el.setAttribute('aria-selected', k === n ? 'true' : 'false'); }); active = n; if (n >= 0) { input.setAttribute('aria-activedescendant', o[n].id); o[n].scrollIntoView({ block: 'nearest' }); } else input.removeAttribute('aria-activedescendant'); };
     const render = (items) => {
-        list.replaceChildren(); reset();
+        list.replaceChildren();
         items.forEach((s, k) => {
-            const a = document.createElement('a'); a.className = 'dsr-item'; a.setAttribute('role', 'option'); a.id = box.id + '-opt-' + k; a.setAttribute('aria-selected', 'false'); a.href = s.url; a.tabIndex = -1;
+            const a = document.createElement('a'); a.className = 'dsr-item'; a.setAttribute('role', 'option'); a.id = box.id + '-opt-' + k; a.href = s.url; a.tabIndex = -1;
             const t = document.createElement('span'); t.className = 'dsr-label'; t.textContent = s.label; a.append(t);
             if (s.meta) { const m = document.createElement('span'); m.className = 'dsr-tag'; m.textContent = s.meta; a.append(m); }
             list.append(a);
@@ -244,15 +221,43 @@ function initSearch(box) {
         clearTimeout(timer); if (q.length < 2) { render([]); return; }
         timer = setTimeout(async () => { try { const r = await fetch(endpoint + (endpoint.includes('?') ? '&' : '?') + 'q=' + encodeURIComponent(q), { headers: { Accept: 'application/json' } }); if (r.ok) { const j = await r.json(); if (input.value.trim() === q) render(j.suggestions || []); } } catch (err) { render([]); } }, 160);
     });
-    input.addEventListener('keydown', (e) => {
-        const n = options().length;
-        if (e.key === 'ArrowDown' && n) { mark((active + 1) % n); e.preventDefault(); }
-        else if (e.key === 'ArrowUp' && n) { mark((active - 1 + n) % n); e.preventDefault(); }
-        else if (e.key === 'Enter' && active >= 0) { const a = options()[active]; if (a && a.href) { window.location.href = a.href; e.preventDefault(); } }
-        else if (e.key === 'Escape') { reset(); }
-    });
 }
 $$('.dsr:has([data-suggest-list])').forEach(initSearch);
+
+/* The notification bell (a Livewire component around dot-ui's panel bell): a re-render (mark as read) rewrites the panel's attributes, which would close it under the person's finger.
+   Remember that it is open and put the open attributes back (dot-ui owns open and close; this only survives a morph). */
+let bellOpen = false;
+document.addEventListener('dot:menu-open', (e) => { if (e.target.closest && e.target.closest('[data-dh-bell]')) bellOpen = true; });
+document.addEventListener('dot:menu-close', (e) => { if (e.target.closest && e.target.closest('[data-dh-bell]')) bellOpen = false; });
+const hookBell = () => window.Livewire.hook('morphed', ({ el, component }) => {
+    if (component.name !== 'notification-bell' || !bellOpen) return;
+    const bell = el.querySelector('[data-dh-bell]');
+    if (!bell) return;
+    bell.setAttribute('data-open', '');
+    const panel = bell.querySelector('[data-dh-menu-panel]');
+    if (panel) panel.removeAttribute('hidden');
+    const trigger = bell.querySelector('[data-dh-menu-trigger]');
+    if (trigger) trigger.setAttribute('aria-expanded', 'true');
+});
+if (window.Livewire) hookBell(); else document.addEventListener('livewire:init', hookBell);
+
+/* The seller desk and operator search (R-52): the shared pill, dot-ui's results controller, and the desk's own JSON endpoint (data-desk-search). The server decides what the signed-in role may see:
+   it answers {"groups":[{"head","rows":[{"href","label","code","tag","action"}]}]} and nothing else; rows are printed as text, never as markup. */
+function initDeskSearch(box) {
+    if (box.dataset.deskReady || !window.DotSearchResults) return; box.dataset.deskReady = '1';
+    const endpoint = box.dataset.deskSearch;
+    window.DotSearchResults.attach(box, {
+        enterFirst: true, minChars: 2, debounce: 220, empty: 'Nothing matches. Try a name, a SKU or an order number.',
+        search: async (q, { signal }) => {
+            const r = await fetch(endpoint + '?q=' + encodeURIComponent(q), { signal, headers: { Accept: 'application/json' }, credentials: 'same-origin' });
+            if (!r.ok) throw new Error('desk search ' + r.status);
+            return (await r.json()).groups || [];
+        },
+    });
+}
+// dot-ui's scripts are deferred after this one (layouts/partials/dot-scripts.blade.php), so the results controller exists from DOMContentLoaded on.
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => $$('[data-desk-search]').forEach(initDeskSearch)); else $$('[data-desk-search]').forEach(initDeskSearch);
+document.addEventListener('livewire:navigated', () => $$('[data-desk-search]').forEach(initDeskSearch));
 
 /* Livewire morphs add new nodes: set up galleries, searches and steppers that arrived after load. */
 document.addEventListener('livewire:navigated', () => { $$('.ds-gallery').forEach(initGallery); $$('.dsr:has([data-suggest-list])').forEach(initSearch); $$('.ds-stepper').forEach(syncStepper); });

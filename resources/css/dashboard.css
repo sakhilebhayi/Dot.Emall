@@ -21,8 +21,8 @@
 :root.dark .dx-arrive__img--light { display: none; }
 :root.dark .dx-arrive__img--dark { display: block; }
 @media (prefers-color-scheme: dark) {
-    :root:not(.light) .dx-arrive__img--light { display: none; }
-    :root:not(.light) .dx-arrive__img--dark { display: block; }
+    :root:not(.light):not([data-theme="light"]) .dx-arrive__img--light { display: none; }
+    :root:not(.light):not([data-theme="light"]) .dx-arrive__img--dark { display: block; }
 }
 .dx-arrive__text { min-width: 0; }
 .dx-arrive h1 { font-size: clamp(1.5rem, 1.2rem + 1.2vw, 2rem); font-weight: 750; letter-spacing: -0.015em; line-height: 1.12; max-width: 24ch; text-wrap: balance; overflow-wrap: break-word; }
@@ -199,9 +199,17 @@
     .dx-chart__bar { transform-box: fill-box; transform-origin: 50% 100%; animation: dx-grow 360ms var(--ease) both; animation-delay: calc(380ms + var(--k, 0) * 45ms); }
     .dx-row:active:not(.dx-row--static) { background: var(--brand-soft); transition-duration: 60ms; }
 }
-@keyframes dx-rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+/* from .01, not 0: Chrome ignores an opacity:0 paint for the largest-contentful-paint metric, and an opacity-only animation never repaints, so the welcome line was only counted at the page's load (2.1 s throttled) instead of at first paint (1.2 s). Visually the same. */
+@keyframes dx-rise { from { opacity: 0.01; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 @keyframes dx-sheet { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 @keyframes dx-grow { from { transform: scaleY(0); } to { transform: none; } }
 @media (prefers-reduced-motion: reduce) {
     .dx *, .dx *::before, .dx *::after { animation: none !important; transition: none !important; }
+}
+
+/* R-52: 44px targets up to 1024px and on touch (the period tabs, the "All orders" style links, the table disclosure and a link that stands alone under a block). */
+@media (pointer: coarse), (max-width: 64rem) {
+    .dx-hd a, .dx-period a, .dx-tv summary, .dx-foot a, .dx p > a:only-child { min-height: var(--tap); }
+    .dx-hd a, .dx-foot a, .dx p > a:only-child { display: inline-flex; align-items: center; }
+    .dx-period a { min-width: var(--tap); justify-content: center; }
 }

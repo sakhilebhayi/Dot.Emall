@@ -98,7 +98,8 @@
 .ds-cartline__meta { font-size: var(--text-sm); color: var(--ink-3); }
 .ds-cartline__controls { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-3) var(--s-4); justify-content: space-between; }
 .ds-cartline__total { margin-inline-start: auto; text-align: end; }
-@media (min-width: 48rem) {
+/* The controls sit beside the title only where the line has room: a tablet (one column) and a wide desktop. In the two-column cart between 1024px and 1280px the main column is about 530px, and a third column left the title 50px. */
+@media (min-width: 48rem) and (max-width: 63.99rem), (min-width: 80rem) {
     .ds-cartline { grid-template-columns: 6.5rem minmax(0, 1fr) auto; }
     .ds-cartline__controls { grid-column: 3; justify-content: flex-end; flex-direction: column; align-items: flex-end; }
 }
@@ -170,7 +171,7 @@
 @media (min-width: 64rem) {
     .ds-shop { grid-template-columns: 15rem minmax(0, 1fr); gap: var(--s-7); }
     .ds-shop__filters-toggle > summary { display: none; }
-    .ds-shop__filters { align-self: start; position: sticky; inset-block-start: 9.5rem; }
+    .ds-shop__filters { align-self: start; position: sticky; inset-block-start: calc(var(--dot-header-offset, 3.5rem) + var(--s-4)); }
 }
 .ds-pdp { display: grid; gap: var(--s-5); padding-block: var(--s-4) var(--s-6); }
 .ds-pdp__buy { display: grid; gap: var(--s-4); align-content: start; min-width: 0; }
@@ -182,7 +183,7 @@
 .ds-pdp__add { flex: 1 1 12rem; }
 @media (min-width: 64rem) {
     .ds-pdp { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: var(--s-7); }
-    .ds-pdp__buy { position: sticky; inset-block-start: 9.5rem; align-self: start; }
+    .ds-pdp__buy { position: sticky; inset-block-start: calc(var(--dot-header-offset, 3.5rem) + var(--s-4)); align-self: start; }
 }
 .ds-buybar { position: fixed; z-index: 85; inset-inline: 0; inset-block-end: 0; display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); padding: var(--s-3) var(--gutter) calc(var(--s-3) + env(safe-area-inset-bottom)); background: var(--surface); border-top: 1px solid var(--line); }
 @media (min-width: 48rem) { .ds-buybar { display: none; } }
@@ -196,7 +197,7 @@
    rests (a photo that never loads should not animate forever); with reduced motion it does not pulse at all. In the dark theme the near-white
    studio grounds are dimmed one step so a photograph does not glare against the indigo page. */
 :root { --photo-brightness: 1; }
-@media (prefers-color-scheme: dark) { :root:not(.light) { --photo-brightness: 0.76; } }
+@media (prefers-color-scheme: dark) { :root:not(.light):not([data-theme="light"]) { --photo-brightness: 0.76; } }
 :root.dark { --photo-brightness: 0.76; }
 .disc-tile img, .disc-ranked img, .disc-mosaic img, .disc-pick__media img, .ds-cartline__media img, .co-photos img, .wl-item__media img, .ds-hero__photo img { filter: brightness(var(--photo-brightness)); }
 .ds-pcard__media::before, .ds-gallery__thumb::before, .ds-cartline__media::before {

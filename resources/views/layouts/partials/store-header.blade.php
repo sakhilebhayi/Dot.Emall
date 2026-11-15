@@ -1,85 +1,44 @@
 {{--
-  The public storefront header. Included by x-store-layout and x-account-layout. Variables: $categories (list, see App\Support\Navigation::categories()), $location (slot or null), $suggestions (slot or null),
-  $testmode (slot or null), $viewer (App\Support\Navigation::viewer()), $cartCount, $switcher (true only in the signed-in account: the platform switcher is drawn there and never on the public shop, so a catalogue page never asks InfoDot).
+  The public storefront header, included by x-store-layout and x-account-layout. R-52: ONE 56px bar of the shared dot-ui header (it was an awning, a utility row, a bar and a category row, 113 to 118px).
+  Variables: $categories (App\Support\Navigation::categories()), $location (slot or null), $suggestions (slot or null), $testmode (slot or null), $viewer (App\Support\Navigation::viewer()), $cartCount,
+  $switcher (true only in the signed-in account: the platform switcher is drawn there and never on the public shop, so a catalogue page never asks InfoDot), $accountItems (the account navigation, for the phone drawer).
+  The decorative awning hangs above the bar (it scrolls away; only the bar is sticky). The delivery-location chip and the test-mode badge sit in a thin strip UNDER the bar, only when there is something to say.
+  Where things went: Help and Sell on Emall are bar items; the category row is the "Categories" dropdown (the phone drawer keeps every sub-category); the theme switch is in the account menu (a signed-out visitor
+  keeps an icon button from 861px and a row in the drawer); the phone's reveal-search button and the scrolled-header clip are gone because the shared header's search is one tap on every page.
 --}}
 @php
     $user = $viewer['user'];
-    $searchUrl = emall_route('search') !== '#' ? emall_route('search') : emall_route('products.index');
     $cartHref = emall_route('cart.index');
+    $nav = \App\Support\HeaderNav::store($categories);
+    $account = \App\Support\HeaderNav::account($viewer);
 @endphp
 <div class="ds-awning" aria-hidden="true"></div>
+<x-dot.header class="ds-header" brand-href="{{ url('/') }}" brand-label="Dot.Emall, home" :nav="$nav" :account="$account" :guest="$user ? null : \App\Support\HeaderNav::guest()"
+    nav-label="Shop" menu-label="Open menu" drawer-title="Menu" search-label="Search the shop">
+    <x-slot:brand>@include('layouts.partials.brand')</x-slot:brand>
+    <x-slot:search>
+        @include('layouts.partials.shop-search', ['suggestions' => $suggestions ?? null])
+    </x-slot:search>
+    <x-slot:tools>
+        @unless ($user)<x-ds.theme-toggle class="ds-hide-md" />@endunless
+        @if ($user && ($switcher ?? false))@include('layouts.partials.dot-switcher', ['user' => $user])@endif
+        @if ($user)<livewire:notification-bell />@endif
+        <a href="{{ $cartHref }}" class="dh-icon-btn ds-cart-link" {!! emall_pending('cart.index') !!}>
+            <x-ds.icon name="cart" :size="24" class="dh-ic" />
+            @if ($cartCount > 0)<span class="dh-badge" aria-hidden="true">{{ $cartCount > 99 ? '99+' : $cartCount }}</span><span class="ds-visually-hidden">Cart, {{ $cartCount }} {{ \Illuminate\Support\Str::plural('item', $cartCount) }}</span>@else<span class="ds-visually-hidden">Cart, empty</span>@endif
+        </a>
+    </x-slot:tools>
+    <x-slot:drawer>@include('layouts.partials.store-drawer', ['categories' => $categories, 'items' => $accountItems ?? []])</x-slot:drawer>
+    @unless ($user)
+        <x-slot:drawer-after><nav class="dh-dnav" aria-label="Preferences"><ul><li><x-ds.theme-toggle variant="menu" /></li></ul></nav><p class="ds-drawer-note">Accounts come from InfoDot. Sign in to buy, sell and follow your orders.</p></x-slot:drawer-after>
+    @endunless
+</x-dot.header>
+@if (isset($location) && trim((string) $location) !== '' || (isset($testmode) && trim((string) $testmode) !== '') || \App\Support\Shell::testModeLabel())
 <div class="ds-util">
     <div class="ds-container ds-util__row">
         <div class="ds-util__loc">{{ $location ?? '' }}</div>
         <div class="ds-util__test">@if (isset($testmode) && trim((string) $testmode) !== ''){{ $testmode }}@elseif ($label = \App\Support\Shell::testModeLabel())<x-ds.badge tone="cau" icon="alert-triangle">{{ $label }}</x-ds.badge>
 @endif</div>
-        <div class="ds-util__links">
-            <a href="{{ emall_route('help.index') }}" {!! emall_pending('help.index') !!}>Help</a>
-            <a href="{{ emall_route('sell.start') !== '#' ? emall_route('sell.start') : emall_route('seller.store.create') }}">Sell on Emall</a>
-        </div>
     </div>
 </div>
-<header class="ds-header">
-    <div class="ds-container ds-header__bar">
-        <button type="button" class="ds-icon-btn ds-header__menu" data-dialog-open="menu-drawer" aria-label="Open menu"><x-ds.icon name="menu" :size="24" /></button>
-        <x-ds.logo class="ds-header__brand" :href="url('/')" />
-        <div class="ds-header__search">
-            {{-- The shared Dot UI pill (R-51), the same control as InfoDot's. Only its look is shared: the form still GETs the shop's own search with ?q=, and the
-                 suggestions still come from the shop's own search.suggest endpoint (resources/js/app.js fills [data-suggest-list]). The panel stays hidden while it is empty. --}}
-            <x-dot.search name="q" id="site-search-input" :action="$searchUrl" :value="is_string(request('q')) ? request('q') : ''" placeholder="Search products, brands and stores" label="Search products"
-                :root-attributes="array_filter(['id' => 'site-search', 'data-suggest-endpoint' => \App\Support\Shell::routeExists('search.suggest') ? route('search.suggest') : null])">
-                <x-slot:results><div class="dsr-quick ds-suggest" data-suggest-list>@isset($suggestions){{ $suggestions }}@endisset</div></x-slot:results>
-            </x-dot.search>
-        </div>
-        <div class="ds-header__actions">
-            <button type="button" class="ds-icon-btn ds-header__searchbtn" data-search-reveal aria-label="Search"><x-ds.icon name="search" :size="22" /></button>
-            <x-ds.theme-toggle class="ds-header__hide-sm" />
-            @if ($user)
-                @if ($switcher ?? false)@include('layouts.partials.dot-switcher', ['user' => $user])@endif
-                <x-ds.dropdown :label="\Illuminate\Support\Str::of($user->name)->before(' ')" id="account-menu" icon="user" bare>
-                    <p class="ds-dropdown__note">Signed in as <strong>{{ $user->name }}</strong></p>
-                    <hr class="ds-dropdown__sep">
-                    <x-ds.dropdown-item :href="emall_route('account.home') !== '#' ? emall_route('account.home') : route('dashboard')" icon="home">Account overview</x-ds.dropdown-item>
-                    <x-ds.dropdown-item :href="emall_route('orders.index')" icon="receipt">Orders</x-ds.dropdown-item>
-                    <x-ds.dropdown-item :href="emall_route('wishlist.index')" icon="heart" :data-pending-route="emall_pending_name('wishlist.index')">Wishlist</x-ds.dropdown-item>
-                    @if ($viewer['hasStore'])
-                        <x-ds.dropdown-item :href="emall_route('seller.dashboard') !== '#' ? emall_route('seller.dashboard') : emall_route('seller.products.index')" icon="store">Seller desk</x-ds.dropdown-item>
-                    @else
-                        <x-ds.dropdown-item :href="emall_route('seller.store.create')" icon="store">Sell on Emall</x-ds.dropdown-item>
-                    @endif
-                    @if ($viewer['isOperator'])<x-ds.dropdown-item :href="emall_route('operator.products.index')" icon="flag">Operator area</x-ds.dropdown-item>
 @endif
-                    <x-ds.dropdown-item :href="emall_route('profile.show')" icon="lock">Profile and security</x-ds.dropdown-item>
-                    <hr class="ds-dropdown__sep">
-                    <x-ds.theme-toggle variant="menu" />
-                    <form method="POST" action="{{ route('logout') }}">@csrf<x-ds.dropdown-item type="submit" icon="logout">Sign out</x-ds.dropdown-item></form>
-                </x-ds.dropdown>
-                <livewire:notification-bell />
-            @else
-                <a href="{{ route('login') }}" class="ds-header__link"><x-ds.icon name="user" :size="22" /><span>Sign in</span></a>
-            @endif
-            <a href="{{ $cartHref }}" class="ds-header__link ds-cart-link" {!! emall_pending('cart.index') !!}>
-                <x-ds.icon name="cart" :size="24" />
-                <span class="ds-label-text">Cart</span>
-                @if ($cartCount > 0)<span class="ds-count" aria-hidden="true">{{ $cartCount > 99 ? '99+' : $cartCount }}</span><span class="ds-visually-hidden">{{ $cartCount }} {{ \Illuminate\Support\Str::plural('item', $cartCount) }} in your cart</span>@else<span class="ds-visually-hidden">, empty</span>@endif
-            </a>
-        </div>
-    </div>
-    <nav class="ds-catnav" aria-label="Shop by category">
-        <div class="ds-container ds-catnav__row">
-            @if (count($categories))
-                <button type="button" class="ds-catnav__btn" data-disclosure aria-expanded="false" aria-controls="mega-menu"><x-ds.icon name="menu" :size="18" />All categories<x-ds.icon name="chevron-down" :size="16" /></button>
-                @foreach (array_slice($categories, 0, 6) as $c)<a href="{{ $c['href'] }}">{{ $c['name'] }}</a>@endforeach
-                <div class="ds-mega" id="mega-menu" data-disclosure-panel hidden>
-                    @foreach ($categories as $c)
-                        <div><h2><a href="{{ $c['href'] }}">{{ $c['name'] }}</a></h2>@if (count($c['children']))<ul>@foreach ($c['children'] as $k)<li><a href="{{ $k['href'] }}">{{ $k['name'] }}</a></li>@endforeach</ul>@endif</div>
-                    @endforeach
-                </div>
-            @else
-                <a href="{{ emall_route('products.index') }}" @if (request()->routeIs('products.*')) aria-current="page" @endif>All products</a>
-            @endif
-            <span class="ds-catnav__spacer"></span>
-            <a href="{{ emall_route('stores.index') }}" {!! emall_pending('stores.index') !!}>Stores</a>
-        </div>
-    </nav>
-</header>

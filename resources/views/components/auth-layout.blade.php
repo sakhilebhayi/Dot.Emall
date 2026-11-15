@@ -1,24 +1,20 @@
 {{--
-  <x-auth-layout>: sign-in, password reset, two-factor, email verification, and the legal pages' frame. One centred label on the page, the awning above, the logo and theme toggle in a thin bar.
+  <x-auth-layout>: sign-in, password reset, two-factor, email verification, and the legal pages' frame. One centred label on the page, the awning above, and (R-52) the shared dot-ui header with the shop's search above it.
   Slots: title (REQUIRED, the <title>), heading (the page's one <h1>, shown on the label), lead (one sentence under it), default (the form), footer (extra links under the label).
   Props: wide=false (a wider label for the legal pages), label=true (draw the label card; pass :label="false" for a bare column).
 --}}
 @props(['wide' => false, 'label' => true])
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="dot-roboto" data-dh-theme-class="dark" data-dh-theme-key="emall-theme" data-dh-theme-default="system">
 <head>
-    @include('layouts.partials.head', ['title' => $title ?? null, 'description' => $description ?? null, 'robots' => 'noindex', 'dotUi' => false])
+    @include('layouts.partials.head', ['title' => $title ?? null, 'description' => $description ?? null, 'robots' => 'noindex'])
     @livewireStyles(['nonce' => csp_nonce()])
 </head>
 <body class="ds-ctx-auth">
     <a class="ds-skip" href="#main">Skip to main content</a>
     <div class="ds-auth">
         <div>
-            <div class="ds-awning" aria-hidden="true"></div>
-            <div class="ds-container ds-auth__top">
-                <x-ds.logo :href="url('/')" />
-                <div style="display: flex; align-items: center; gap: var(--s-2);"><a class="ds-header__link" href="{{ url('/') }}"><span>Back to the shop</span></a><x-ds.theme-toggle /></div>
-            </div>
+            @include('layouts.partials.bare-header')
         </div>
         <main id="main" class="ds-container ds-auth__main" tabindex="-1">
             <div class="ds-auth__card" @if ($wide) style="width: min(100%, 48rem);" @endif>

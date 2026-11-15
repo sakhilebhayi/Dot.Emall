@@ -50,6 +50,8 @@ final class SignedInSmoke
         'user/confirmed-password-status' => 'JSON status, not a page',
         'operator/reports/{type}/{id}' => 'opened as /operator/reports/product/{id}: the {type} segment is a word, which the pattern matcher does not collapse',
         'account/returns/{return}' => 'needs a delivered line inside its return window; covered by ReturnFlowTest',
+        'sell/find' => 'JSON for the seller desk header search, not a page; covered by DeskSearchTest (scoping, permissions, empty states)',
+        'operator/find' => 'JSON for the operator header search, not a page; covered by DeskSearchTest',
         'sell/analytics/export/{what}' => 'CSV downloads; both kinds are opened above under their literal addresses (export/orders, export/products)',
     ];
 

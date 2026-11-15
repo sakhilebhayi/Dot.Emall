@@ -3,8 +3,8 @@
 /*
  * Dot.Emall design tokens. Everything the layouts and components colour or size comes from here (see DESIGN.md).
  *
- * Light and dark are first class. The <html> element carries class="light" or class="dark" once a person has chosen (the choice is kept
- * in localStorage); with no class the browser's prefers-color-scheme decides, through color-scheme and light-dark(). Colour tokens are
+ * Light and dark are first class. The <html> element carries class="dark" (and data-theme="light" or "dark") once a person has chosen (the choice is kept
+ * in localStorage under emall-theme, written by dot-ui's dot-nav.js and read before first paint by dot-theme-boot.js); with no class the browser's prefers-color-scheme decides, through color-scheme and light-dark(). Colour tokens are
  * light-dark() pairs, so a single declaration serves both themes and no component needs a dark: variant.
  *
  * Contrast: every text pair used by the kit is checked in tests/Unit/DesignTokensTest.php (AA, 4.5:1 text, 3:1 for control edges).
@@ -12,7 +12,7 @@
 :root {
     color-scheme: light dark;
 }
-:root.light { color-scheme: light; }
+:root.light, :root[data-theme="light"] { color-scheme: light; }
 :root.dark { color-scheme: dark; }
 
 :root,
@@ -63,8 +63,8 @@
     --focus: light-dark(#3d4991, #f2c82d);
     --scrim: light-dark(rgb(27 30 54 / 0.55), rgb(8 9 20 / 0.7));
 
-    /* Type. Schibsted Grotesk carries text, headings and every price (tabular lining numerals, a zero that reads as a zero); Martian Mono only prints codes. */
-    --font-text: "Schibsted Grotesk", "Schibsted Grotesk Fallback", system-ui, sans-serif;
+    /* Type (R-52). Roboto (the shared dot-ui face, --dot-font-sans) carries text, headings and every price (tabular lining numerals); Martian Mono only prints codes. */
+    --font-text: var(--dot-font-sans, "Roboto", "Roboto Fallback", system-ui, sans-serif);
     --font-code: "Martian Mono", "Martian Mono Fallback", ui-monospace, "SF Mono", Menlo, monospace;
     --text-xs: 0.8125rem;
     --text-sm: 0.875rem;
