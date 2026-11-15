@@ -24,7 +24,7 @@
 /* On a phone the province chip and the test-mode pill wrap onto two lines rather than clip each other (jury 2 #11). */
 @media (max-width: 29.99rem) { .ds-util__row { flex-wrap: wrap; gap: 0 var(--s-4); } .ds-util__test { margin-inline-start: 0; } .ds-util__test .ds-badge { overflow: visible; white-space: normal; } }
 
-/* The shared header (R-52, dot-ui 0.6.0: public/dot-ui/css/dot-header.css, loaded before this file). One 56px bar on the storefront, the account and both desks: the logo, a status or the primary items, the search in the
+/* The shared header (R-52, dot-ui 0.6.1: public/dot-ui/css/dot-ui.min.css, loaded before this file). One 56px bar on the storefront, the account and both desks: the logo, a status or the primary items, the search in the
    centre column (a CSS Grid: centred in the viewport whatever the left and right hold), switcher, bell, cart and account. This block maps the header's tokens onto Shelf Edge's own. They are light-dark() values, so one
    block serves both themes. Plain :root, not inside a layer: the package's rules are unlayered. */
 :root {

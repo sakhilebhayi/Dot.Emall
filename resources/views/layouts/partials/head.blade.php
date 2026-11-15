@@ -1,6 +1,6 @@
 {{--
-  Shared <head> for every layout. Variables: $title (the page's own name; the app name is appended), $description, $robots ('noindex' for signed-in areas), $vite (entry list), $dotUiSwitcher (default false; true in the account and the desks), $dotUi (default true; false only on the packing slip, which has no header).
-  R-52: Roboto and the shared header come from this site's own public/dot-ui (dot-ui 0.6.0). dot-theme-boot.js (an external file, so no inline script) puts class "dark" (and data-theme) on <html> before first paint from the saved choice (key emall-theme), else the system's.
+  Shared <head> for every layout. Variables: $title (the page's own name; the app name is appended), $description, $robots ('noindex' for signed-in areas), $vite (entry list), $dotUiSwitcher (default false; true in the account and the desks), $dotUiAttach (default false; true on the desks, whose search calls DotSearchResults.attach()), $dotUi (default true; false only on the packing slip, which has no header).
+  R-52: Roboto and the shared header come from this site's own public/dot-ui (dot-ui 0.6.1). dot-theme-boot.min.js (an external file, so no inline script) puts class "dark" (and data-theme) on <html> before first paint from the saved choice (key emall-theme), else the system's.
 --}}
 @php
     $appName = config('app.name', 'Dot.Emall');
@@ -23,4 +23,4 @@
 <link rel="apple-touch-icon" href="{{ asset('apple-touch-icon.png') }}">
 @include('layouts.partials.dot-assets', ['header' => $dotUi ?? true, 'switcher' => ($dotUiSwitcher ?? false) && \App\Support\Navigation::viewer()['user']])
 @vite(['resources/css/app.css', 'resources/js/app.js'])
-@include('layouts.partials.dot-scripts', ['header' => $dotUi ?? true, 'switcher' => ($dotUiSwitcher ?? false) && \App\Support\Navigation::viewer()['user']])
+@include('layouts.partials.dot-scripts', ['header' => $dotUi ?? true, 'attach' => $dotUiAttach ?? false, 'switcher' => ($dotUiSwitcher ?? false) && \App\Support\Navigation::viewer()['user']])

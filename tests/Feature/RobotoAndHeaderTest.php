@@ -25,9 +25,8 @@ class RobotoAndHeaderTest extends TestCase
         $html = $this->get('/')->assertOk()->getContent();
 
         $this->assertStringContainsString('class="dot-roboto"', $html);
-        $this->assertStringContainsString(asset('dot-ui/css/dot-roboto.css'), $html);
-        $this->assertStringContainsString(asset('dot-ui/css/dot-type.css'), $html);
-        $this->assertStringContainsString('rel="preload" as="font" type="font/woff2" href="'.asset('dot-ui/fonts/roboto/roboto-latin-wght-normal.woff2').'" crossorigin', $html);
+        $this->assertStringContainsString(asset('dot-ui/css/dot-ui.min.css'), $html, 'one minified stylesheet holds Roboto, the type scale, tokens, search, header and switcher');
+        $this->assertStringNotContainsString('rel="preload" as="font"', $html, 'dot-ui 0.6.1: no default font preload (it competes with the largest paint)');
 
         $css = (string) file_get_contents(public_path('dot-ui/css/dot-roboto.css'));
         $this->assertStringContainsString("font-family: 'Roboto'", $css);
@@ -137,7 +136,7 @@ class RobotoAndHeaderTest extends TestCase
             $html = view("errors.{$code}")->render();
 
             $this->assertStringContainsString('class="dot-roboto"', $html);
-            $this->assertStringContainsString('dot-ui/css/dot-roboto.css', $html);
+            $this->assertStringContainsString('dot-ui/css/dot-ui.min.css', $html);
             $this->assertStringContainsString('role="search"', $html);
             $this->assertStringContainsString('action="'.url('/search').'"', $html, 'a plain GET form to the shop search');
         }
@@ -251,7 +250,7 @@ class RobotoAndHeaderTest extends TestCase
         $html = $this->get('/')->getContent();
 
         $this->assertStringContainsString('data-dh-theme-key="emall-theme"', $html);
-        $this->assertStringContainsString('dot-ui/js/dot-theme-boot.js', $html);
+        $this->assertStringContainsString('dot-ui/js/dot-theme-boot.min.js', $html);
         $this->assertStringNotContainsString("localStorage.getItem('emall-theme')", $html, 'the inline first-paint script is gone');
         $tokens = (string) file_get_contents(resource_path('css/tokens.css'));
         $this->assertStringContainsString(':root[data-theme="light"] { color-scheme: light; }', $tokens);

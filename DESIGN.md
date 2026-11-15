@@ -300,7 +300,9 @@ Four Blade layout components, one language, four postures. Each has one skip lin
 | `<x-auth-layout>` | sign in, reset, confirm, two-factor, verify | `title`, `heading`, `lead`, `footer`, default. A centred label |
 | `<x-error-layout>` | 403, 404, 419, 429, 500, 503 | props `code`, `heading`, `message`, `hint`, `rich`; slot `actions`. With `rich` (403, 404, 419, 429) it draws inside the storefront layout, reading the session, with search and category links, and falls back to the standalone frame if that throws. 500 and 503 are standalone: no session, user, database or Livewire (they still carry the shared bar and a plain GET search form) |
 
-### The header (R-52, dot-ui 0.6.0)
+### The header (R-52, dot-ui 0.6.1)
+
+Assets: one stylesheet, `dot-ui/css/dot-ui.min.css` (Roboto, type scale, tokens, search, header, switcher; first in `<head>`), `dot-theme-boot.min.js` (head) and one deferred script: `dot-ui-core.min.js` everywhere (results controller loads on first focus), `dot-ui.min.js` on the seller and operator desks, whose search calls `DotSearchResults.attach()` from `resources/js/app.js`. The Roboto file is not preloaded. The dashboards' entrance animation `dx-rise` starts from opacity .01, not 0: Chrome skips an opacity-0 paint for largest-contentful-paint and an opacity-only animation never repaints, so the welcome line used to count at page load (2.1 s under the harness profile) instead of first paint (1.0 s).
 
 One 56px bar on every page type, from `<x-dot.header>` (public/dot-ui; the grid keeps the search centred in the viewport, 0px measured at 1024 to 1920). Before it the storefront stacked an awning, a utility row, a bar and a category row (113 to 118px, the category row 152px wider than a 1024px viewport, the pill 119px off centre).
 

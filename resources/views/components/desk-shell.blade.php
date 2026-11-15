@@ -9,7 +9,7 @@
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="dot-roboto" data-dh-theme-class="dark" data-dh-theme-key="emall-theme" data-dh-theme-default="system">
 <head>
-    @include('layouts.partials.head', ['title' => $title ?? null, 'description' => $description ?? null, 'robots' => $robots, 'dotUiSwitcher' => true])
+    @include('layouts.partials.head', ['title' => $title ?? null, 'description' => $description ?? null, 'robots' => $robots, 'dotUiSwitcher' => true, 'dotUiAttach' => true])
     @isset($head){{ $head }}@endisset
     @livewireStyles(['nonce' => csp_nonce()])
 </head>

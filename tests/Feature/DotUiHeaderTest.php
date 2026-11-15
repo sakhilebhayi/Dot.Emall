@@ -163,9 +163,9 @@ class DotUiHeaderTest extends TestCase
         $this->fakeInfoDot([]);
 
         foreach ([route('products.index'), route('login')] as $url) {
-            $this->get($url)->assertOk()->assertDontSee('data-dsw', false)->assertDontSee('dot-switcher', false);
+            $this->get($url)->assertOk()->assertDontSee('data-dsw', false);
         }
-        $this->get(route('products.index'))->assertSee('dsr-input', false)->assertSee('dot-search.css', false);
+        $this->get(route('products.index'))->assertSee('dsr-input', false)->assertSee('dot-ui/css/dot-ui.min.css', false)->assertSee('dot-ui/js/dot-ui-core.min.js', false);
         Http::assertNothingSent();
     }
 
@@ -179,7 +179,7 @@ class DotUiHeaderTest extends TestCase
         foreach ([route('products.index'), route('products.show', $product), route('stores.index')] as $url) {
             $html = $this->actingAs($member)->get($url)->assertOk()->getContent();
             $this->assertStringNotContainsString('data-dsw', $html);
-            $this->assertStringNotContainsString('dot-switcher', $html, 'its files are not even loaded');
+            $this->assertStringContainsString('dot-ui/js/dot-ui-core.min.js', $html, 'the shared minified script (its switcher part finds no markup here and does nothing)');
             $this->assertStringContainsString('class="dsr-input"', $html);
         }
         Http::assertNothingSent();
@@ -228,7 +228,9 @@ class DotUiHeaderTest extends TestCase
 
         $desk = $this->actingAs($owner)->get(route('seller.dashboard'))->assertOk()->getContent();
         $this->assertStringContainsString('data-state="ok"', $this->switcherHtml($desk));
-        $this->assertStringContainsString('dot-switcher.css', $desk);
+        $this->assertStringContainsString('dot-ui/css/dot-ui.min.css', $desk);
+        $this->assertStringContainsString('dot-ui/js/dot-ui.min.js', $desk, 'the desks call DotSearchResults.attach(), so they load the bundle with the results controller inside');
+        $this->assertStringNotContainsString('dot-ui-core.min.js', $desk);
         $this->assertStringContainsString('data-dh-theme-set', $desk, 'the theme switch is still in the desk, in the account menu (and the drawer on a phone)');
 
         $operator = $this->makeOperator();
@@ -355,7 +357,7 @@ class DotUiHeaderTest extends TestCase
         $response = $this->actingAs($this->memberOf(self::ACME, 'Acme Ltd'))->get(route('account.home'))->assertOk();
         $html = $response->getContent();
 
-        foreach (['css/dot-roboto.css', 'css/dot-type.css', 'css/dot-tokens.css', 'css/dot-search.css', 'css/dot-header.css', 'css/dot-switcher.css', 'js/dot-switcher.js', 'js/dot-search.js', 'js/dot-search-results.js', 'js/dot-nav.js', 'js/dot-theme-boot.js'] as $asset) {
+        foreach (['css/dot-ui.min.css', 'js/dot-ui-core.min.js', 'js/dot-theme-boot.min.js'] as $asset) {
             $this->assertStringContainsString(asset('dot-ui/'.$asset), $html, $asset.' is linked from this site');
             $this->assertFileExists(public_path('dot-ui/'.$asset));
         }

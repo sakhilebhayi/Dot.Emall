@@ -1,18 +1,14 @@
 {{--
-  The shared Dot UI assets (dot-ui 0.6.0), all from this site's own public/dot-ui: no CDN, no inline style or script ('self' only).
-  Roboto and its type scale load on every page that includes this (the packing slip and the standalone 500/503 page included). Variables: $header (the header, search
-  pill and menu scripts), $switcher (the platform switcher's files, only where it is drawn: the signed-in account, the desks and the signed-in storefront; a guest on a
-  catalogue page never loads it, so the public shop never asks InfoDot).
+  The shared Dot UI assets (dot-ui 0.6.1), all from this site's own public/dot-ui: no CDN, no inline style or script ('self' only).
+  Variables: $header (true: the one minified bundle dot-ui.min.css, which holds Roboto, the type scale, the tokens and the search, header and switcher styles, so it
+  is ONE request and the first stylesheet; false: Roboto and the type scale only, for the packing slip). The switcher's styles ride in the bundle (about 3 kB gzip), but its
+  script and markup appear only where the switcher is drawn (the signed-in account, the desks and the signed-in storefront), so a guest on a catalogue page never asks InfoDot.
+  The Roboto file is not preloaded (dot-ui 0.6.1 PERFORMANCE.md: a preload competes with the page's own largest paint, which here is a dashboard numeral or a product photo).
 --}}
-<link rel="preload" as="font" type="font/woff2" href="{{ asset('dot-ui/fonts/roboto/roboto-latin-wght-normal.woff2') }}" crossorigin>
-<link rel="stylesheet" href="{{ asset('dot-ui/css/dot-roboto.css') }}">
-<link rel="stylesheet" href="{{ asset('dot-ui/css/dot-type.css') }}">
-<script src="{{ asset('dot-ui/js/dot-theme-boot.js') }}"></script>
 @if ($header ?? true)
-<link rel="stylesheet" href="{{ asset('dot-ui/css/dot-tokens.css') }}">
-<link rel="stylesheet" href="{{ asset('dot-ui/css/dot-search.css') }}">
-<link rel="stylesheet" href="{{ asset('dot-ui/css/dot-header.css') }}">
-@if ($switcher ?? false)
-<link rel="stylesheet" href="{{ asset('dot-ui/css/dot-switcher.css') }}">
+<link rel="stylesheet" href="{{ asset('dot-ui/css/dot-ui.min.css') }}">
+@else
+<link rel="stylesheet" href="{{ asset('dot-ui/css/dot-roboto.min.css') }}">
+<link rel="stylesheet" href="{{ asset('dot-ui/css/dot-type.min.css') }}">
 @endif
-@endif
+<script src="{{ asset('dot-ui/js/dot-theme-boot.min.js') }}"></script>
