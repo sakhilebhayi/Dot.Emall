@@ -85,7 +85,8 @@ class RobotoAndHeaderTest extends TestCase
 
             preg_match_all('/<(?:link|script)[^>]+(?:href|src)="([^"]+)"/', $html, $refs);
             foreach ($refs[1] as $ref) {
-                $this->assertDoesNotMatchRegularExpression('#^(https?:)?//(?!localhost)#', $ref, "{$url} loads {$ref} from another origin");
+                $host = parse_url($ref, PHP_URL_HOST);
+                $this->assertTrue($host === null || $host === parse_url(asset('/'), PHP_URL_HOST), "{$url} loads {$ref} from another origin");
             }
             $header = $this->headerHtml($html);
             $this->assertStringNotContainsString(' style=', $header, "{$url}: inline style in the header");
