@@ -19,7 +19,7 @@
 .co-side { display: grid; gap: var(--s-4); min-width: 0; align-content: start; }
 @media (min-width: 64rem) {
     .co-layout { grid-template-columns: minmax(0, 1fr) 24rem; gap: var(--s-7); }
-    .co-side { position: sticky; inset-block-start: 9.5rem; }
+    .co-side { position: sticky; inset-block-start: calc(var(--dot-header-offset, 3.5rem) + var(--s-4)); }
 }
 .co-label { --label-behind: var(--ground); }
 .co-label .ds-label__row dd, .co-total, .co-orderline__total, .co-option__price { font-variant-numeric: lining-nums; }
@@ -144,7 +144,7 @@
 .co-receipt .is-cancelled td { color: var(--ink-3); text-decoration: line-through; }
 .co-money--receipt { max-width: 22rem; margin-inline-start: auto; }
 @media print {
-    .ds-skip, .ds-header, .ds-awning, .ds-catnav, .ds-util, .ds-footer, .ds-bottombar, .ds-account__rail, .ds-subnav, .ds-banners, .ds-toasts, .ds-page-header__actions { display: none !important; }
+    .ds-skip, .ds-header, .ds-deskbar, .dh-drawer, .ds-awning, .ds-util, .ds-footer, .ds-bottombar, .ds-account__rail, .ds-subnav, .ds-banners, .ds-toasts, .ds-page-header__actions { display: none !important; }
     .ds-main { padding: 0; }
     body { background: Canvas; color: CanvasText; }
 }

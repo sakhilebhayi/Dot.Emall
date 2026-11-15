@@ -37,9 +37,10 @@ class ChromePolishTest extends TestCase
         $this->assertStringContainsString('.ds-count.is-stamped', $css);
     }
 
-    public function test_the_header_offers_a_search_icon_for_the_compact_phone_header(): void
+    public function test_the_header_offers_the_shared_search_sheet_on_a_phone(): void
     {
-        $this->get('/')->assertOk()->assertSee('data-search-reveal', false);
+        // R-52: the shared header's search is one tap on every page (a full-screen sheet), so the old reveal-after-scroll icon is gone.
+        $this->get('/')->assertOk()->assertSee('data-dh-search-toggle', false)->assertDontSee('data-search-reveal', false);
     }
 
     public function test_a_primary_button_with_an_arrow_carries_the_stamp_hooks(): void
@@ -71,7 +72,8 @@ class ChromePolishTest extends TestCase
 
         $html = $this->get('/definitely/not/here')->assertNotFound()->assertSee("We couldn't find that page")->assertSee('the rest of the Dot Ecosystem', false)->getContent();
 
-        $this->assertStringContainsString('class="ds-header"', $html, 'the real header');
+        $this->assertMatchesRegularExpression('/<header class="[^"]*\bds-header\b[^"]*"/', $html, 'the real header');
+        $this->assertStringContainsString('ds-cart-link', $html, 'the real storefront header carries the cart');
         $this->assertStringContainsString('role="search"', $html);
         $this->assertStringContainsString('id="err-q"', $html);
         $this->assertStringContainsString(route('login'), $html);
@@ -92,7 +94,11 @@ class ChromePolishTest extends TestCase
     {
         foreach ([500, 503] as $code) {
             $html = view("errors.{$code}")->render();
-            $this->assertStringNotContainsString('class="ds-header"', $html);
+            // R-52: standalone, but still the shared bar with the shop's search (a plain GET form): no account, cart, bell or switcher, because nothing here may read the session or the database.
+            $this->assertStringNotContainsString('ds-cart-link', $html);
+            $this->assertStringNotContainsString('data-dh-bell', $html);
+            $this->assertStringNotContainsString('data-dsw', $html);
+            $this->assertStringContainsString('role="search"', $html);
             $this->assertStringContainsString('ds-auth', $html);
         }
     }

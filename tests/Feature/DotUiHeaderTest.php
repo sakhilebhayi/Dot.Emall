@@ -229,7 +229,7 @@ class DotUiHeaderTest extends TestCase
         $desk = $this->actingAs($owner)->get(route('seller.dashboard'))->assertOk()->getContent();
         $this->assertStringContainsString('data-state="ok"', $this->switcherHtml($desk));
         $this->assertStringContainsString('dot-switcher.css', $desk);
-        $this->assertStringContainsString('data-theme-toggle', $desk, 'the theme switch is still in the desk, in the account menu on a phone');
+        $this->assertStringContainsString('data-dh-theme-set', $desk, 'the theme switch is still in the desk, in the account menu (and the drawer on a phone)');
 
         $operator = $this->makeOperator();
         $area = $this->actingAs($operator)->get(route('operator.home'))->assertOk()->getContent();
@@ -355,12 +355,12 @@ class DotUiHeaderTest extends TestCase
         $response = $this->actingAs($this->memberOf(self::ACME, 'Acme Ltd'))->get(route('account.home'))->assertOk();
         $html = $response->getContent();
 
-        foreach (['css/dot-fonts.css', 'css/dot-tokens.css', 'css/dot-search.css', 'css/dot-switcher-fonts.css', 'css/dot-switcher.css', 'js/dot-switcher.js', 'js/dot-search.js'] as $asset) {
+        foreach (['css/dot-roboto.css', 'css/dot-type.css', 'css/dot-tokens.css', 'css/dot-search.css', 'css/dot-header.css', 'css/dot-switcher.css', 'js/dot-switcher.js', 'js/dot-search.js', 'js/dot-search-results.js', 'js/dot-nav.js', 'js/dot-theme-boot.js'] as $asset) {
             $this->assertStringContainsString(asset('dot-ui/'.$asset), $html, $asset.' is linked from this site');
             $this->assertFileExists(public_path('dot-ui/'.$asset));
         }
 
-        // Every relative url() in the shared CSS lands on a file that is really there (fonts, arrow mask, stencil face).
+        // Every relative url() in the shared CSS lands on a file that is really there (Roboto, arrow mask).
         foreach (glob(public_path('dot-ui/css/*.css')) as $css) {
             preg_match_all('/url\(\s*[\'"]?([^\'")]+)[\'"]?\s*\)/', (string) file_get_contents($css), $urls);
             foreach ($urls[1] as $url) {

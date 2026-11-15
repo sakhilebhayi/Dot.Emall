@@ -21,6 +21,11 @@ function initChart(chart) {
         tip.style.opacity = '1';
     };
     const hide = () => { tip.style.opacity = '0'; };
+    // On a phone or tablet a day's bar is about 11px wide: far under a finger, so the bars leave the tab order there (the values stay in the tap tooltip and in "View as a table"). A keyboard on a wide screen keeps them.
+    const touch = window.matchMedia('(pointer: coarse), (max-width: 64rem)');
+    const focusable = () => chart.querySelectorAll('.dx-chart__hit[role="img"]').forEach((h) => h.setAttribute('tabindex', touch.matches ? '-1' : '0'));
+    focusable();
+    touch.addEventListener?.('change', focusable);
     chart.querySelectorAll('.dx-chart__hit').forEach((hit) => {
         hit.addEventListener('mouseenter', () => show(hit));
         hit.addEventListener('focus', () => show(hit));

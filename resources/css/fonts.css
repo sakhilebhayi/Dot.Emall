@@ -1,13 +1,6 @@
-/* Self-hosted faces (public/fonts, SIL OFL licences beside them). font-display: swap with metric-matched fallbacks so the swap does not move the fold. */
-@font-face {
-    font-family: "Schibsted Grotesk";
-    font-style: normal;
-    font-weight: 400 900;
-    font-display: swap;
-    src: url("/fonts/schibsted-grotesk-var-latin.woff2") format("woff2");
-    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-
+/* R-52: Roboto is the one text face, shared by every Dot platform: public/dot-ui/css/dot-roboto.css (self-hosted, loaded by layouts/partials/dot-assets.blade.php before this stylesheet).
+   The only other face kept is Martian Mono, for CODES only: order references, SKUs, tracking numbers and the "how it works" step counters (--font-code, .ds-code, .sd-code, .op-code).
+   Prices, counts and every table figure are Roboto with tabular lining numerals. The mono file is only downloaded by a page that actually prints a code (unicode-range + font-display: swap). SIL OFL licence beside it. */
 @font-face {
     font-family: "Martian Mono";
     font-style: normal;
@@ -15,15 +8,6 @@
     font-display: swap;
     src: url("/fonts/martian-mono-var-latin.woff2") format("woff2");
     unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-
-@font-face {
-    font-family: "Schibsted Grotesk Fallback";
-    src: local("Arial"), local("Helvetica Neue"), local("Liberation Sans");
-    size-adjust: 101%;
-    ascent-override: 97%;
-    descent-override: 26%;
-    line-gap-override: 0%;
 }
 
 @font-face {

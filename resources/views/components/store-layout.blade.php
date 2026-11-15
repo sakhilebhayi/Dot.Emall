@@ -1,6 +1,6 @@
 {{--
-  <x-store-layout>: the PUBLIC STOREFRONT shell. Header (logo, search with autocomplete, account, cart with count), category navigation (mega menu on desktop, drawer on phones),
-  utility row (delivery location chip, help, sell), footer with real links. Use it for the home page, search, categories, product, store, cart, checkout and help pages.
+  <x-store-layout>: the PUBLIC STOREFRONT shell. Header (logo, search with autocomplete, account, cart with count), 
+  one 56px shared header (Categories dropdown on desktop, drawer on phones), a thin strip under it for the delivery location chip and the test-mode badge, footer with real links. Use it for the home page, search, categories, product, store, cart, checkout and help pages.
   Props:   categories=null (null reads App\Support\Navigation::categories(); pass a list of ['name','href','children'=>[['name','href']]] to override), robots=null,
            contained=true (wrap the page in the 80rem container; pass :contained="false" for full-bleed bands, then use <div class="ds-container"> inside),
            bottomBar=false (reserve room for a fixed bottom bar, for example the sticky add-to-cart bar on a product page; the page supplies the bar).
@@ -8,7 +8,7 @@
            renders its own <h1>), lead (one sentence under the heading), actions (buttons right of the heading), breadcrumbs (a <x-ds.breadcrumbs>), location (the delivery-location chip, shown
            top left), suggestions (server-rendered search suggestions: <a class="dsr-item" role="option" href=".."> rows inside the shared search pill's panel), testmode (overrides the automatic test-mode badge), banner (a full-width <x-ds.alert banner>),
            head (extra <head> content), scripts (end of <body>), default (the page).
-  Also provides: skip link, one <main id="main">, toast region for session flash messages, the notification bell for signed-in users, theme toggle, the phone menu drawer.
+  Also provides: skip link, one <main id="main">, toast region for session flash messages, the notification bell for signed-in users, and (R-52) the shared dot-ui header with its phone menu drawer (#dh-drawer, printed right after the header).
 --}}
 @props(['categories' => null, 'robots' => null, 'contained' => true, 'bottomBar' => false])
 @php
@@ -17,7 +17,7 @@
     $cartCount = \App\Support\Shell::cartCount();
 @endphp
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="dot-roboto" data-dh-theme-class="dark" data-dh-theme-key="emall-theme" data-dh-theme-default="system">
 <head>
     @include('layouts.partials.head', ['title' => $title ?? null, 'description' => $description ?? null, 'robots' => $robots])
     @isset($head){{ $head }}@endisset
@@ -48,32 +48,6 @@
         </div>
         @include('layouts.partials.store-footer', ['viewer' => $viewer])
     </div>
-
-    <x-ds.dialog id="menu-drawer" title="Menu" :drawer="true" :sheet="false">
-        <nav class="ds-drawer-nav" aria-label="Menu">
-            <a href="{{ emall_route('products.index') }}">All products</a>
-            @foreach ($cats as $c)
-                <details>
-                    <summary>{{ $c['name'] }}<x-ds.icon name="chevron-down" :size="18" /></summary>
-                    <div><a href="{{ $c['href'] }}">All in {{ $c['name'] }}</a>@foreach ($c['children'] as $k)<a href="{{ $k['href'] }}">{{ $k['name'] }}</a>@endforeach</div>
-                </details>
-            @endforeach
-            <a href="{{ emall_route('stores.index') }}" {!! emall_pending('stores.index') !!}>Stores</a>
-            <hr>
-            @if ($viewer['user'])
-                <a href="{{ emall_route('account.home') !== '#' ? emall_route('account.home') : route('dashboard') }}"><span>Account</span></a>
-                <a href="{{ emall_route('orders.index') }}">Orders</a>
-                <a href="{{ emall_route('wishlist.index') }}" {!! emall_pending('wishlist.index') !!}>Wishlist</a>
-            @else
-                <a href="{{ route('login') }}"><span>Sign in with InfoDot</span><x-ds.icon name="arrow-right" :size="18" /></a>
-                <p class="ds-drawer-note">Accounts come from InfoDot. Sign in to buy, sell and follow your orders.</p>
-            @endif
-            <a href="{{ emall_route('help.index') }}" {!! emall_pending('help.index') !!}>Help</a>
-            <a href="{{ emall_route('sell.start') !== '#' ? emall_route('sell.start') : emall_route('seller.store.create') }}">Sell on Emall</a>
-            <hr>
-            <x-ds.theme-toggle variant="menu" />
-        </nav>
-    </x-ds.dialog>
 
     <x-ds.toasts />
     @isset($scripts){{ $scripts }}@endisset

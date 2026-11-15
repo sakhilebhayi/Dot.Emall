@@ -47,9 +47,9 @@ class NotificationBellTest extends TestCase
 
         Livewire::actingAs($seller)
             ->test(NotificationBell::class)
-            ->assertSet('open', false)
-            ->call('toggle')
-            ->assertSet('open', true)
+            ->assertSet('loaded', false)
+            ->call('load')
+            ->assertSet('loaded', true)
             ->assertSee('New order received');
 
         $this->assertEquals(1, $seller->fresh()->unreadNotifications()->count());
@@ -101,8 +101,8 @@ class NotificationBellTest extends TestCase
         // A row is a real <button> (a tab stop that Enter and Space operate natively, WCAG 2.1.1 and 4.1.2), so no role or key handlers are needed.
         Livewire::actingAs($seller)
             ->test(NotificationBell::class)
-            ->set('open', true)
-            ->assertSeeHtml('<button type="button" class="ds-dropdown__item"')
+            ->call('load')
+            ->assertSeeHtml('<button type="button" class="dh-panel__item"')
             ->assertSeeHtml('wire:click="markAsRead(\''.$id.'\')"');
     }
 }

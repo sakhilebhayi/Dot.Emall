@@ -115,3 +115,20 @@ code, kbd, samp { font-family: var(--font-code); font-size: 0.875em; }
     .ds-section__head a, .ds-page-header a, .ds-rating[href], .ds-auth__body a:not(.ds-btn), .ds-stack > a, .ds-header__link { display: inline-flex; align-items: center; min-height: var(--tap); min-width: var(--tap); }
     main table a, main .table-scroll a, main a.dot-btn { display: inline-flex; align-items: center; min-height: var(--tap); }
 }
+
+/* R-52: 44px targets up to 1024px and on any touch device (the harness measures a link's own box, so an inline link of one line is 19px). Stand-alone links, card titles and buttons only: a link inside a
+   sentence stays inline. A card title link keeps its stretched ::after, so the whole card is still the hit area. */
+@media (pointer: coarse), (max-width: 64rem) {
+    .ds-crumbs a { min-width: var(--tap); justify-content: center; }
+    main :is(h1, h2, h3, h4) > a, .pdp-seller__title > a, .ds-cartline__title > a, .disc-ranked__text > a, .disc-spot__list li > div > a, .ds-pcard__body > a { display: inline-flex; align-items: center; min-height: var(--tap); }
+    .ds-pcard__title > a { display: block; min-height: var(--tap); }
+    .ds-btn:not(.ds-btn--link), .ds-icon-btn { min-height: var(--tap); }
+    .ds-btn.ds-btn--link, .co-signin-link, .pdp-alert-note a, .ds-review > p.ds-muted > a { display: inline-flex; align-items: center; min-height: var(--tap); }
+    /* the dashboards, the seller desk, the operator desk and the buyer's pages: links that stand alone on a line or in a cell */
+    .dx-row__a, .dx-hd > a, .dx-foot a, .dx > p > a, .dx-period a, .dx-tv > summary, .sd-item__title, .sd-tabnav a, .sd-stack dd > a, .op-row-link, .op-block > a, .op-muted > a,
+    main dl dd > a, .co-orderline__name > a, .co-orderline__return > a, .wl-item__title > a, .co-note > a { display: inline-flex; align-items: center; min-height: var(--tap); }
+    .sd-tabnav a, .dx-period a { min-width: var(--tap); justify-content: center; }
+    input[type="file"]:not(.sd-drop input) { min-height: var(--tap); }
+    input[type="file"]:not(.sd-drop input)::file-selector-button { min-height: calc(var(--tap) - 8px); margin-inline-end: var(--s-3); }
+    .sd-drop label { display: inline-flex; align-items: center; min-height: var(--tap); }
+}

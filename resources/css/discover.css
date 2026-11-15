@@ -50,7 +50,7 @@
 .disc-panel-title { font-size: var(--text-md); margin-block-end: var(--s-2); }
 @media (min-width: 64rem) {
     .disc-shop { grid-template-columns: 16rem minmax(0, 1fr); gap: var(--s-7); }
-    .disc-shop__panel { display: block; align-self: start; position: sticky; inset-block-start: 9.5rem; max-height: calc(100dvh - 10.5rem); overflow-y: auto; padding-inline-end: var(--s-2); }
+    .disc-shop__panel { display: block; align-self: start; position: sticky; inset-block-start: calc(var(--dot-header-offset, 3.5rem) + var(--s-4)); max-height: calc(100dvh - var(--dot-header-offset, 3.5rem) - var(--s-6)); overflow-y: auto; padding-inline-end: var(--s-2); }
     .disc-filters-open { display: none; }
 }
 @media (scripting: none) and (max-width: 63.99rem) {

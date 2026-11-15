@@ -559,10 +559,10 @@ jobs:
             CODE=$(curl -s --max-time 30 -o /dev/null -w '%{http_code}' "$SITE_URL/build/$ASSET" || true)
             if [ "$CODE" = "200" ]; then echo "200 $SITE_URL/build/$ASSET"; else echo "::error::$SITE_URL/build/$ASSET answered ${CODE:-no response} (expected 200): the docroot is not serving the new build"; FAILED=1; fi
           done
-          # Self-hosted fonts and the logo: the built CSS and the layouts name these files by absolute path. A docroot that does not serve /fonts/ or /images/
+          # Self-hosted fonts and the logo (R-52: Roboto comes from the shared dot-ui, Martian Mono prints codes): the built CSS and the layouts name these files by absolute path. A docroot that does not serve /dot-ui/, /fonts/ or /images/
           # leaves every page in the fallback face (or without its logo) with a 200 for the page itself, so they are checked here the way the built CSS is.
           # A real font file is tens of kilobytes; a few hundred bytes is an error page served with a 200.
-          for FONT in fonts/schibsted-grotesk-var-latin.woff2 fonts/martian-mono-var-latin.woff2; do
+          for FONT in dot-ui/fonts/roboto/roboto-latin-wght-normal.woff2 fonts/martian-mono-var-latin.woff2; do
             CODE=$(curl -s --max-time 30 -o /dev/null -w '%{http_code}' "$SITE_URL/$FONT" || true)
             SIZE=$(curl -s --max-time 30 -o /dev/null -w '%{size_download}' "$SITE_URL/$FONT" || echo 0)
             if [ "$CODE" = "200" ] && [ "${SIZE:-0}" -gt 10000 ]; then echo "200 $SITE_URL/$FONT (${SIZE} bytes)"; else echo "::error::$SITE_URL/$FONT answered ${CODE:-no response}, ${SIZE:-0} bytes (expected 200 and a font file): the docroot is not serving public/fonts"; FAILED=1; fi
@@ -571,8 +571,8 @@ jobs:
             CODE=$(curl -s --max-time 30 -o /dev/null -w '%{http_code}' "$SITE_URL/$IMG" || true)
             if [ "$CODE" = "200" ]; then echo "200 $SITE_URL/$IMG"; else echo "::error::$SITE_URL/$IMG answered ${CODE:-no response} (expected 200): the docroot is not serving public/images"; FAILED=1; fi
           done
-          # The shared Dot UI (search pill, platform switcher) is served from /dot-ui/: a docroot that does not serve it leaves the header unstyled.
-          for DOTUI in dot-ui/css/dot-search.css dot-ui/css/dot-switcher.css dot-ui/js/dot-switcher.js; do
+          # The shared Dot UI (Roboto, the header, search pill, platform switcher) is served from /dot-ui/: a docroot that does not serve it leaves the header unstyled.
+          for DOTUI in dot-ui/css/dot-roboto.css dot-ui/css/dot-type.css dot-ui/css/dot-search.css dot-ui/css/dot-header.css dot-ui/css/dot-switcher.css dot-ui/js/dot-nav.js dot-ui/js/dot-search.js dot-ui/js/dot-search-results.js dot-ui/js/dot-theme-boot.js dot-ui/js/dot-switcher.js; do
             CODE=$(curl -s --max-time 30 -o /dev/null -w '%{http_code}' "$SITE_URL/$DOTUI" || true)
             if [ "$CODE" = "200" ]; then echo "200 $SITE_URL/$DOTUI"; else echo "::error::$SITE_URL/$DOTUI answered ${CODE:-no response} (expected 200): the docroot is not serving public/dot-ui"; FAILED=1; fi
           done

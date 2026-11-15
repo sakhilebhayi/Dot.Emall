@@ -13,49 +13,46 @@
 .ds-strip--ink { background: var(--ink); }
 .ds-strip--brand { background: var(--brand); }
 
-/* Utility row (store): delivery location chip, help, sell. */
+/* Strip UNDER the header (R-52): the delivery-location chip and the test-mode badge, only when there is something to say. It is in the flow, not sticky. */
 .ds-util { background: var(--sunken); font-size: var(--text-sm); color: var(--ink-2); }
 .ds-util__row { display: flex; align-items: center; justify-content: space-between; gap: var(--s-4); min-height: 2.25rem; }
-.ds-util__links { display: none; align-items: center; gap: var(--s-4); }
-.ds-util a { color: var(--ink-2); text-decoration: none; display: inline-flex; align-items: center; min-height: 2rem; }
-.ds-util a:hover { color: var(--ink); text-decoration: underline; }
-.ds-util__loc:empty { display: none; }
+.ds-util__loc:empty, .ds-util__test:empty { display: none; }
 .ds-util__loc, .ds-util__test { display: flex; align-items: center; gap: var(--s-2); min-width: 0; }
 .ds-util .disc-region { white-space: nowrap; }
+.ds-util__test { margin-inline-start: auto; }
 .ds-util__test .ds-badge { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 /* On a phone the province chip and the test-mode pill wrap onto two lines rather than clip each other (jury 2 #11). */
-@media (max-width: 29.99rem) { .ds-util__row { flex-wrap: wrap; gap: 0 var(--s-4); } .ds-util__test .ds-badge { overflow: visible; white-space: normal; } }
-@media (min-width: 48rem) { .ds-util__links { display: flex; } }
-.ds-util:not(:has(.ds-util__loc > *, .ds-util__test > *)) .ds-util__row { justify-content: flex-end; }
-@media (max-width: 47.99rem) { .ds-util:not(:has(.ds-util__loc > *, .ds-util__test > *)) { display: none; } }
+@media (max-width: 29.99rem) { .ds-util__row { flex-wrap: wrap; gap: 0 var(--s-4); } .ds-util__test { margin-inline-start: 0; } .ds-util__test .ds-badge { overflow: visible; white-space: normal; } }
 
-/* Store header */
-.ds-header { position: sticky; inset-block-start: 0; z-index: 80; background: var(--ground); border-bottom: 1px solid var(--line); --hdr-search-h: 3.25rem; }
-.ds-header__bar { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "menu brand actions" "search search search"; align-items: center; gap: var(--s-2) var(--s-3); padding-block: var(--s-2); }
-.ds-header__menu { grid-area: menu; margin-inline-start: calc(var(--s-2) * -1); }
-.ds-header__brand { grid-area: brand; justify-self: start; }
-.ds-header__search { grid-area: search; min-width: 0; }
-.ds-header__actions { grid-area: actions; display: flex; align-items: center; gap: 0; }
-/* Phones (R-43 polish #6, D-181): the first row (menu, logo, account, bell, cart) stays; the search row folds away once the page has moved and a search icon takes its place. */
-.ds-header__searchbtn { display: none; }
-@media (max-width: 63.99rem) {
-    .ds-header__search { min-height: 2.75rem; }
-    :root.is-scrolled .ds-header__searchbtn { display: inline-grid; }
-    /* Once the page has moved, the header is clipped to its first row. The layout height does not change (no jump); the clipped part shows the page beneath, and the search row leaves the tab order. */
-    :root.is-scrolled .ds-header { clip-path: inset(0 0 var(--hdr-search-h) 0); border-bottom-color: transparent; }
-    :root.is-scrolled .ds-header::after { content: ""; position: absolute; inset-inline: 0; inset-block-end: var(--hdr-search-h); height: 1px; background: var(--line); }
-    :root.is-scrolled .ds-header__search { visibility: hidden; }
-    .ds-header__actions .ds-dropdown > .ds-header__link > .ds-icon:last-child { display: none; }
-    .ds-header__actions .ds-dropdown > .ds-header__link { padding-inline: 0; min-width: var(--tap); justify-content: center; }
+/* The shared header (R-52, dot-ui 0.6.0: public/dot-ui/css/dot-header.css, loaded before this file). One 56px bar on the storefront, the account and both desks: the logo, a status or the primary items, the search in the
+   centre column (a CSS Grid: centred in the viewport whatever the left and right hold), switcher, bell, cart and account. This block maps the header's tokens onto Shelf Edge's own. They are light-dark() values, so one
+   block serves both themes. Plain :root, not inside a layer: the package's rules are unlayered. */
+:root {
+    --dh-bg: var(--ground);
+    --dh-ink: var(--ink);
+    --dh-ink-2: var(--ink-2);
+    --dh-rule: var(--line);
+    --dh-hover: var(--sunken);
+    --dh-accent: var(--brand);
+    --dh-focus: var(--focus);
+    --dh-avatar-bg: var(--brand);
+    --dh-avatar-ink: var(--on-brand);
+    --dh-badge-bg: var(--crit);
+    --dh-badge-ink: var(--ground);
+    --dh-radius: var(--r-control);
+    --dh-logo-h: 2.25rem;
+    --dh-z: 80;
+    --dh-search-w: clamp(280px, 28vw, 560px);
 }
-@media (min-width: 64rem) {
-    .ds-header__bar { grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "brand search actions"; gap: var(--s-6); padding-block: var(--s-3); }
-    .ds-header__menu { display: none; }
-    .ds-header__search { max-width: 44rem; width: 100%; justify-self: center; }
+.ds-header, .ds-deskbar { border-bottom: 1px solid var(--line); }
+.ds-header .dsw, .ds-deskbar .dsw {
+    --dsw-btn-ink: var(--ink-2);
+    --dsw-btn-border: var(--line-strong);
+    --dsw-btn-bg-hover: var(--sunken);
+    --dsw-focus: var(--focus);
+    --dsw-radius: var(--r-control);
 }
-/* Shared Dot UI (R-51): the header search pill and the platform switcher (public/dot-ui, loaded in layouts/partials/head.blade.php before this file).
-   The pill itself is not mapped: it is the same cream pill with the dark arrow circle in every Dot platform, in light and dark. What follows is the host mapping
-   of the dropdown surfaces and the switcher button onto Shelf Edge's own tokens (they are light-dark() values, so one block serves both themes). */
+/* Menus, the drawer, the bell panel and the search results sit on the same tokens as the search (--dsr-*, mapped just below). */
 body {
     --dsr-panel: var(--raised);
     --dsr-hover: var(--sunken);
@@ -67,72 +64,46 @@ body {
     --dsr-radius-panel: var(--r-control);
     --dsr-panel-shadow: var(--lift-1);
 }
-.ds-header .dsw, .ds-deskbar .dsw {
-    --dsw-btn-ink: var(--ink-2);
-    --dsw-btn-border: var(--line-strong);
-    --dsw-btn-bg-hover: var(--sunken);
-    --dsw-focus: var(--focus);
-    --dsw-radius: var(--r-control);
-}
 /* The shop's own suggestions fill [data-suggest-list]; while it is empty the pill's panel stays closed instead of opening as an empty box. */
 .ds-header .dsr:focus-within .dsr-panel:has(> [data-suggest-list]:empty), .ds-header .dsr.is-open .dsr-panel:has(> [data-suggest-list]:empty) { display: none; }
 .ds-header .dsr .dsr-item { text-decoration: none; }
-/* A signed-in phone header also holds the switcher: below about 410px the wordmark's live type gives way to the original mark so the row does not overlap (the seller desk bar does the same at every width). */
-@media (max-width: 25.6rem) { .ds-header:has(.dsw) .ds-logo__word { display: none; } }
 .ds-header .dsr .dsr-item .dsr-tag { margin-inline-start: auto; }
+.ds-header .dsr .dsr-panel [data-dsr-rows]:not(:empty) ~ .dsr-foot, .ds-deskbar .dsr .dsr-panel [data-dsr-rows]:not(:empty) ~ .dsr-foot { display: none; }
+.ds-hide-md { display: inline-grid; }
+@media (max-width: 860px) { .ds-hide-md { display: none; } }
+
+/* The logo: the original mark and a live-type wordmark (Roboto 800 since R-52). It is the header's brand link, so its size comes from --dh-logo-h. */
 .ds-logo { display: inline-flex; align-items: center; gap: var(--s-2); text-decoration: none; min-height: var(--tap); }
 .ds-logo img { display: block; flex: none; }
 .ds-logo__mark { width: 2.25rem; height: 2.25rem; border-radius: 50%; }
-/* The wordmark is live type (D-180): heavy enough that "emall" cannot be misread as "email", with the ll left tight. */
-.ds-logo__word { display: inline-flex; align-items: baseline; gap: 0.06em; font-size: 1.375rem; font-weight: 800; font-stretch: var(--width-price); line-height: 1; letter-spacing: -0.035em; white-space: nowrap; }
+.ds-logo__word { display: inline-flex; align-items: baseline; gap: 0.06em; font-size: 1.375rem; font-weight: 800; line-height: 1; letter-spacing: -0.02em; white-space: nowrap; }
 .ds-logo__dot { color: var(--ink); }
 .ds-logo__emall { color: var(--brand); }
 .ds-logo__stop { align-self: baseline; flex: none; width: 0.3em; height: 0.3em; border-radius: 50%; background: var(--awning); box-shadow: 0 0 0 0.075em var(--ink); margin-inline: 0.12em 0.1em; }
-@media (max-width: 29.99rem) { .ds-logo { gap: var(--s-1); } .ds-logo__mark { width: 2rem; height: 2rem; } .ds-logo__word { font-size: 1.1875rem; } }
-@media (min-width: 64rem) { .ds-logo__mark { width: 2.75rem; height: 2.75rem; } .ds-logo__word { font-size: 1.625rem; } }
+.dh-brand__name { overflow: visible; }
+/* From 861px to about 1100px the bar is the mark alone: the wordmark would push Categories into More on a tablet. */
+@media (min-width: 861px) and (max-width: 1100px) { .ds-header .dh-brand__name { display: none; } }
+@media (max-width: 29.99rem) { .ds-logo__word { font-size: 1.1875rem; } .dh:has(.dsw) .dh-brand__name { display: none; } }
+/* kept for ds.dropdown's "bare" variant (a header-style link button) */
 .ds-header__link { display: inline-flex; align-items: center; gap: var(--s-2); min-height: var(--tap); padding: 0 var(--s-2); color: var(--ink); text-decoration: none; font-weight: 600; border-radius: var(--r-control); }
 .ds-header__link:hover { background: var(--sunken); color: var(--ink); }
-.ds-header__link .ds-label-text { display: none; }
-@media (max-width: 63.99rem) { .ds-cart-link { justify-content: center; min-width: var(--tap); padding-inline: 0; } }
-@media (min-width: 64rem) { .ds-header__link .ds-label-text { display: inline; } .ds-header__link { padding: 0 var(--s-3); } }
-/* On a phone the account button is its icon (the name stays for screen readers): a first name beside the bell and the cart pushes the logo underneath them. */
-@media (max-width: 63.99rem) { .ds-header__actions .ds-dropdown > .ds-header__link > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; } }
-.ds-cart-link { position: relative; }
-/* The count is drawn in place on first paint (no fade: a half-transparent "3" read as a glitch, D-181). Phones pin it to the top right of the icon, inside its own 44px box. */
-.ds-icon-btn > .ds-count, .ds-header__actions .ds-count { position: absolute; z-index: 1; inset-block-start: 0.15rem; inset-inline-end: 0; min-width: 1.2rem; height: 1.2rem; font-size: 0.6875rem; box-shadow: 0 0 0 2px var(--ground); }
-.ds-header__actions .ds-cart-link .ds-count { inset-inline-end: -0.1rem; }
-@media (min-width: 64rem) { .ds-header__actions .ds-cart-link .ds-count { position: static; box-shadow: none; min-width: 1.35rem; height: 1.35rem; font-size: 0.75rem; } }
+
+/* The cart: an icon button with the count in dot-ui's badge. The count is drawn in place on first paint (no fade: a half-transparent "3" read as a glitch, D-181); only .is-stamped animates. */
+.ds-cart-link { color: var(--ink); text-decoration: none; }
+.ds-cart-link:hover { color: var(--ink); }
 @keyframes ds-stamp { from { transform: scale(1.5); opacity: 0; } 60% { transform: scale(0.94); opacity: 1; } to { transform: none; } }
 .ds-count.is-stamped { animation: ds-stamp var(--t-base) var(--ease) both; }
 .ds-header__hide-sm { display: none; }
 @media (min-width: 40rem) { .ds-header__hide-sm { display: inline-flex; } }
+.ds-drawer-note { font-size: var(--text-sm); color: var(--ink-2); padding: var(--s-2) var(--s-3); }
 
-/* Category navigation (desktop) with the mega panel */
-.ds-catnav { display: none; border-top: 1px solid var(--line); }
-@media (min-width: 64rem) { .ds-catnav { display: block; } }
-.ds-catnav__row { display: flex; align-items: center; gap: var(--s-1); min-height: 3rem; position: relative; }
-.ds-catnav a, .ds-catnav__btn { display: inline-flex; align-items: center; gap: var(--s-2); min-height: 2.5rem; padding: 0 var(--s-3); border-radius: var(--r-control); color: var(--ink); font: inherit; font-weight: 600; font-size: var(--text-sm); text-decoration: none; background: none; border: 0; cursor: pointer; white-space: nowrap; }
-.ds-catnav a:hover, .ds-catnav__btn:hover, .ds-catnav__btn[aria-expanded="true"] { background: var(--sunken); color: var(--ink); }
-.ds-catnav__spacer { flex: 1; }
-.ds-catnav a[aria-current="page"] { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 0.45em; }
-.ds-mega { position: absolute; z-index: 85; inset-inline: 0; inset-block-start: 100%; background: var(--raised); border: 1px solid var(--line); border-radius: 0 0 var(--r-sheet) var(--r-sheet); box-shadow: var(--lift-1); padding: var(--s-5) var(--s-5) var(--s-5); display: grid; grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); gap: var(--s-5); animation: ds-pop var(--t-base) var(--ease) both; transform-origin: top; }
-.ds-mega[hidden] { display: none; }
-.ds-mega h2 { font-size: var(--text-base); margin-block-end: var(--s-2); letter-spacing: 0; }
-.ds-mega h2 a { padding: 0; min-height: 0; font-size: inherit; }
-.ds-mega ul { list-style: none; margin: 0; padding: 0; display: grid; }
-.ds-mega li a { font-weight: 450; min-height: 2.25rem; padding-inline: 0; color: var(--ink-2); }
-.ds-mega li a:hover { background: none; color: var(--ink); text-decoration: underline; }
-
-/* Drawer content (phone menu) */
-.ds-drawer-nav { display: grid; gap: 0; }
-.ds-drawer-nav a, .ds-drawer-nav summary { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); min-height: var(--tap); padding: 0 var(--s-2); color: var(--ink); text-decoration: none; font-weight: 600; border-radius: var(--r-control); cursor: pointer; list-style: none; }
-.ds-drawer-nav summary::-webkit-details-marker { display: none; }
-.ds-drawer-nav a:hover, .ds-drawer-nav summary:hover { background: var(--sunken); }
-.ds-drawer-nav details[open] > summary .ds-icon { transform: rotate(180deg); }
-.ds-drawer-nav details > div { padding-inline-start: var(--s-4); display: grid; }
-.ds-drawer-nav details a { font-weight: 450; color: var(--ink-2); }
-.ds-drawer-nav hr { margin: var(--s-2) 0; }
-.ds-drawer-note { font-size: var(--text-sm); color: var(--ink-2); padding: var(--s-2); }
+/* The notification bell: a Livewire component around dot-ui's panel bell. Its root steps out of the bar's flex row; the rows are the panel's own (.dh-panel__item), as buttons. */
+.ds-bell { display: contents; }
+button.dh-panel__item { width: 100%; border: 0; border-bottom: 1px solid var(--dhp-rule); background: transparent; text-align: start; font: inherit; font-size: 14px; cursor: pointer; }
+button.dh-panel__item:hover { background: var(--dhp-hover); }
+.ds-bell__text { display: grid; gap: 2px; min-width: 0; }
+.ds-bell__title { font-weight: 650; }
+.ds-bell__msg { color: var(--dhp-ink-2); }
 
 /* Banner and flash region */
 .ds-banners:empty { display: none; }
@@ -150,17 +121,12 @@ body {
 @media (min-width: 48rem) { .ds-footer__grid { grid-template-columns: minmax(0, 1.5fr) repeat(4, minmax(0, 1fr)); } .ds-footer__about { grid-column: auto; } }
 @media (pointer: coarse) { .ds-footer a { min-height: var(--tap); } }
 
-/* Desk shell: account, seller and operator. A rail on wide screens, a bottom bar and a menu sheet on phones. */
+/* Desk shell: account, seller and operator. A rail on wide screens, a bottom bar on phones whose "More" opens the header's drawer. */
 .ds-desk { display: grid; grid-template-columns: minmax(0, 1fr); min-width: 0; }
-.ds-deskbar { position: sticky; inset-block-start: 0; z-index: 80; background: var(--ground); border-bottom: 1px solid var(--line); }
-.ds-deskbar__row { display: flex; align-items: center; gap: var(--s-2); min-height: 3.5rem; padding-inline: var(--gutter); }
-.ds-deskbar__context { display: flex; flex-direction: column; line-height: 1.2; min-width: 0; margin-inline-start: var(--s-2); padding-inline-start: var(--s-3); border-inline-start: 1px solid var(--line); }
-.ds-deskbar__context { flex: 0 1 auto; overflow: hidden; }
-.ds-deskbar__context strong { font-size: var(--text-base); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-@media (max-width: 39.99rem) { .ds-deskbar__context span { display: none; } .ds-deskbar__context { margin-inline-start: 0; border-inline-start: 0; padding-inline-start: 0; } }
-.ds-deskbar__context span { font-size: var(--text-xs); color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ds-deskbar__space { flex: 1; }
-.ds-deskbar__menu { margin-inline-start: calc(var(--s-2) * -1); }
+/* The desk's label is the header's status (always visible, never wider than its cell): "Seller desk" and the store's name. */
+.ds-deskbar__context strong { font-weight: 650; color: var(--dh-ink); }
+.ds-deskbar__sub { display: none; margin-inline-start: var(--s-2); color: var(--dh-ink-2); font-size: var(--text-sm); font-weight: 400; }
+@media (min-width: 80rem) { .ds-deskbar__sub { display: inline; } }
 .ds-desk__body { display: grid; grid-template-columns: minmax(0, 1fr); min-width: 0; }
 .ds-rail { display: none; }
 .ds-rail__nav { display: grid; gap: 2px; }
@@ -173,8 +139,8 @@ body {
 .ds-rail__foot { margin-block-start: var(--s-5); padding-block-start: var(--s-3); border-top: 1px solid var(--line); display: grid; gap: var(--s-1); }
 @media (min-width: 64rem) {
     .ds-desk__body { grid-template-columns: 15.5rem minmax(0, 1fr); }
-    .ds-rail { display: block; position: sticky; inset-block-start: 3.5rem; align-self: start; height: calc(100dvh - 3.5rem); overflow-y: auto; padding: var(--s-4) var(--s-3) var(--s-5); border-inline-end: 1px solid var(--line); background: var(--ground); }
-    .ds-deskbar__menu, .ds-bottombar { display: none; }
+    .ds-rail { display: block; position: sticky; inset-block-start: var(--dot-header-offset, 3.5rem); align-self: start; height: calc(100vh - var(--dot-header-offset, 3.5rem)); height: calc(100dvh - var(--dot-header-offset, 3.5rem)); overflow-y: auto; padding: var(--s-4) var(--s-3) var(--s-5); border-inline-end: 1px solid var(--line); background: var(--ground); }
+    .ds-bottombar { display: none; }
 }
 .ds-desk__main { min-width: 0; padding-block-end: var(--s-7); }
 .has-bottom-bar .ds-desk__main { padding-block-end: calc(var(--bottom-bar-h) + var(--s-6)); }
@@ -183,7 +149,7 @@ body {
 /* Account: the store header on top, a rail beside the content. */
 .ds-account { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s-5); padding-block: var(--s-4) 0; }
 .ds-account__rail { display: none; }
-@media (min-width: 64rem) { .ds-account { grid-template-columns: 14rem minmax(0, 1fr); gap: var(--s-7); padding-block-start: var(--s-6); } .ds-account__rail { display: block; position: sticky; inset-block-start: 9rem; align-self: start; } }
+@media (min-width: 64rem) { .ds-account { grid-template-columns: 14rem minmax(0, 1fr); gap: var(--s-7); padding-block-start: var(--s-6); } .ds-account__rail { display: block; position: sticky; inset-block-start: calc(var(--dot-header-offset, 3.5rem) + var(--s-4)); align-self: start; } }
 .ds-subnav { display: flex; gap: var(--s-1); overflow-x: auto; margin-inline: calc(var(--gutter) * -1); padding-inline: var(--gutter); border-bottom: 1px solid var(--line); scrollbar-width: none; }
 .ds-subnav a { flex: none; display: inline-flex; align-items: center; min-height: var(--tap); padding: 0 var(--s-3); color: var(--ink-2); font-weight: 600; text-decoration: none; border-bottom: 2px solid transparent; margin-bottom: -1px; }
 .ds-subnav a[aria-current="page"] { color: var(--ink); border-bottom-color: var(--brand); font-weight: 750; }
@@ -207,9 +173,3 @@ body {
 .ds-auth__foot { padding-block: var(--s-4); font-size: var(--text-sm); color: var(--ink-3); display: flex; flex-wrap: wrap; gap: var(--s-2) var(--s-5); }
 .ds-auth__foot a { color: var(--ink-2); display: inline-flex; align-items: center; min-height: 2rem; }
 @media (pointer: coarse) { .ds-auth__foot a { min-height: var(--tap); } }
-
-/* Below the desktop rail (64rem) the desk's Storefront link and account button keep only their icon (the names stay for screen readers): the platform switcher (R-51) takes their room, and the test-mode badge may be showing too. */
-@media (max-width: 63.99rem) {
-    .ds-deskbar .ds-header__link > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-    .ds-deskbar .ds-header__link > .ds-icon:last-child { display: none; }
-}

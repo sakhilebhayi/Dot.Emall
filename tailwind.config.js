@@ -1,6 +1,6 @@
-import defaultTheme from 'tailwindcss/defaultTheme';
 import forms from '@tailwindcss/forms';
 import typography from '@tailwindcss/typography';
+import dotPreset from './dot-ui/tailwind/tailwind-preset.cjs';
 
 // Colour utilities (text-gray-600, bg-indigo-600 and so on) still appear in the Jetstream views. They resolve to the Shelf Edge palette:
 // the triplets live in resources/css/tokens.css ("Tailwind bridge"). New views use the ds components and the tokens, not colour utilities.
@@ -8,6 +8,8 @@ const scale = (name, steps) => Object.fromEntries(steps.map((s) => [s, `rgb(var(
 
 /** @type {import('tailwindcss').Config} */
 export default {
+    // R-52: the shared type scale (font-sans is Roboto, font-mono the dot-ui mono, text-dot-* steps), one source for every Dot platform.
+    presets: [dotPreset],
     content: [
         './vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php',
         './resources/views/**/*.blade.php',
@@ -28,9 +30,6 @@ export default {
             },
             ringColor: { DEFAULT: 'rgb(var(--tw-indigo-600) / 0.5)' },
             ringOffsetColor: { DEFAULT: 'var(--surface)' },
-            fontFamily: {
-                sans: ['var(--font-text)', ...defaultTheme.fontFamily.sans],
-            },
         },
     },
 

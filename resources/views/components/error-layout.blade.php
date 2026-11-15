@@ -18,11 +18,10 @@
     }
     $manifest = public_path('build/manifest.json');
     $hasBuild = is_file($manifest);
-    $nonce = csp_nonce();
 @endphp
 @if ($richHtml !== null){!! $richHtml !!}@else
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="dot-roboto" data-dh-theme-class="dark" data-dh-theme-key="emall-theme" data-dh-theme-default="system">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -30,15 +29,14 @@
     <meta name="robots" content="noindex">
     <title>{{ $heading }} | Dot.Emall</title>
     <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('favicon-32x32.png') }}">
-    <script @if ($nonce) nonce="{{ $nonce }}" @endif>(function(){try{var s=localStorage.getItem('emall-theme');var m=(s==='dark'||s==='light')?s:(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.classList.add(m);}catch(e){}})();</script>
+    @include('layouts.partials.dot-assets', ['header' => true])
     @if ($hasBuild)@vite(['resources/css/app.css', 'resources/js/app.js'])@endif
 </head>
 <body class="ds-ctx-auth">
     <a class="ds-skip" href="#main">Skip to main content</a>
     <div class="ds-auth">
         <div>
-            <div class="ds-awning" aria-hidden="true"></div>
-            <div class="ds-container ds-auth__top"><x-ds.logo :href="url('/')" /></div>
+            @include('layouts.partials.bare-header', ['standalone' => true])
         </div>
         <main id="main" class="ds-container ds-auth__main" tabindex="-1">
             <div class="ds-auth__card">

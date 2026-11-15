@@ -9,6 +9,7 @@ use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\CspReportController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DeliveryRegionController;
+use App\Http\Controllers\DeskSearchController;
 use App\Http\Controllers\DevFakePaystackController;
 use App\Http\Controllers\Discovery\AssistantPageController;
 use App\Http\Controllers\Discovery\CategoryController;
@@ -398,6 +399,9 @@ Route::middleware([
 
     Route::get('/health', App\Http\Controllers\Operator\HealthController::class)->name('health');
     Route::get('/audit', AuditController::class)->name('audit');
+
+    // The header search of the operator area (R-52): listings, stores, orders and people, behind the `operator` middleware like everything here.
+    Route::get('/find', [DeskSearchController::class, 'operator'])->middleware('throttle:60,1')->name('find');
 });
 // --- end w7 ---
 
@@ -414,6 +418,9 @@ Route::middleware([
     EnsureCompanyEntitled::class,
 ])->prefix('sell')->group(function () {
     Route::get('/dashboard', Seller\DashboardController::class)->name('seller.dashboard');
+
+    // The header search of the seller desk (R-52): the store's own products, parcels and returns, scoped from the signed-in owner.
+    Route::get('/find', [DeskSearchController::class, 'seller'])->middleware('throttle:60,1')->name('seller.find');
 
     Route::get('/store', [StoreController::class, 'status'])->name('seller.store.status');
     Route::post('/store/submit', [StoreController::class, 'submit'])->name('seller.store.submit');
