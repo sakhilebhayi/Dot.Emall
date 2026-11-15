@@ -23,3 +23,4 @@
 <link rel="apple-touch-icon" href="{{ asset('apple-touch-icon.png') }}">
 @include('layouts.partials.dot-assets', ['header' => $dotUi ?? true, 'switcher' => ($dotUiSwitcher ?? false) && \App\Support\Navigation::viewer()['user']])
 @vite(['resources/css/app.css', 'resources/js/app.js'])
+@include('layouts.partials.dot-scripts', ['header' => $dotUi ?? true, 'switcher' => ($dotUiSwitcher ?? false) && \App\Support\Navigation::viewer()['user']])

@@ -255,7 +255,8 @@ function initDeskSearch(box) {
         },
     });
 }
-$$('[data-desk-search]').forEach(initDeskSearch);
+// dot-ui's scripts are deferred after this one (layouts/partials/dot-scripts.blade.php), so the results controller exists from DOMContentLoaded on.
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => $$('[data-desk-search]').forEach(initDeskSearch)); else $$('[data-desk-search]').forEach(initDeskSearch);
 document.addEventListener('livewire:navigated', () => $$('[data-desk-search]').forEach(initDeskSearch));
 
 /* Livewire morphs add new nodes: set up galleries, searches and steppers that arrived after load. */

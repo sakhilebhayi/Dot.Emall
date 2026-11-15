@@ -31,6 +31,7 @@
     <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('favicon-32x32.png') }}">
     @include('layouts.partials.dot-assets', ['header' => true])
     @if ($hasBuild)@vite(['resources/css/app.css', 'resources/js/app.js'])@endif
+    @include('layouts.partials.dot-scripts', ['header' => true])
 </head>
 <body class="ds-ctx-auth">
     <a class="ds-skip" href="#main">Skip to main content</a>

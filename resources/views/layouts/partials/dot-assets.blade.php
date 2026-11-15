@@ -14,9 +14,5 @@
 <link rel="stylesheet" href="{{ asset('dot-ui/css/dot-header.css') }}">
 @if ($switcher ?? false)
 <link rel="stylesheet" href="{{ asset('dot-ui/css/dot-switcher.css') }}">
-<script src="{{ asset('dot-ui/js/dot-switcher.js') }}" defer></script>
 @endif
-<script src="{{ asset('dot-ui/js/dot-search.js') }}" defer></script>
-<script src="{{ asset('dot-ui/js/dot-search-results.js') }}" defer></script>
-<script src="{{ asset('dot-ui/js/dot-nav.js') }}" defer></script>
 @endif
