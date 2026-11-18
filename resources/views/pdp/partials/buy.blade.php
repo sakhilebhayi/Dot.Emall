@@ -133,7 +133,7 @@
             @php($forVariant = $hasOptions && $variant ? $variant->id : null)
             @if ($stockState === 'out_of_stock' && $complete)
                 @if (! $user)
-                    <p class="pdp-alert-note"><a href="{{ route('login') }}">Sign in with InfoDot</a> to be told when this is back. Accounts come from InfoDot.</p>
+                    <p class="pdp-alert-note"><a href="{{ \App\Support\CentralSignIn::login() }}">Sign in with InfoDot</a> to be told when this is back. Accounts come from InfoDot.</p>
                 @elseif (isset($alerts['back_in_stock']))
                     <form method="POST" action="{{ route('alerts.destroy', $alerts['back_in_stock']) }}" class="pdp-alert-note">@csrf @method('DELETE')
                         <span>We will tell you in the app when it is back.</span> <button type="submit" class="ds-btn ds-btn--link">Cancel the alert</button>
@@ -147,7 +147,7 @@
                 @endif
             @elseif ($complete && $canBuy)
                 @if (! $user)
-                    <p class="pdp-alert-note"><a href="{{ route('login') }}">Sign in with InfoDot</a> to get an alert if the price drops.</p>
+                    <p class="pdp-alert-note"><a href="{{ \App\Support\CentralSignIn::login() }}">Sign in with InfoDot</a> to get an alert if the price drops.</p>
                 @elseif (isset($alerts['price_drop']))
                     <form method="POST" action="{{ route('alerts.destroy', $alerts['price_drop']) }}" class="pdp-alert-note">@csrf @method('DELETE')
                         <span>We will tell you if the price falls below {{ \App\Support\Shop::money(\App\Support\Money::toCents($alerts['price_drop']->baseline_price)) }}.</span> <button type="submit" class="ds-btn ds-btn--link">Cancel the alert</button>

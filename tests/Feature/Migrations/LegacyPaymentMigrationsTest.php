@@ -79,7 +79,7 @@ class LegacyPaymentMigrationsTest extends TestCase
 
         // The five payment migrations and every newer one (other work adds migrations after them).
         $steps = count(array_filter(
-            array_map('basename', glob(database_path('migrations/*.php'))),
+            array_map('basename', array_merge(glob(database_path('migrations/*.php')), glob(base_path('packages/dot-sso-client/database/migrations/*.php')))), // R-54: the sign-in package's migrations are in the same run
             fn (string $file) => strcmp(substr($file, 0, 17), '2026_10_20_100000') >= 0,
         ));
         Artisan::call('migrate:rollback', ['--step' => $steps, '--force' => true]);

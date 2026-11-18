@@ -126,7 +126,7 @@
             @auth
                 <x-report-form :action="route('products.report', $product)" :bag="'reportproduct'.$product->id" label="Report this listing" what="this listing" />
             @else
-                <p class="ds-muted pdp-inline"><x-ds.icon name="flag" :size="16" /><span><a href="{{ route('login') }}">Sign in with InfoDot</a> to report this listing.</span></p>
+                <p class="ds-muted pdp-inline"><x-ds.icon name="flag" :size="16" /><span><a href="{{ \App\Support\CentralSignIn::login() }}">Sign in with InfoDot</a> to report this listing.</span></p>
             @endauth
         </section>
     @endif

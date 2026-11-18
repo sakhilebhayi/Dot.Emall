@@ -4,6 +4,7 @@ use App\Http\Controllers\AccountController;
 use App\Http\Controllers\AddressController;
 use App\Http\Controllers\AssistantController;
 use App\Http\Controllers\Auth\EcosystemAuthController;
+use App\Http\Controllers\Auth\SignInEntryController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\CspReportController;
@@ -83,6 +84,9 @@ Route::post('/auth/ecosystem', [EcosystemAuthController::class, 'handle'])
 // Links minted before the token moved into a POST body carried it in the URL. They are no longer honoured:
 // the visitor is sent to the normal sign-in page and the token in the URL is never read.
 Route::get('/auth/ecosystem', [EcosystemAuthController::class, 'legacy']);
+
+// R-54: "Sign in" from a public shop page keeps the page the person was on, then starts the central sign-in (only while DOTSSO_ENABLED).
+Route::get('/sign-in', SignInEntryController::class)->middleware('throttle:60,1,sign-in-entry')->name('sign-in');
 
 // Content-Security-Policy violation reports (the policy is report-only). The browser posts these by itself, so there is
 // no session, no cookie, no CSRF token and no user; the controller keeps only the directive and the blocked host.

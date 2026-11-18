@@ -52,7 +52,7 @@
                     <p>Signed in as <strong>{{ $user->name }}</strong>. Order updates go to <strong>{{ $user->email }}</strong>.</p>
                 @else
                     <x-ds.input label="E-mail address" name="email" id="co-email" type="email" :value="$val('email')" required autocomplete="email" hint="We send your order confirmation and the link to follow your order here. You do not need an account." />
-                    <p class="ds-muted co-note">Prefer to keep your orders in one place? <a href="{{ route('login') }}">Sign in with InfoDot</a> first. Accounts come from InfoDot.</p>
+                    <p class="ds-muted co-note">Prefer to keep your orders in one place? <a href="{{ \App\Support\CentralSignIn::login() }}">Sign in with InfoDot</a> first. Accounts come from InfoDot.</p>
                 @endif
                 <x-ds.input label="Mobile number (optional)" name="phone" id="co-phone" type="tel" :value="$val('phone', $phone)" autocomplete="tel" hint="Only given to a seller or courier for the parcel they are sending." />
             </section>

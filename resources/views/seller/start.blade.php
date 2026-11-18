@@ -22,7 +22,7 @@
                 @else
                     <p class="sd-muted sd-measure">Emall has no sign-up form of its own. Accounts on Emall come from InfoDot, so sign in there and, if you are new, your Emall account is made on the way in. That keeps one business identity behind every store, and it is what lets a shopper see who they are buying from.</p>
                     <div class="sd-actions">
-                        <x-ds.button variant="primary" size="lg" :href="route('login')" iconRight="arrow-right">Sign in with InfoDot</x-ds.button>
+                        <x-ds.button variant="primary" size="lg" :href="\App\Support\CentralSignIn::login()" iconRight="arrow-right">Sign in with InfoDot</x-ds.button>
                     </div>
                     <p class="sd-quiet">After you sign in you come straight back to the first step.</p>
                 @endif

@@ -9,7 +9,7 @@
     @if (! $isLive)
         {{-- Nobody asks about a listing that is not on sale. --}}
     @elseif (! $user)
-        <p class="rv-why"><x-ds.icon name="info" :size="18" /><span><a href="{{ route('login') }}">Sign in with InfoDot</a> to ask the store a question. Accounts come from InfoDot.</span></p>
+        <p class="rv-why"><x-ds.icon name="info" :size="18" /><span><a href="{{ \App\Support\CentralSignIn::login() }}">Sign in with InfoDot</a> to ask the store a question. Accounts come from InfoDot.</span></p>
     @elseif ($canAnswer)
         <p class="rv-why"><x-ds.icon name="info" :size="18" /><span>You sell this product. Answer the questions below instead of asking.</span></p>
     @else

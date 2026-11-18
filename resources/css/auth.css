@@ -48,3 +48,8 @@
 .ds-entitle-others li { border-top: 1px solid var(--line); }
 .ds-entitle-others form { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: var(--s-3); min-height: 3.25rem; }
 .ds-entitle-others b { color: var(--ink); font-weight: 650; overflow-wrap: anywhere; }
+
+/* R-54 claim page: the six-digit code reads as figures, spaced, and keeps the 44px target of every Emall control. */
+.ds-claim__code input { letter-spacing: 0.35em; font-variant-numeric: tabular-nums; font-size: var(--text-lg); text-align: center; min-height: 44px; }
+.ds-claim__row { display: flex; flex-wrap: wrap; gap: var(--s-3); margin-block-start: var(--s-4); }
+.ds-claim__row .ds-btn { min-height: 44px; }

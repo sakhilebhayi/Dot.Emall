@@ -33,7 +33,7 @@
                 Add something from a store and it will wait here. You do not need an account to buy.
                 <x-slot:actions>
                     <x-ds.button :href="route('products.index')" icon="search">Continue shopping</x-ds.button>
-                    @unless ($signedIn)<x-ds.button :href="route('login')" variant="quiet">Sign in with InfoDot</x-ds.button>@endunless
+                    @unless ($signedIn)<x-ds.button :href="\App\Support\CentralSignIn::login()" variant="quiet">Sign in with InfoDot</x-ds.button>@endunless
                 </x-slot:actions>
             </x-ds.empty-state>
         </div>
@@ -92,7 +92,7 @@
                                             <x-ds.button type="submit" variant="link" size="sm" icon="heart">Move to wishlist<span class="ds-visually-hidden">: {{ $line->product->name }}</span></x-ds.button>
                                         </form>
                                     @else
-                                        <a class="co-signin-link" href="{{ route('login') }}">Sign in with InfoDot to save for later</a>
+                                        <a class="co-signin-link" href="{{ \App\Support\CentralSignIn::login() }}">Sign in with InfoDot to save for later</a>
                                     @endif
                                 </div>
                                 @if ($qError)<p class="ds-field__error" role="alert"><x-ds.icon name="alert-triangle" :size="16" /><span>{{ $qError }}</span></p>@endif

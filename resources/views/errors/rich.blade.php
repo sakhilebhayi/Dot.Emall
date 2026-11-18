@@ -28,7 +28,7 @@
                         @if ($viewer['user'])
                             <x-ds.button :href="emall_route('orders.index')" variant="quiet" icon="receipt">Your orders</x-ds.button>
                         @else
-                            <x-ds.button :href="url('/login')" variant="quiet">Sign in</x-ds.button>
+                            <x-ds.button :href="\App\Support\CentralSignIn::login()" variant="quiet">Sign in</x-ds.button>
                         @endif
                     @endif
                 </div>

@@ -17,9 +17,9 @@
 @endphp
 @if ($user === null)
     @if ($style === 'button')
-        <a href="{{ route('login') }}" class="ds-btn ds-btn--quiet ds-btn--md" title="Accounts come from InfoDot. Sign in to save this to a wishlist."><x-ds.icon name="heart" :size="18" />Sign in to save</a>
+        <a href="{{ \App\Support\CentralSignIn::login() }}" class="ds-btn ds-btn--quiet ds-btn--md" title="Accounts come from InfoDot. Sign in to save this to a wishlist."><x-ds.icon name="heart" :size="18" />Sign in to save</a>
     @else
-        <a href="{{ route('login') }}" class="ds-icon-btn" aria-label="Sign in to save {{ $name }} to a wishlist" title="Accounts come from InfoDot. Sign in to save this to a wishlist."><x-ds.icon name="heart" :size="22" /></a>
+        <a href="{{ \App\Support\CentralSignIn::login() }}" class="ds-icon-btn" aria-label="Sign in to save {{ $name }} to a wishlist" title="Accounts come from InfoDot. Sign in to save this to a wishlist."><x-ds.icon name="heart" :size="22" /></a>
     @endif
 @else
     <form method="POST" action="{{ route('wishlist.toggle', $id) }}" class="wish" data-wish-toggle data-label-on="{{ $on }}" data-label-off="{{ $off }}" data-text-on="Saved to wishlist" data-text-off="Save to wishlist">
