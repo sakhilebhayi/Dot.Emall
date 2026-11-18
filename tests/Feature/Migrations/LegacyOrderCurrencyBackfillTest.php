@@ -135,7 +135,7 @@ class LegacyOrderCurrencyBackfillTest extends TestCase
     private function migrationsFrom(string $prefix): int
     {
         return count(array_filter(
-            array_map('basename', glob(database_path('migrations/*.php'))),
+            array_map('basename', array_merge(glob(database_path('migrations/*.php')), glob(base_path('packages/dot-sso-client/database/migrations/*.php')))), // R-54: the sign-in package's migrations are in the same run
             fn (string $file) => strcmp(substr($file, 0, strlen($prefix)), $prefix) >= 0,
         ));
     }

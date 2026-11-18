@@ -54,7 +54,7 @@
                         <div class="ds-page-header__actions">
                             @if (isset($actions) && trim((string) $actions) !== ''){{ $actions }}@else
                                 <x-ds.button :href="url('/')" icon="home">Back to the shop</x-ds.button>
-                                <x-ds.button :href="url('/login')" variant="quiet">Sign in</x-ds.button>
+                                <x-ds.button :href="\App\Support\CentralSignIn::login()" variant="quiet">Sign in</x-ds.button>
                             @endif
                         </div>
                     </div>

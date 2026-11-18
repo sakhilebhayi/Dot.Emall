@@ -85,9 +85,18 @@ final class HeaderNav
         ];
     }
 
-    /** The signed-out pair. Sign-up is closed (accounts come from InfoDot), so only "Sign in" is offered. */
+    /**
+     * The signed-out pair. Sign-up is closed locally (accounts come from InfoDot), so only "Sign in" is offered while the
+     * central sign-in is off. With DOTSSO_ENABLED "Create account" is offered too and opens InfoDot's registration.
+     */
     public static function guest(): array
     {
-        return ['login' => ['label' => 'Sign in', 'href' => route('login')]];
+        $guest = ['login' => ['label' => 'Sign in', 'href' => CentralSignIn::login()]];
+
+        if (CentralSignIn::active()) {
+            $guest['register'] = ['label' => 'Create account', 'href' => CentralSignIn::register(route('register'))];
+        }
+
+        return $guest;
     }
 }

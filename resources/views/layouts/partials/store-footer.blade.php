@@ -7,7 +7,7 @@
                 <p>Dot.Emall is a marketplace where South African sellers list real products and shoppers see the total price, delivery included, before they pay.</p>
                 @unless ($viewer['user'])
                     <p>Accounts come from InfoDot. Sign in with your InfoDot account to buy, sell and follow your orders.</p>
-                    <div><x-ds.button :href="route('login')" variant="quiet" size="sm">Sign in with InfoDot</x-ds.button></div>
+                    <div><x-ds.button :href="\App\Support\CentralSignIn::login()" variant="quiet" size="sm">Sign in with InfoDot</x-ds.button></div>
                 @endunless
             </div>
             @foreach (\App\Support\Navigation::footer() as $col)

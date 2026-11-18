@@ -148,7 +148,7 @@
                 </form>
             @endif
         @else
-            <p class="rv-why"><x-ds.icon name="info" :size="18" /><span><a href="{{ route('login') }}">Sign in with InfoDot</a> to write to the store. Accounts come from InfoDot, and signing in means the store can answer you.</span></p>
+            <p class="rv-why"><x-ds.icon name="info" :size="18" /><span><a href="{{ \App\Support\CentralSignIn::login() }}">Sign in with InfoDot</a> to write to the store. Accounts come from InfoDot, and signing in means the store can answer you.</span></p>
         @endauth
     </section>
 
@@ -159,7 +159,7 @@
                     <x-report-form :action="route('stores.report', $store)" :bag="'reportstore'.$store->id" label="Report this store" what="this store" />
                 @endunless
             @else
-                <p class="ds-muted pdp-inline"><x-ds.icon name="flag" :size="16" /><span><a href="{{ route('login') }}">Sign in with InfoDot</a> to report this store.</span></p>
+                <p class="ds-muted pdp-inline"><x-ds.icon name="flag" :size="16" /><span><a href="{{ \App\Support\CentralSignIn::login() }}">Sign in with InfoDot</a> to report this store.</span></p>
             @endauth
         </section>
     @endif

@@ -159,7 +159,7 @@
             <p>Saved searches live in your Emall account, and accounts come from InfoDot. Sign in with InfoDot and you can save this search and see what is new on it.</p>
             <x-slot:footer>
                 <x-ds.button variant="quiet" data-dialog-close>Not now</x-ds.button>
-                <x-ds.button :href="route('login')">Sign in with InfoDot</x-ds.button>
+                <x-ds.button :href="\App\Support\CentralSignIn::login()">Sign in with InfoDot</x-ds.button>
             </x-slot:footer>
         </x-ds.dialog>
     @endif

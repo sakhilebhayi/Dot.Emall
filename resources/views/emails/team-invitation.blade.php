@@ -1,10 +1,10 @@
 @component('mail::message')
 # {{ __('You have been invited to join :team', ['team' => $invitation->team->name]) }}
 
-@if (Laravel\Fortify\Features::enabled(Laravel\Fortify\Features::registration()))
+@if (\App\Support\CentralSignIn::active() || Laravel\Fortify\Features::enabled(Laravel\Fortify\Features::registration()))
 {{ __('If you do not have an account, you can create one with the button below. Then use the second button to accept the invitation.') }}
 
-@component('mail::button', ['url' => route('register')])
+@component('mail::button', ['url' => \App\Support\CentralSignIn::register(route('register'))])
 {{ __('Create an account') }}
 @endcomponent
 

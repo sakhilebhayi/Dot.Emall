@@ -83,7 +83,7 @@
             <div><x-ds.button type="submit">Post review</x-ds.button></div>
         </form>
     @elseif ($write['message'])
-        <p class="rv-why"><x-ds.icon name="info" :size="18" /><span>{{ $write['message'] }}@if ($write['state'] === 'guest') <a href="{{ route('login') }}">Sign in</a>@endif</span></p>
+        <p class="rv-why"><x-ds.icon name="info" :size="18" /><span>{{ $write['message'] }}@if ($write['state'] === 'guest') <a href="{{ \App\Support\CentralSignIn::login() }}">Sign in</a>@endif</span></p>
     @endif
 
     @if ($sum['count'] > 0 || $filtered)
@@ -133,7 +133,7 @@
                             </form>
                             <x-report-form :action="route('reviews.report', $review)" :bag="'reportreview'.$review->id" what="this review" />
                         @elseif (! $user)
-                            <a class="ds-btn ds-btn--quiet ds-btn--sm" href="{{ route('login') }}" title="Accounts come from InfoDot. Sign in to vote.">Helpful ({{ $review->helpful_count }})</a>
+                            <a class="ds-btn ds-btn--quiet ds-btn--sm" href="{{ \App\Support\CentralSignIn::login() }}" title="Accounts come from InfoDot. Sign in to vote.">Helpful ({{ $review->helpful_count }})</a>
                         @elseif ($review->helpful_count > 0)
                             <span class="ds-muted">{{ $review->helpful_count }} found this helpful</span>
                         @endif

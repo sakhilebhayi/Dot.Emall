@@ -8,6 +8,7 @@ use App\Providers\FortifyServiceProvider;
 use App\Providers\HealthCheckServiceProvider;
 use App\Providers\JetstreamServiceProvider;
 use App\Providers\OperatorServiceProvider;
+use Dot\SsoClient\DotSsoServiceProvider;
 
 return [
     AppServiceProvider::class,
@@ -18,4 +19,5 @@ return [
     DiscoveryServiceProvider::class,
     OperatorServiceProvider::class,
     CheckoutServiceProvider::class,
+    DotSsoServiceProvider::class,
 ];
