@@ -338,7 +338,7 @@ class CompanyEntitlementTest extends TestCase
         Log::shouldHaveReceived('warning')->once()->withArgs(fn ($message) => str_contains($message, 'InfoDot entitlement check gave no answer'));
     }
 
-    public function test_a_failure_is_remembered_for_a_minute_and_an_answer_for_ten(): void
+    public function test_a_failure_is_remembered_for_a_minute_and_an_answer_for_a_minute_too(): void
     {
         [$owner] = $this->company();
         $this->infodotSays([self::readUrl(self::ACME) => Http::sequence()
@@ -640,6 +640,154 @@ class CompanyEntitlementTest extends TestCase
         $this->actingAs($owner)->get(route('teams.show', $other))->assertForbidden()->assertDontSee('Globex Corporation');
 
         Http::assertNotSent(fn (Request $request) => str_contains($request->url(), self::GLOBEX));
+    }
+
+    // ------------------------------------------------------------------ R-61 availability contract
+
+    /** The read endpoint's body with this platform's row carrying the R-61 fields. */
+    private static function availability(string $uuid, bool $entitled, ?bool $available, ?string $message = null): array
+    {
+        $body = self::platforms($uuid, $entitled, $entitled ? 'active' : 'suspended');
+
+        foreach ($body['platforms'] as &$row) {
+            if ($row['key'] === 'emall') {
+                if ($available !== null) {
+                    $row['available'] = $available;
+                }
+                if ($message !== null) {
+                    $row['message'] = $message;
+                }
+            }
+        }
+
+        return $body;
+    }
+
+    public function test_r61_switched_off_gives_503_with_the_message_even_when_the_company_is_entitled(): void
+    {
+        [$owner, , $product] = $this->company();
+        $this->infodotSays([self::readUrl(self::ACME) => Http::response(self::availability(self::ACME, true, false, 'Back at 18:00 after maintenance.'))]);
+
+        $this->actingAs($owner)->get(route('seller.products.index'))->assertStatus(503)
+            ->assertSee('Back at 18:00 after maintenance.')
+            ->assertSee('Dot.Emall is not available right now')
+            ->assertDontSee('Karoo Biltong')
+            ->assertHeader('Retry-After', '60')
+            ->assertHeader('Cache-Control', 'no-store, private');
+
+        $this->actingAs($owner)->getJson(route('seller.products.index'))->assertStatus(503)
+            ->assertJson(['reason' => 'platform_unavailable', 'message' => 'Back at 18:00 after maintenance.'])
+            ->assertHeader('Retry-After', '60');
+
+        $this->actingAs($owner)->patch(route('seller.products.toggle-active', $product))->assertStatus(503);
+        $this->assertTrue((bool) $product->fresh()->is_active, 'nothing is changed');
+        $this->assertAuthenticatedAs($owner, 'web');
+    }
+
+    public function test_r61_switched_off_is_checked_before_what_the_company_holds(): void
+    {
+        [$owner] = $this->company();
+        $this->infodotSays([self::readUrl(self::ACME) => Http::response(self::availability(self::ACME, false, false))]);
+
+        $this->actingAs($owner)->get(route('account.home'))->assertStatus(503)->assertSee('temporarily unavailable');
+    }
+
+    public function test_r61_it_is_back_within_a_minute(): void
+    {
+        [$owner] = $this->company();
+        $this->infodotSays([self::readUrl(self::ACME) => Http::sequence()
+            ->push(self::availability(self::ACME, true, false))
+            ->push(self::availability(self::ACME, true, true))]);
+
+        $this->actingAs($owner)->get(route('account.home'))->assertStatus(503);
+
+        $this->travel(EntitlementClient::ANSWER_TTL + 1)->seconds();
+        $this->actingAs($owner)->get(route('account.home'))->assertOk();
+    }
+
+    public function test_r61_an_infodot_without_the_fields_is_not_a_switch_off(): void
+    {
+        [$owner] = $this->company();
+        $this->infodotSays([self::readUrl(self::ACME) => Http::response(self::platforms(self::ACME, true, 'active'))]);
+
+        $this->actingAs($owner)->get(route('account.home'))->assertOk();
+
+        // An answer cached by the old shape (no `available`) is not a switch-off either.
+        Cache::put('infodot:entitlement:emall:'.self::ACME, ['entitled' => true, 'status' => 'active'], 60);
+        $this->actingAs($owner)->get(route('account.home'))->assertOk();
+    }
+
+    public function test_r61_an_outage_keeps_the_last_answer_for_six_hours_then_carries_on(): void
+    {
+        [$owner] = $this->company();
+        Http::swap(new Factory);
+        Http::preventStrayRequests();
+        Http::fake([self::readUrl(self::ACME) => Http::sequence()
+            ->push(self::availability(self::ACME, true, false, 'Maintenance.'))
+            ->push('boom', 500)
+            ->whenEmpty(Http::response('boom', 500))]);
+
+        $this->actingAs($owner)->get(route('account.home'))->assertStatus(503);
+
+        $this->travel(EntitlementClient::ANSWER_TTL + 1)->seconds();
+        $this->actingAs($owner)->get(route('account.home'))->assertStatus(503)->assertSee('Maintenance.');
+
+        $this->travel(5)->hours();
+        $this->actingAs($owner)->get(route('account.home'))->assertStatus(503);
+
+        $this->travel(2)->hours();
+        $this->actingAs($owner)->get(route('account.home'))->assertOk();
+    }
+
+    public function test_r61_available_stays_available_through_an_outage(): void
+    {
+        [$owner] = $this->company();
+        Http::swap(new Factory);
+        Http::preventStrayRequests();
+        Http::fake([self::readUrl(self::ACME) => Http::sequence()
+            ->push(self::availability(self::ACME, true, true))
+            ->whenEmpty(fn () => throw new ConnectionException('timed out'))]);
+
+        $this->actingAs($owner)->get(route('account.home'))->assertOk();
+
+        $this->travel(EntitlementClient::ANSWER_TTL + 1)->seconds();
+        $this->actingAs($owner)->get(route('account.home'))->assertOk();
+    }
+
+    public function test_r61_a_livewire_update_gets_a_json_503_and_nothing_runs(): void
+    {
+        [$owner] = $this->company();
+        $id = (string) Str::uuid();
+        DB::table('notifications')->insert(['id' => $id, 'type' => 'test', 'notifiable_type' => User::class, 'notifiable_id' => $owner->id, 'data' => '{}', 'created_at' => now(), 'updated_at' => now()]);
+        $this->infodotSays([self::readUrl(self::ACME) => Http::sequence()
+            ->push(self::availability(self::ACME, true, true))
+            ->push(self::availability(self::ACME, true, false, 'Maintenance.'))]);
+        $this->actingAs($owner);
+        $snapshot = $this->bellSnapshot();
+
+        $this->travel(EntitlementClient::ANSWER_TTL + 1)->seconds();
+        $response = $this->livewireMarkAllRead($snapshot);
+
+        $this->assertSame(503, $response->getStatusCode());
+        $response->assertJson(['reason' => 'platform_unavailable', 'message' => 'Maintenance.']);
+        $this->assertStringNotContainsString('"components"', $response->getContent());
+        $this->assertNull(DB::table('notifications')->where('id', $id)->value('read_at'), 'the data is unchanged');
+    }
+
+    public function test_r61_the_public_shop_and_existing_orders_still_load_while_off(): void
+    {
+        [$owner, , $product] = $this->company();
+        $this->infodotSays([self::readUrl(self::ACME) => Http::response(self::availability(self::ACME, true, false))]);
+
+        $this->get('/')->assertOk();
+        $this->get(route('products.show', $product))->assertOk();
+        $this->get('/up')->assertOk();
+
+        $this->actingAs($owner);
+        $this->get(route('orders.index'))->assertOk();
+        $this->get(route('seller.orders.index'))->assertOk();
+        $this->get(route('profile.show'))->assertOk();
+        $this->get(route('account.privacy'))->assertOk();
     }
 
     public function test_livewire_updates_from_the_signed_in_area_carry_the_check(): void
